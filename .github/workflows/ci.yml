@@ -1,0 +1,23 @@
+name: Validate
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verify
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:browser
+      - run: pnpm exec wrangler deploy --dry-run --config workers/delivery/wrangler.jsonc
+      - run: pnpm exec wrangler deploy --dry-run --config workers/maintenance/wrangler.jsonc
+      # Never publish artifacts/test-key or an SXCU containing credentials.

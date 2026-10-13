@@ -1,0 +1,224 @@
+.settings-page {
+  max-width: 960px;
+  container-type: inline-size;
+}
+.settings-page-heading {
+  margin: 16px 0 32px;
+}
+.settings-page-admin .settings-page-heading {
+  margin-top: 0;
+}
+.settings-page-heading h1 {
+  margin: 0 0 4px;
+}
+.settings-page-heading p,
+.settings-section-heading p,
+.settings-label p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.settings-section {
+  padding: 25px 0;
+  border-top: 1px solid var(--border);
+}
+.settings-section-heading {
+  margin-bottom: 12px;
+}
+.settings-section-heading h2 {
+  margin: 0 0 3px;
+  font-size: 1.12rem;
+}
+.settings-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.settings-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+  align-items: center;
+  gap: 20px;
+  padding: 14px 0;
+}
+.settings-row + .settings-row {
+  border-top: 1px solid #e8d5bc0a;
+}
+.settings-label-line {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 32px;
+}
+.settings-label-line :is(label, strong) {
+  display: block;
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.settings-detail {
+  margin-top: 5px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.settings-detail p {
+  margin: 4px 0 0;
+}
+.settings-control {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.settings-control :is(input:not([type='checkbox']), select) {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-size: 0.85rem;
+  margin: 0;
+  transition: border-color var(--motion-state) var(--motion-enter);
+}
+.settings-control :is(input, select):hover:not(:disabled) {
+  border-color: #e8d5bc40;
+}
+.settings-control :is(input, select):disabled,
+.settings-form fieldset:disabled .settings-control {
+  opacity: 0.6;
+}
+.settings-control [aria-invalid='true'],
+.settings-control :is(input, select):user-invalid {
+  border-color: var(--danger);
+}
+.settings-control .settings-number {
+  max-width: 128px;
+}
+.settings-control .settings-unit {
+  max-width: 120px;
+}
+.settings-actions,
+.settings-buttons,
+.settings-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.settings-actions {
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+}
+.settings-buttons {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.settings-actions button,
+.settings-control :is(button, .button) {
+  min-height: 44px;
+  border-radius: 9px;
+  font-size: 0.82rem;
+}
+.settings-status {
+  min-height: 24px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.settings-saved {
+  color: #a8c49b;
+}
+.settings-message {
+  margin: 12px 0 0;
+  font-size: 0.8rem;
+}
+.settings-policy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  font-size: 0.8rem;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+}
+.settings-policy strong {
+  color: #e8ddd0;
+  font-weight: 500;
+}
+.settings-page .notice {
+  font-size: 0.8rem;
+}
+.settings-credential {
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  margin-right: 18px;
+  white-space: nowrap;
+}
+.settings-about {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.settings-about > * {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.settings-about a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.settings-about a:hover {
+  color: var(--accent);
+}
+@container (max-width: 700px) {
+  .settings-page-heading {
+    margin: 8px 0 24px;
+  }
+  .settings-section {
+    padding: 22px 0;
+  }
+  .settings-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .settings-control {
+    justify-content: flex-start;
+  }
+  .settings-control :is(input:not([type='checkbox']), select) {
+    max-width: 360px;
+  }
+  .settings-control input.settings-number {
+    max-width: 128px;
+  }
+  .settings-control select.settings-unit {
+    max-width: 120px;
+  }
+  .settings-switch-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+  }
+  .settings-actions {
+    flex-wrap: wrap;
+  }
+  .settings-buttons {
+    margin-left: auto;
+  }
+}
+@media (pointer: coarse) {
+  .settings-label-line {
+    min-height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-control :is(input, select) {
+    transition: none;
+  }
+}

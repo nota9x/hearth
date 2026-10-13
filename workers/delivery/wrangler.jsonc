@@ -1,0 +1,28 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "hearth-delivery",
+  "dev": { "ip": "127.0.0.1", "port": 8788 },
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "APP_ORIGIN": "http://127.0.0.1:5173",
+    "ENVIRONMENT": "development",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hearth-local",
+      "database_id": "00000000-0000-0000-0000-000000000001",
+    },
+  ],
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "hearth-local" }],
+  "ratelimits": [
+    {
+      "name": "SHARE_FAILURE_LIMIT",
+      "namespace_id": "4105",
+      "simple": { "limit": 60, "period": 60 },
+    },
+  ],
+  "observability": { "enabled": true, "head_sampling_rate": 0.1 },
+}

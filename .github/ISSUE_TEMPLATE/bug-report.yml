@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a problem with uploads, the dashboard, delivery, or self-hosting.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check [troubleshooting](https://github.com/nota9x/hearth/blob/main/docs/operations/troubleshooting.md) and [existing issues](https://github.com/nota9x/hearth/issues) first.
+        Remove account keys, Authorization headers, cookies, `.sxcu` contents, deletion URLs, and private images from all evidence.
+        Keep suspected vulnerabilities out of public issues; follow the [security reporting guidance](https://github.com/nota9x/hearth/blob/main/docs/guides/security.md#diagnose-or-report-a-problem-safely).
+  - type: textarea
+    id: behavior
+    attributes:
+      label: What happened, and what did you expect?
+      description: Include the exact error message or HTTP status if available.
+      placeholder: ShareX reports an upload error, but the image appears in Images. I expected a public URL to be returned.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Use a small synthetic image or test account. Include relevant settings without secrets.
+      placeholder: |
+        1. Select a validated delivery domain in account preferences.
+        2. Upload a small PNG using the generated ShareX uploader.
+        3. Observe ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Hearth version or commit
+      description: The deployed release/tag or commit SHA, not just your local checkout. If unknown, say so.
+      placeholder: Release tag or output of git rev-parse HEAD
+    validations:
+      required: true
+  - type: dropdown
+    id: runtime
+    attributes:
+      label: Where does it happen?
+      options:
+        - Deployed Cloudflare instance
+        - Local development (pnpm dev)
+        - Local built preview (pnpm preview)
+        - Installation, build, or tests
+        - Unsure
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Relevant environment and settings
+      description: Include only what applies. Browser/OS for UI; ShareX version, format, and size for uploads; Node/pnpm and command for tooling; affected Worker and recent changes for deployment.
+      placeholder: 'ShareX 21.0.0 on Windows; PNG under 1 MiB; metadata stripping enabled; delivery domain validates successfully.'
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted logs, screenshots, or configuration
+      description: Paste the smallest relevant excerpt or attach a screenshot. Note whether the failure is consistent or intermittent and any workaround you tried. Do not attach your uploader configuration or private image.

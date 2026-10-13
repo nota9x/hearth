@@ -1,0 +1,38 @@
+min_version: 2.2.0
+glob_matcher: doublestar
+
+pre-commit:
+  parallel: false
+  piped: true
+  jobs:
+    - name: safe-paths
+      run: node scripts/check-staged-paths.js
+    - name: prettier
+      glob: '**/*.{js,mjs,cjs,ts,svelte,json,jsonc,html,css,md,yml,yaml}'
+      exclude: &excluded
+        - '**/node_modules/**'
+        - '**/.svelte-kit/**'
+        - '**/.wrangler/**'
+        - '**/{dist,build,coverage,artifacts,test-results,playwright-report}/**'
+        - packages/core/bindings.d.ts
+        - packages/core/delivery-bindings.d.ts
+        - drizzle/meta/**
+        - tests/fixtures/bulk-images/**
+        - '**/.env*'
+        - '**/.dev.vars*'
+        - '**/*.local.jsonc'
+        - pnpm-lock.yaml
+        - CHANGELOG.md
+      run: pnpm exec prettier --write --ignore-unknown -- {staged_files}
+      stage_fixed: true
+    - name: eslint
+      glob: '**/*.{js,mjs,cjs,ts,svelte}'
+      exclude: *excluded
+      run: >-
+        pnpm --filter @hearth/web exec svelte-kit sync &&
+        pnpm exec eslint --max-warnings 0 --no-warn-ignored -- {staged_files}
+
+commit-msg:
+  jobs:
+    - name: commitlint
+      run: pnpm exec commitlint --edit '{1}' --verbose

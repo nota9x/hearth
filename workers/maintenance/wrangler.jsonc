@@ -1,0 +1,19 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "hearth-maintenance",
+  "dev": { "ip": "127.0.0.1", "port": 8789 },
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hearth-local",
+      "database_id": "00000000-0000-0000-0000-000000000001",
+    },
+  ],
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "hearth-local" }],
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+}

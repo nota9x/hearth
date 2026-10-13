@@ -1,0 +1,15 @@
+packages:
+  - apps/*
+  - packages/*
+  - workers/*
+engineStrict: true
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+trustLockfile: false
+allowBuilds:
+  lefthook: true
+  esbuild: true
+  workerd: true
+  sharp: true
+  unrs-resolver: false

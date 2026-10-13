@@ -1,0 +1,52 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "hearth-web",
+  "dev": { "ip": "127.0.0.1", "port": 5173 },
+  "main": ".svelte-kit/cloudflare/_worker.js",
+  "compatibility_date": "2026-09-17",
+  "compatibility_flags": [
+    "nodejs_compat",
+    "enable_request_signal",
+    "global_fetch_strictly_public",
+  ],
+  "assets": { "binding": "ASSETS", "directory": ".svelte-kit/cloudflare" },
+  "vars": {
+    "ENVIRONMENT": "development",
+    "APP_ORIGIN": "http://127.0.0.1:5173",
+    "LOCAL_DELIVERY_PORT": "8788",
+    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+    "MAX_UPLOAD_BYTES": "26214400",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "hearth-local",
+      "database_id": "00000000-0000-0000-0000-000000000001",
+      "migrations_dir": "../../drizzle",
+    },
+  ],
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "hearth-local" }],
+  "ratelimits": [
+    {
+      "name": "LOGIN_LIMIT",
+      "namespace_id": "4101",
+      "simple": { "limit": 10, "period": 60 },
+    },
+    {
+      "name": "UPLOAD_LIMIT",
+      "namespace_id": "4102",
+      "simple": { "limit": 30, "period": 60 },
+    },
+    {
+      "name": "MUTATION_LIMIT",
+      "namespace_id": "4103",
+      "simple": { "limit": 60, "period": 60 },
+    },
+    {
+      "name": "SENSITIVE_LIMIT",
+      "namespace_id": "4104",
+      "simple": { "limit": 10, "period": 60 },
+    },
+  ],
+  "observability": { "enabled": true, "head_sampling_rate": 0.1 },
+}

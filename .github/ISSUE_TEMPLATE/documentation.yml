@@ -1,0 +1,28 @@
+name: Documentation feedback
+description: Report unclear, missing, or incorrect setup, usage, or contributor guidance.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Hearth's guides live in [docs/](https://github.com/nota9x/hearth/blob/main/docs/README.md), with contributor guidance in [CONTRIBUTING.md](https://github.com/nota9x/hearth/blob/main/CONTRIBUTING.md).
+        Small corrections can also be submitted directly as a pull request. Redact credentials and private data from examples.
+  - type: input
+    id: location
+    attributes:
+      label: Page or section
+      description: Link the page, give a repository path and heading, or describe where guidance is missing.
+      placeholder: docs/getting-started/installation.md — Generate and review production configuration
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What needs improvement?
+      description: Explain what is unclear or incorrect and what you were trying to do. For a failed instruction, include the step, redacted error, and version or commit you followed.
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested correction or example
+      description: Optional wording, missing context, or an example that would have helped.

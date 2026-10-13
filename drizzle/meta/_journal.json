@@ -1,0 +1,118 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1789686582602,
+      "tag": "0000_remarkable_jane_foster",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789686583602,
+      "tag": "0001_invariants",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789686584602,
+      "tag": "0002_maintenance_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789686585602,
+      "tag": "0003_image_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789686586602,
+      "tag": "0004_audit_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789686587602,
+      "tag": "0005_image_expiry",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789686588602,
+      "tag": "0006_upload_receipts",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1789686589602,
+      "tag": "0007_expiry_policy",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1789686590602,
+      "tag": "0008_image_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1789686591602,
+      "tag": "0009_share_slug_configuration",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1789686592602,
+      "tag": "0010_link_management",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1791336055084,
+      "tag": "0011_delivery_domains",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1791406204198,
+      "tag": "0012_user_management",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1791684017367,
+      "tag": "0013_onboarding",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1791731719958,
+      "tag": "0014_opposite_eddie_brock",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1791736424495,
+      "tag": "0015_vengeful_fixer",
+      "breakpoints": true
+    }
+  ]
+}

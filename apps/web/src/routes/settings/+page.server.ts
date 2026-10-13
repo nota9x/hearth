@@ -1,0 +1,9 @@
+import { load as loadDashboard } from '$lib/server/dashboard';
+
+import type { PageServerLoad } from './$types';
+
+export const load = ((event) =>
+  loadDashboard({
+    ...event,
+    params: { path: 'settings' },
+  })) satisfies PageServerLoad;

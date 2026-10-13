@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest an improvement to image hosting, sharing, administration, or self-hosting.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Review the [guides](https://github.com/nota9x/hearth/blob/main/docs/README.md) and [existing requests](https://github.com/nota9x/hearth/issues) first.
+        Describe the user need; a detailed technical design is optional. Use synthetic examples without credentials or private images.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Explain who is affected and where the current workflow falls short.
+      placeholder: When managing several delivery domains, I need to ...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: How should it work?
+      description: Describe the desired experience in ShareX, the dashboard, or instance operations. Mention any relevant access, expiry, or storage expectations.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Current workaround or alternatives
+      description: How do you handle this today? A simpler improvement may solve the same problem.
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Optional examples, sketches, or related issues that help explain the request.

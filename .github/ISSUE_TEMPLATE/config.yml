@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Self-hosting and usage guides
+    url: https://github.com/nota9x/hearth/blob/main/docs/README.md
+    about: Start here for installation, ShareX setup, configuration, and operations.
+  - name: Troubleshooting
+    url: https://github.com/nota9x/hearth/blob/main/docs/operations/troubleshooting.md
+    about: Check common setup, upload, delivery, and storage failures before opening an issue.

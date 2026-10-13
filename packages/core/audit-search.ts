@@ -1,0 +1,65 @@
+export const auditActionTitles = {
+  'onboarding.progress': 'Guided setup continued',
+  'onboarding.completed': 'Guided setup completed',
+  'onboarding.skipped': 'Guided setup skipped',
+  'onboarding.upload_started': 'First image watch started',
+  'onboarding.upload_skipped': 'First image milestone skipped',
+  'user.created': 'User created',
+  'user.updated': 'User updated',
+  'user.active': 'User activated',
+  'user.disabled': 'User disabled',
+  'user.deleted': 'User deleted',
+  'user.preferences': 'Preferences updated',
+  'user.delivery_preference': 'Personal delivery selection changed',
+  'credential.reset': 'API key reset by administrator',
+  'credential.rotated': 'API key rotated',
+  'auth.access_denied': 'Administrator access denied',
+  'auth.login': 'Signed in',
+  'auth.logout': 'Signed out',
+  'auth.login_failed': 'Sign-in failed',
+  'credential.config_exported': 'ShareX configuration exported',
+  'image.uploaded': 'Image uploaded',
+  'image.deleted': 'Image deleted',
+  'image.retention': 'Image expiry updated', // Historical events.
+  'image.expiry': 'Image expiry updated',
+  'domain.created': 'Delivery domain added',
+  'domain.updated': 'Delivery domain configured',
+  'domain.deleted': 'Delivery domain removed',
+  'domain.primary': 'Instance default changed',
+  'domain.enabled': 'Delivery domain enabled',
+  'domain.disabled': 'Delivery domain disabled',
+  'alias.created': 'Image link created',
+  'alias.deleted': 'Share link deleted',
+  'alias.primary': 'Primary image link changed',
+  'alias.expiry': 'Share link expiry updated',
+  'settings.updated': 'Workspace settings updated',
+  'settings.share_slug_length': 'Default share-link slug length changed',
+  'share_slug.expanded': 'Share-link allocation length automatically increased',
+  'settings.expiry_policy': 'Expiry policy changed',
+  'user.expiry_policy': 'User expiry policy changed',
+  'storage.reconciliation': 'Storage reconciliation started',
+  'storage.reconciliation_completed': 'Storage reconciliation completed',
+  'storage.finding_resolved': 'Storage finding resolved',
+  'storage.limit_updated': 'Global storage limit changed',
+  'storage.initialized': 'Storage accounting initialized',
+  'admin.bootstrapped': 'Initial administrator created',
+};
+export type AuditAction = keyof typeof auditActionTitles;
+
+export const auditSortOptions = {
+  newest: 'Newest first',
+  oldest: 'Oldest first',
+  action: 'Action A–Z',
+};
+export const auditFilterKeys = [
+  'date',
+  'from',
+  'to',
+  'actor',
+  'actorId',
+  'action',
+  'target',
+] as const;
+export const AUDIT_PAGE_SIZE = 50;
+export const AUDIT_MAX_PAGES = 200;
+export const AUDIT_LIMIT = AUDIT_PAGE_SIZE * AUDIT_MAX_PAGES;
