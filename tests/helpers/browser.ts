@@ -215,7 +215,7 @@ async function start(accountMode: AccountMode) {
     throw new Error('Local deny proxy did not bind.');
 
   const web = worker(config, 'web');
-  const delivery = worker(deliveryConfig, 'delivery');
+  let delivery: Miniflare;
   const keyFile = nodePath.join(destination, 'test-key');
   const dispose = async () => {
     for (const server of [webServer, deliveryServer, proxy]) {
@@ -224,14 +224,17 @@ async function start(accountMode: AccountMode) {
         server.close(() => resolve());
       });
     }
-    await Promise.all([web.dispose(), delivery.dispose()]);
+    await Promise.all([web.dispose(), delivery?.dispose()]);
     // Only remove the directory allocated by this fixture, after runtime handles close.
     if (nodePath.dirname(destination) !== nodePath.resolve(tmpdir()))
       throw new Error('Unexpected fixture directory');
     await rm(destination, { recursive: true, force: true });
   };
   try {
-    await Promise.all([web.ready, delivery.ready]);
+    // Initialize shared local SQLite storage before a second runtime opens it.
+    await web.ready;
+    delivery = worker(deliveryConfig, 'delivery');
+    await delivery.ready;
     await migrateDatabase(await web.getD1Database('DB'));
     const binding = await web.getD1Database('DB');
     if (accountMode === 'bootstrap') {
