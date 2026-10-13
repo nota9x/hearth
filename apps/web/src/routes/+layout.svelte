@@ -27,6 +27,7 @@
   import { indicatorMotion } from '#lib/motion.ts';
   import NotificationDeck from '#lib/NotificationDeck.svelte';
   import { notify } from '#lib/notifications.ts';
+  import UpdateBanner from '#lib/UpdateBanner.svelte';
   import { uploads } from '#lib/uploads.ts';
   import { beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -41,6 +42,7 @@
       : Boolean(page.data.hasUnseenImages),
   );
   const [sendIndicator, receiveIndicator] = indicatorMotion();
+  let updateHeight = $state(0);
   let menu = $state(false);
   let menuButton = $state<HTMLButtonElement>();
   const mobile = new MediaQuery('(max-width: 767px)');
@@ -121,77 +123,86 @@
 {#if page.status >= 400}
   <main id="main">{@render children()}</main>
 {:else if data.user && page.url.pathname !== '/onboarding' && !page.url.pathname.startsWith('/delete/')}
-  <GlobalUpload
-    defaultExpiry={data.user.defaultExpiry}
-    policy={data.expiryPolicy!}
-  />
-  <div class="mobile-bar">
-    <Brand name={data.siteName} href="/" /><button
-      class="icon-button"
-      bind:this={menuButton}
-      aria-expanded={menu}
-      aria-controls="main-navigation"
-      aria-label={menu ? 'Close navigation' : 'Open navigation'}
-      onclick={() => (menu = !menu)}
-      >{#if menu}<X />{:else}<Menu />{/if}</button
+  <div class="dashboard-shell" style:--update-height={`${updateHeight}px`}>
+    <div class="update-slot" bind:clientHeight={updateHeight}>
+      <UpdateBanner />
+    </div>
+    <GlobalUpload
+      defaultExpiry={data.user.defaultExpiry}
+      policy={data.expiryPolicy!}
+    />
+    <div class="mobile-bar">
+      <Brand name={data.siteName} href="/" /><button
+        class="icon-button"
+        bind:this={menuButton}
+        aria-expanded={menu}
+        aria-controls="main-navigation"
+        aria-label={menu ? 'Close navigation' : 'Open navigation'}
+        onclick={() => (menu = !menu)}
+        >{#if menu}<X />{:else}<Menu />{/if}</button
+      >
+    </div>
+    <aside
+      id="main-navigation"
+      class:open={menu}
+      inert={mobile.current && !menu}
     >
-  </div>
-  <aside id="main-navigation" class:open={menu} inert={mobile.current && !menu}>
-    <Brand name={data.siteName} href="/" />
-    <nav aria-label="Main navigation">
-      {#each navigation as item (item.href)}<a
-          href={item.href}
-          onclick={() => (menu = false)}
-          class:active={activeNavigation === item.href}
-          >{#if activeNavigation === item.href}<span
-              class="navigation-indicator"
-              data-motion
-              in:receiveIndicator={{ key: 'main' }}
-              out:sendIndicator={{ key: 'main' }}
-              aria-hidden="true"
-            ></span>{/if}<item.icon
-            size={19}
-          />{item.label}{#if item.href === '/images' && hasUnseenImages}<span
-              class="nav-dot"
-            ></span>{/if}</a
-        >{/each}
-      {#if data.user.role === 'admin'}<a
-          href="/admin"
-          onclick={() => (menu = false)}
-          class:active={activeNavigation === '/admin'}
-          >{#if activeNavigation === '/admin'}<span
-              class="navigation-indicator"
-              data-motion
-              in:receiveIndicator={{ key: 'main' }}
-              out:sendIndicator={{ key: 'main' }}
-              aria-hidden="true"
-            ></span>{/if}<Shield size={19} />Administration<ArrowUpRight
-            size={15}
-          /></a
-        >{/if}
-    </nav>
-    <div class="sidebar-bottom">
-      <div class="account">
-        <span class="avatar"
-          >{data.user.displayName.slice(0, 1).toUpperCase()}</span
-        >
-        <div>
-          <strong>{data.user.displayName}</strong><small
-            >{data.user.role === 'admin' ? 'Administrator' : 'Member'}</small
+      <Brand name={data.siteName} href="/" />
+      <nav aria-label="Main navigation">
+        {#each navigation as item (item.href)}<a
+            href={item.href}
+            onclick={() => (menu = false)}
+            class:active={activeNavigation === item.href}
+            >{#if activeNavigation === item.href}<span
+                class="navigation-indicator"
+                data-motion
+                in:receiveIndicator={{ key: 'main' }}
+                out:sendIndicator={{ key: 'main' }}
+                aria-hidden="true"
+              ></span>{/if}<item.icon
+              size={19}
+            />{item.label}{#if item.href === '/images' && hasUnseenImages}<span
+                class="nav-dot"
+              ></span>{/if}</a
+          >{/each}
+        {#if data.user.role === 'admin'}<a
+            href="/admin"
+            onclick={() => (menu = false)}
+            class:active={activeNavigation === '/admin'}
+            >{#if activeNavigation === '/admin'}<span
+                class="navigation-indicator"
+                data-motion
+                in:receiveIndicator={{ key: 'main' }}
+                out:sendIndicator={{ key: 'main' }}
+                aria-hidden="true"
+              ></span>{/if}<Shield size={19} />Administration<ArrowUpRight
+              size={15}
+            /></a
+          >{/if}
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="account">
+          <span class="avatar"
+            >{data.user.displayName.slice(0, 1).toUpperCase()}</span
+          >
+          <div>
+            <strong>{data.user.displayName}</strong><small
+              >{data.user.role === 'admin' ? 'Administrator' : 'Member'}</small
+            >
+          </div>
+          <button
+            class="icon-button"
+            aria-label="Sign out"
+            title="Sign out"
+            onclick={logout}><LogOut size={17} /></button
           >
         </div>
-        <button
-          class="icon-button"
-          aria-label="Sign out"
-          title="Sign out"
-          onclick={logout}><LogOut size={17} /></button
-        >
       </div>
-    </div>
-  </aside>
-  <main id="main" class="workspace">
-    {@render children()}
-  </main>
+    </aside>
+    <main id="main" class="workspace">
+      {@render children()}
+    </main>
+  </div>
 {:else}<main
     id="main"
     class={page.url.pathname === '/onboarding' ? undefined : 'standalone'}

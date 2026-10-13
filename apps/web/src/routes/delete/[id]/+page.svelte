@@ -9,6 +9,7 @@
   import { notify } from '#lib/notifications.ts';
   import Spinner from '#lib/Spinner.svelte';
   import Turnstile from '#lib/Turnstile.svelte';
+  import { goto } from '$app/navigation';
   import { page } from '$app/state';
 
   import type { PageProps as PageProperties } from './$types';
@@ -23,17 +24,24 @@
     reset = $state(0);
   onMount(() => {
     token = location.hash.slice(1);
-    history.replaceState(null, '', location.pathname);
-    if (token)
-      void action('delete-info', { imageId: page.params.id, token })
-        .then((result) => {
-          filename = String(result.filename);
-        })
-        .catch((error_) => {
-          error =
-            error_ instanceof Error ? error_.message : 'Invalid deletion link.';
-          token = '';
-        });
+    void goto(location.pathname, {
+      replace: true,
+      reset: false,
+      state: page.state,
+    })
+      .then(() =>
+        token
+          ? action('delete-info', { imageId: page.params.id, token })
+          : undefined,
+      )
+      .then((result) => {
+        if (result) filename = String(result.filename);
+      })
+      .catch((error_) => {
+        error =
+          error_ instanceof Error ? error_.message : 'Invalid deletion link.';
+        token = '';
+      });
   });
   async function remove() {
     busy = true;

@@ -7,7 +7,8 @@
   import X from '@lucide/svelte/icons/x';
   import { onMount, tick } from 'svelte';
 
-  import { fadeMotion, revealMotion, surfaceMotion } from '#lib/motion.ts';
+  import { fadeMotion, surfaceMotion } from '#lib/motion.ts';
+  import { revealMotion } from '#lib/reveal.svelte.ts';
 
   import Modal from './Modal.svelte';
   import NotificationItems from './NotificationItems.svelte';
@@ -91,7 +92,7 @@
       );
     });
     observer.observe(node);
-    return { destroy: () => observer.disconnect() };
+    return () => observer.disconnect();
   }
 
   async function dismiss(id: number) {
@@ -152,7 +153,10 @@
           {@const Icon = icons[card.kind]}
           {@const hasDetails = (card.items?.length ?? 0) > 1}
           {@const showDetails = expanded === card.id || !hasDetails}
-          <section use:measure aria-label={`${titles[card.kind]} notification`}>
+          <section
+            {@attach measure}
+            aria-label={`${titles[card.kind]} notification`}
+          >
             <div class="notification-header">
               <span class="feedback-icon state-icon"
                 >{#key card.kind}<span transition:fadeMotion
@@ -231,7 +235,7 @@
             <div
               id={`notification-details-${card.id}`}
               class="notification-details"
-              use:revealMotion={{ open: showDetails }}
+              {@attach revealMotion(() => showDetails)}
               inert={!showDetails}
               aria-hidden={!showDetails}
             >

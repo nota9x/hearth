@@ -305,10 +305,15 @@ small {
   min-width: 0;
   font-size: 1.8rem;
 }
+.update-slot {
+  position: sticky;
+  top: 0;
+  z-index: 11;
+}
 aside {
   width: 240px;
   position: fixed;
-  inset: 0 auto 0 0;
+  inset: var(--update-height, 0px) auto 0 0;
   padding: 38px 25px 24px;
   border-right: 1px solid var(--border);
   display: flex;
@@ -1183,7 +1188,7 @@ code {
 @media (max-width: 767px) {
   .mobile-bar {
     position: sticky;
-    top: 0;
+    top: var(--update-height, 0px);
     z-index: 10;
     background: #191613f5;
     display: flex;
@@ -1196,7 +1201,7 @@ code {
     font-size: 1.5rem;
   }
   aside {
-    top: 73px;
+    top: calc(var(--update-height, 0px) + 73px);
     width: 100%;
     z-index: 9;
     padding: 20px;

@@ -76,7 +76,7 @@ export default defineConfig(
     },
   },
   {
-    files: ['**/*.svelte'],
+    files: ['**/*.svelte', '**/*.svelte.ts'],
     extends: [svelte.configs.recommended],
     languageOptions: {
       globals: globals.browser,

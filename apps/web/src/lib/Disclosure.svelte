@@ -3,7 +3,7 @@
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import type { Snippet } from 'svelte';
 
-  import { revealMotion } from '#lib/motion.ts';
+  import { revealMotion } from '#lib/reveal.svelte.ts';
 
   const {
     title,
@@ -37,7 +37,7 @@
   </summary>
   <div
     class="disclosure-reveal"
-    use:revealMotion={{ open }}
+    {@attach revealMotion(() => open)}
     inert={!open}
     aria-hidden={!open}
   >
