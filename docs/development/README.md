@@ -1,6 +1,6 @@
 # Develop Hearth
 
-Hearth is one pnpm workspace and release stream. Use Node 24 and pnpm 12.10.1.
+Hearth is one pnpm workspace and release stream. Use Node 24 and the pnpm version pinned in `package.json`.
 Start with [local setup](local-setup.md), then read
 [architecture and invariants](architecture.md) before changing persistence or security.
 See [releases and Git hooks](releasing.md) for contributor and maintainer workflows.

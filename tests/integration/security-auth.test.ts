@@ -32,6 +32,8 @@ import {
 } from '../../packages/core/schema';
 import { migrateDatabase } from '../helpers/database';
 
+vi.mock('cloudflare:workers', () => ({ waitUntil: () => {} }));
+
 let mf: Miniflare, env: Env, owner: User, other: User, admin: User;
 let ownerKey: string, otherKey: string;
 const origin = 'http://localhost';

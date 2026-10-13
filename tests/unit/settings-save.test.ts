@@ -6,8 +6,8 @@ const { mutation, refresh } = vi.hoisted(() => ({
   mutation: vi.fn(),
   refresh: vi.fn(),
 }));
-vi.mock('$lib/client', () => ({ action: mutation }));
-vi.mock('$lib/dashboard', () => ({ dashboard: { refresh } }));
+vi.mock('#lib/client.ts', () => ({ action: mutation }));
+vi.mock('#lib/dashboard.ts', () => ({ dashboard: { refresh } }));
 
 beforeEach(() => {
   mutation.mockReset();

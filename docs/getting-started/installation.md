@@ -7,7 +7,7 @@ This guide deploys a new instance. For an existing installation, use
 
 You need:
 
-- **Node 24 and pnpm 12.10.1**, the versions used by CI. Check `node --version` and
+- **Node 24 and the pnpm version pinned in `package.json`**, the versions used by CI. Check `node --version` and
   `pnpm --version`. The declared Node range also accepts 26 and later but excludes 25. Use Node 24 for the documented path.
 - **Git** and the Hearth repository URL supplied by the project or your own fork.
 - **A Cloudflare account** with permission to deploy Workers, manage D1 and R2,

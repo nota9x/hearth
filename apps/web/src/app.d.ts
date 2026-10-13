@@ -12,10 +12,6 @@ declare global {
       env: Env;
       siteName?: string;
     }
-    interface Platform {
-      env: Env;
-      context: ExecutionContext;
-    }
   }
 }
 export {};

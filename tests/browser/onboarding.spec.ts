@@ -1128,8 +1128,8 @@ test.describe('returning account isolation', () => {
     await expect(page).toHaveURL(baseURL! + '/');
     await page.goto('/settings');
     const link = page.getByRole('link', { name: 'Revisit onboarding' });
-    await expect(link).toHaveAttribute('data-sveltekit-preload-data', 'off');
-    await expect(link).toHaveAttribute('data-sveltekit-preload-code', 'off');
+    await expect(link).toHaveAttribute('data-sveltekit-preload-data', 'false');
+    await expect(link).toHaveAttribute('data-sveltekit-preload-code', 'false');
     await link.hover();
     await page.getByRole('heading', { name: 'Personal preferences' }).click();
     expect(loaded.filter((asset) => assets.has(asset))).toEqual([]);

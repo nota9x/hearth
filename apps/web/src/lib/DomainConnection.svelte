@@ -4,8 +4,8 @@
   import CircleAlert from '@lucide/svelte/icons/circle-alert';
   import Info from '@lucide/svelte/icons/info';
 
-  import Disclosure from '$lib/Disclosure.svelte';
-  import { fadeMotion } from '$lib/motion';
+  import Disclosure from '#lib/Disclosure.svelte';
+  import { fadeMotion } from '#lib/motion.ts';
 
   const { domain }: { domain: DeliveryDomain } = $props();
 </script>

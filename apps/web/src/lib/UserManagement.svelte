@@ -27,8 +27,8 @@
   import Users from '@lucide/svelte/icons/users';
   import { type Snippet, untrack } from 'svelte';
 
+  import { fadeMotion } from '#lib/motion.ts';
   import { page } from '$app/state';
-  import { fadeMotion } from '$lib/motion';
 
   import ActionMenu from './ActionMenu.svelte';
   import AuditEntry from './AuditEntry.svelte';
@@ -113,7 +113,7 @@
     !!result?.query ||
       userFilterKeys.some((key) => page.url.searchParams.has(key)),
   );
-  const clearURL = $derived(usersURL(new URL('/admin/users', page.url)));
+  const clearURL = $derived(usersURL(new URL('/admin/users', page.url.href)));
   const filters = [
     {
       key: 'status',
@@ -131,7 +131,7 @@
 </script>
 
 {#if member}
-  <BackLink href={usersURL(page.url)} label="Back to users" />
+  <BackLink href={usersURL(new URL(page.url.href))} label="Back to users" />
   <CollectionHeader title={member.user.displayName} {refresh} {busy} />
   <div class="identity" in:fadeMotion|global={{ kind: 'content' }}>
     <span class="badge" data-status={member.user.status}
@@ -409,7 +409,7 @@
           {#each result.members as row (row.user.id)}<tr>
               <td class="person"
                 ><span class="person-identity"
-                  ><a href={usersURL(page.url, row.user.id)}
+                  ><a href={usersURL(new URL(page.url.href), row.user.id)}
                     ><strong>{row.user.displayName}</strong></a
                   ><span class="badge" data-status={row.user.status}
                     >{userStatuses[row.user.status]}</span
@@ -426,7 +426,7 @@
                   label={`Actions for ${row.user.displayName}`}
                   title="User actions"
                   >{#snippet children(closeMenu: () => void)}<a
-                      href={usersURL(page.url, row.user.id)}
+                      href={usersURL(new URL(page.url.href), row.user.id)}
                       onclick={closeMenu}><Users size={16} />View user</a
                     ><a
                       href={`/admin/images?owner=${row.user.id}`}

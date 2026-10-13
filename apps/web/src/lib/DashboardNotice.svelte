@@ -3,7 +3,7 @@
   import HardDrive from '@lucide/svelte/icons/hard-drive';
   import LockKeyhole from '@lucide/svelte/icons/lock-keyhole';
 
-  import { fadeMotion } from '$lib/motion';
+  import { fadeMotion } from '#lib/motion.ts';
 
   import type { PageData } from '../routes/[...path]/$types';
 

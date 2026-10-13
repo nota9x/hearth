@@ -2,8 +2,8 @@
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import type { Snippet } from 'svelte';
 
+  import { fadeMotion } from '#lib/motion.ts';
   import { navigating } from '$app/state';
-  import { fadeMotion } from '$lib/motion';
 
   import { dashboard } from './dashboard';
   import Spinner from './Spinner.svelte';

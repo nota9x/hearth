@@ -382,12 +382,10 @@ test('unsaved navigation can be canceled or discarded without losing history dir
     .click();
 });
 
-test('information is complete, hoverable, dismissible, anchored, touch accessible, and respects reduced motion', async ({
+test('information is complete, hoverable and dismissible', async ({
   page,
   request,
   baseURL,
-  browser,
-  proxy,
   hearth,
 }) => {
   await signIn(page, request, baseURL!);
@@ -435,6 +433,16 @@ test('information is complete, hoverable, dismissible, anchored, touch accessibl
     .getByRole('region', { name: 'Expiry policy' })
     .getByRole('button', { name: 'Reset', exact: true })
     .click();
+});
+
+test('information is anchored, touch accessible and respects reduced motion', async ({
+  page,
+  request,
+  baseURL,
+  browser,
+  proxy,
+}) => {
+  await signIn(page, request, baseURL!);
   const touch = await browser.newContext({
     proxy,
     baseURL,

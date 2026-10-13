@@ -3,7 +3,7 @@
   import Copy from '@lucide/svelte/icons/copy';
   import { onDestroy } from 'svelte';
 
-  import { fadeMotion } from '$lib/motion';
+  import { fadeMotion } from '#lib/motion.ts';
 
   import { copyText } from './clipboard';
 

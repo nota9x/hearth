@@ -83,9 +83,9 @@ test('metadata preferences, every upload method and independent browser renderin
       await memberPage.reload();
       await expect(toggle).toBeChecked({ checked: enabled });
     }
-    async function apiUpload(name: string, bytes: Buffer, bearer = member.key) {
+    async function apiUpload(name: string, bytes: Buffer) {
       const response = await context.request.post('/api/v1/images', {
-        headers: { Authorization: `Bearer ${bearer}` },
+        headers: { Authorization: `Bearer ${member.key}` },
         multipart: { file: { name, mimeType: 'image/png', buffer: bytes } },
       });
       expect(response.status(), await response.text()).toBe(201);

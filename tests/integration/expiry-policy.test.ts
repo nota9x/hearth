@@ -37,6 +37,8 @@ import { sharexConfig } from '../../packages/core/sharex';
 import { upload } from '../../packages/core/upload';
 import { migrateDatabase } from '../helpers/database';
 
+vi.mock('cloudflare:workers', () => ({ waitUntil: () => {} }));
+
 const unrestricted = unrestrictedExpiryPolicy;
 const createdAt = 1_000_000;
 describe('expiry policy calculations', () => {

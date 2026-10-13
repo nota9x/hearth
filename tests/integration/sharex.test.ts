@@ -27,6 +27,8 @@ import {
 import { filename } from '../../packages/core/serve';
 import { migrateDatabase } from '../helpers/database';
 
+vi.mock('cloudflare:workers', () => ({ waitUntil: () => {} }));
+
 const boundary = '--------------------8df2247211d47b0';
 const contentType = `multipart/form-data; boundary=${boundary}`;
 const resultSchema = z.object({
@@ -144,8 +146,8 @@ function send(
     locals: { env },
   } as Parameters<typeof POST>[0]);
 }
-async function uploaded(body = nativeBody, authorization?: string) {
-  const response = await send(body, authorization);
+async function uploaded(body = nativeBody) {
+  const response = await send(body);
   expect(response.status).toBe(201);
   expect(response.headers.get('Content-Type')).toContain('application/json');
   return resultSchema.parse(await response.json());

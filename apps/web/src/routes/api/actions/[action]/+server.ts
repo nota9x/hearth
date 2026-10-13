@@ -72,11 +72,10 @@ import { setShareSlugDefault } from '@hearth/core/share-slugs';
 import { sharexConfig } from '@hearth/core/sharex';
 import { deleteStoredObjects } from '@hearth/core/storage';
 import type { RequestHandler } from '@sveltejs/kit';
-import { json } from '@sveltejs/kit';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { body, failure } from '$lib/server/http';
+import { body, failure } from '#lib/server/http.ts';
 
 export const POST: RequestHandler<{ action: string }> = async ({
   request,
@@ -129,7 +128,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
         sameSite: 'lax',
         maxAge: 30 * 86_400,
       });
-      return json({
+      return Response.json({
         ok: true,
         userId: user.id,
         destination: user.onboardingStatus === 'pending' ? '/onboarding' : '/',
@@ -175,7 +174,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
           'This image has already been removed.',
         );
       if (params.action === 'delete-info')
-        return json({ filename: image.filename });
+        return Response.json({ filename: image.filename });
       await deleteImage(
         environment.DB,
         environment.BUCKET,
@@ -184,7 +183,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
         'Deletion link',
         actorIp,
       );
-      return json({ ok: true });
+      return Response.json({ ok: true });
     }
     const user = requireUser(locals.user);
     await rateLimit(environment.MUTATION_LIMIT, user.id);
@@ -234,19 +233,23 @@ export const POST: RequestHandler<{ action: string }> = async ({
         break;
       }
       case 'onboarding-progress': {
-        return json(
+        return Response.json(
           await advanceOnboarding(environment.DB, user, input.step, actorIp),
         );
       }
       case 'onboarding-upload-arm': {
-        return json(await armOnboardingUpload(environment.DB, user, actorIp));
+        return Response.json(
+          await armOnboardingUpload(environment.DB, user, actorIp),
+        );
       }
       case 'onboarding-upload-skip': {
-        return json(await skipOnboardingUpload(environment.DB, user, actorIp));
+        return Response.json(
+          await skipOnboardingUpload(environment.DB, user, actorIp),
+        );
       }
       case 'onboarding-complete':
       case 'onboarding-skip': {
-        return json(
+        return Response.json(
           await finishOnboarding(
             environment.DB,
             user,
@@ -267,7 +270,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
         await database_
           .insert(auditLog)
           .values(await audit('credential.config_exported', user.id));
-        return json(sharexConfig(environment.APP_ORIGIN, key));
+        return Response.json(sharexConfig(environment.APP_ORIGIN, key));
       }
       case 'rotate': {
         await rateLimit(environment.SENSITIVE_LIMIT, user.id);
@@ -280,7 +283,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
           actorIp,
         );
         cookies.delete(cookie, { path: '/' });
-        return json({
+        return Response.json({
           key,
           config: sharexConfig(environment.APP_ORIGIN, key),
         });
@@ -304,11 +307,11 @@ export const POST: RequestHandler<{ action: string }> = async ({
               ).filter,
             ),
           );
-        return json({ ids: rows.map((image) => image.id) });
+        return Response.json({ ids: rows.map((image) => image.id) });
       }
       case 'image-delete': {
         const ids = z.array(idSchema).min(1).max(100).parse(input.ids);
-        return json(
+        return Response.json(
           await deleteImages(
             environment.DB,
             environment.BUCKET,
@@ -320,12 +323,12 @@ export const POST: RequestHandler<{ action: string }> = async ({
       }
       case 'image-download': {
         const ids = z.array(idSchema).min(1).max(100).parse(input.ids);
-        return json(
+        return Response.json(
           await prepareDownloads(environment.DB, environment.BUCKET, user, ids),
         );
       }
       case 'image-expiry-options': {
-        return json(
+        return Response.json(
           await imageExpiryOptions(
             environment.DB,
             user,
@@ -365,10 +368,10 @@ export const POST: RequestHandler<{ action: string }> = async ({
           .innerJoin(users, eq(users.id, images.userId))
           .where(query.filter)
           .orderBy(...query.order);
-        return json({ ids: rows.map((row) => row.id) });
+        return Response.json({ ids: rows.map((row) => row.id) });
       }
       case 'alias-create-options': {
-        return json(
+        return Response.json(
           await linkCreationOptions(
             environment.DB,
             user,
@@ -377,7 +380,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
         );
       }
       case 'alias-create': {
-        return json(
+        return Response.json(
           await createLink(
             environment.DB,
             user,
@@ -393,7 +396,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
         );
       }
       case 'alias-delete': {
-        return json(
+        return Response.json(
           await deleteLinks(
             environment.DB,
             user,
@@ -405,7 +408,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
       case 'alias-copy': {
         const ids = z.array(idSchema).min(1).max(100).parse(input.ids);
         const rows = await selectedLinks(environment.DB, user, ids);
-        return json({
+        return Response.json({
           links: rows
             .filter(
               (row) =>
@@ -418,7 +421,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
         });
       }
       case 'alias-expiry-options': {
-        return json(
+        return Response.json(
           await linkExpiryOptions(
             environment.DB,
             user,
@@ -526,7 +529,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
               user.id,
               actorIp,
             );
-            return json(result);
+            return Response.json(result);
           }
           case 'user-update': {
             const userId = idSchema.parse(input.userId),
@@ -577,7 +580,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
               .where(and(eq(users.id, userId), eq(users.status, 'active')));
             if (!target)
               throw new AppError(404, 'NOT_FOUND', 'Active user not found.');
-            return json({
+            return Response.json({
               key: await rotateKey(
                 environment.DB,
                 userId,
@@ -634,7 +637,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
             break;
           }
           case 'delivery-domain-save': {
-            return json(
+            return Response.json(
               await saveDeliveryDomain(
                 environment.DB,
                 user,
@@ -645,7 +648,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
             );
           }
           case 'delivery-domain-details': {
-            return json(
+            return Response.json(
               await domainDetails(
                 environment.DB,
                 user,
@@ -654,7 +657,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
             );
           }
           case 'delivery-domain-members': {
-            return json(
+            return Response.json(
               await domainMembers(
                 environment.DB,
                 user,
@@ -669,7 +672,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
             );
           }
           case 'delivery-domain-validate': {
-            return json(
+            return Response.json(
               await validateDeliveryDomain(
                 environment,
                 user,
@@ -977,7 +980,10 @@ export const POST: RequestHandler<{ action: string }> = async ({
                   .bind(finding.imageId)
                   .first()
               : null;
-            return json({ ok: true, cleanupPending: Boolean(pendingCleanup) });
+            return Response.json({
+              ok: true,
+              cleanupPending: Boolean(pendingCleanup),
+            });
           }
           case 'settings': {
             const siteName = z
@@ -1014,7 +1020,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
         }
       }
     }
-    return json({ ok: true });
+    return Response.json({ ok: true });
   } catch (error) {
     if (
       params.action === 'login' &&

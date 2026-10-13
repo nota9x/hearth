@@ -19,19 +19,22 @@
   import Upload from '@lucide/svelte/icons/upload';
   import { onMount, tick, untrack } from 'svelte';
 
+  import Brand from '#lib/Brand.svelte';
+  import { action, ActionError } from '#lib/client.ts';
+  import { notify } from '#lib/notifications.ts';
+  import {
+    clearOnboardingKey,
+    takeOnboardingKey,
+  } from '#lib/onboarding-key.ts';
+  import Pagination from '#lib/Pagination.svelte';
+  import ShareXConfig from '#lib/ShareXConfig.svelte';
+  import Spinner from '#lib/Spinner.svelte';
   import {
     beforeNavigate,
     goto,
-    invalidateAll,
     onNavigate,
+    refreshAll,
   } from '$app/navigation';
-  import Brand from '$lib/Brand.svelte';
-  import { action, ActionError } from '$lib/client';
-  import { notify } from '$lib/notifications';
-  import { clearOnboardingKey, takeOnboardingKey } from '$lib/onboarding-key';
-  import Pagination from '$lib/Pagination.svelte';
-  import ShareXConfig from '$lib/ShareXConfig.svelte';
-  import Spinner from '$lib/Spinner.svelte';
 
   import type { PageProps as PageProperties } from './$types';
   import FirstImage from './FirstImage.svelte';
@@ -135,7 +138,7 @@
   }
   async function signedOut() {
     clearCredential();
-    await goto('/login', { invalidateAll: true });
+    await goto('/login', { refreshAll: true });
   }
   beforeNavigate(({ to }) => {
     if (to?.url.pathname !== '/onboarding') clearCredential();
@@ -212,7 +215,7 @@
     }
   }
   async function refresh() {
-    await invalidateAll();
+    await refreshAll();
   }
   async function continueSetup(skip = false) {
     if (busy) return;
@@ -248,7 +251,7 @@
         );
         if (next !== 7 && result.onboardingStatus !== 'pending') {
           clearCredential();
-          await goto('/', { invalidateAll: true });
+          await goto('/', { refreshAll: true });
           return;
         }
         savedStep = result.onboardingStep;
@@ -275,7 +278,7 @@
     try {
       await action('onboarding-skip');
       clearCredential();
-      await goto('/', { invalidateAll: true });
+      await goto('/', { refreshAll: true });
       notify.info('You can revisit onboarding anytime', 8000, {
         guidance:
           "You can restart the guided setup whenever you'd like from your user settings.",
@@ -301,7 +304,7 @@
       if (data.user.onboardingStatus === 'pending')
         await action('onboarding-complete');
       clearCredential();
-      await goto('/', { invalidateAll: true });
+      await goto('/', { refreshAll: true });
     } catch (error_) {
       error =
         error_ instanceof Error

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import UserSettings from '$lib/settings/UserSettings.svelte';
+  import UserSettings from '#lib/settings/UserSettings.svelte';
 
   import type { PageProps as PageProperties } from './$types';
 

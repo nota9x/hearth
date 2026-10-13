@@ -10,6 +10,8 @@ import type { Env } from '../../packages/core/env';
 import { apiKeys, sessions, users } from '../../packages/core/schema';
 import { migrateDatabase } from '../helpers/database';
 
+vi.mock('cloudflare:workers', () => ({ waitUntil: () => {} }));
+
 let mf: Miniflare, env: Env, user: User, key: string;
 const origin = 'https://app.example.com';
 const allow = { limit: () => Promise.resolve({ success: true }) };

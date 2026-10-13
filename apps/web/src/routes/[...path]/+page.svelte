@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Dashboard from '$lib/Dashboard.svelte';
+  import Dashboard from '#lib/Dashboard.svelte';
 
   import type { PageProps as PageProperties } from './$types';
 

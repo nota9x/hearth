@@ -3,7 +3,7 @@
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import type { Snippet } from 'svelte';
 
-  import { revealMotion } from '$lib/motion';
+  import { revealMotion } from '#lib/motion.ts';
 
   const {
     title,

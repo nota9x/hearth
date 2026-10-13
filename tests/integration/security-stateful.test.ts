@@ -1,7 +1,7 @@
 /* eslint-disable unicorn/no-await-expression-member -- Assertions inspect completed HTTP and query results. */
 import { Buffer } from 'node:buffer';
 
-import type { Handle } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit/hooks';
 import { eq } from 'drizzle-orm';
 import { convertV4MiniflareOptions, Miniflare } from 'miniflare';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -29,6 +29,12 @@ import {
   users,
 } from '../../packages/core/schema';
 import { migrateDatabase } from '../helpers/database';
+
+const cloudflare = vi.hoisted(() => ({ env: {} }));
+vi.mock('cloudflare:workers', () => ({
+  env: cloudflare.env,
+  waitUntil: () => {},
+}));
 
 const origin = 'https://app.example.com';
 const cookieName = 'hearth-local';
@@ -102,10 +108,10 @@ function dispatch(
   jar: CookieJar = new Map(),
   bindings = env,
 ) {
+  Object.assign(cloudflare.env, bindings);
   const event = {
     request,
     url: new URL(request.url),
-    platform: { env: bindings, context: { waitUntil: () => {} } },
     locals: {} as App.Locals,
     isDataRequest: false,
     params: {},
@@ -161,13 +167,12 @@ function action(
   );
 }
 
-async function login(account: Account, bindings = env) {
+async function login(account: Account) {
   const jar: CookieJar = new Map();
   const response = await action(
     'login',
     { key: account.key, token: 'challenge' },
     jar,
-    bindings,
   );
   expect(response.status).toBe(200);
   expect(jar.get(cookieName)).toMatch(/^[a-f0-9]{64}$/);
@@ -199,17 +204,12 @@ async function seedImage(account: Account) {
   return imageId;
 }
 
-function uploadRequest(
-  path: string,
-  authorization?: string,
-  retryKey?: string,
-) {
+function uploadRequest(authorization?: string) {
   const form = new FormData();
   form.set('file', new Blob([png], { type: 'image/png' }), 'picture.png');
   const headers = new Headers({ Origin: origin });
   if (authorization !== undefined) headers.set('Authorization', authorization);
-  if (retryKey) headers.set('Idempotency-Key', retryKey);
-  return new Request(`${origin}${path}`, {
+  return new Request(`${origin}/api/v1/images`, {
     method: 'POST',
     headers,
     body: form,
@@ -274,10 +274,9 @@ describe('stateful authentication through hook and handlers', () => {
     const otherImage = await seedImage(other);
     expect((await updateAccount(owner, 'disabled')).status).toBe(200);
     expect((await media(ownImage, ownJar)).status).toBe(401);
-    expect(
-      (await dispatch(uploadRequest('/api/v1/images', `Bearer ${owner.key}`)))
-        .status,
-    ).toBe(401);
+    expect((await dispatch(uploadRequest(`Bearer ${owner.key}`))).status).toBe(
+      401,
+    );
     expect((await media(otherImage, otherJar)).status).toBe(200);
     expect((await updateAccount(owner, 'active')).status).toBe(200);
     expect((await media(ownImage, ownJar)).status).toBe(401);
@@ -295,10 +294,9 @@ describe('stateful authentication through hook and handlers', () => {
     ).toBe(200);
     expect((await media(ownImage, fresh)).status).toBe(401);
     expect((await media(ownImage, adminJar)).status).toBe(404);
-    expect(
-      (await dispatch(uploadRequest('/api/v1/images', `Bearer ${owner.key}`)))
-        .status,
-    ).toBe(401);
+    expect((await dispatch(uploadRequest(`Bearer ${owner.key}`))).status).toBe(
+      401,
+    );
     expect((await updateAccount(owner, 'active')).status).toBe(404);
     expect((await media(otherImage, otherJar)).status).toBe(200);
     expect(await env.BUCKET.head(otherImage)).not.toBeNull();
@@ -624,12 +622,12 @@ describe('stateful mechanism and related-resource boundaries', () => {
       .select({ id: images.id })
       .from(images);
     for (const value of corpus) {
-      const request = uploadRequest('/api/v1/images', value);
+      const request = uploadRequest(value);
       expect(request.headers.get('Authorization')).toBe(value);
       const response = await dispatch(request, otherJar);
       expect(response.status).toBe(401);
     }
-    const request = uploadRequest('/api/v1/images', `Bearer ${owner.key}`);
+    const request = uploadRequest(`Bearer ${owner.key}`);
     request.headers.append('Authorization', `Bearer ${owner.key}`);
     expect(request.headers.get('Authorization')).toBe(
       `Bearer ${owner.key}, Bearer ${owner.key}`,
@@ -639,7 +637,7 @@ describe('stateful mechanism and related-resource boundaries', () => {
       await database(env.DB).select({ id: images.id }).from(images),
     ).toEqual(before);
     const legitimate = await dispatch(
-      uploadRequest('/api/v1/images', `bEaReR\t${owner.key}`),
+      uploadRequest(`bEaReR\t${owner.key}`),
       otherJar,
     );
     expect(legitimate.status).toBe(201);

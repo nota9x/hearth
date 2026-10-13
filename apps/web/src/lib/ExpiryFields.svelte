@@ -1,7 +1,7 @@
 <script lang="ts">
   import { dateTime } from '@hearth/core/common';
 
-  import { fadeMotion } from '$lib/motion';
+  import { fadeMotion } from '#lib/motion.ts';
 
   /* eslint-disable prefer-const -- Bindable Svelte props must be mutable. */
   let {

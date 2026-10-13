@@ -3,13 +3,13 @@
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { onMount } from 'svelte';
 
+  import Brand from '#lib/Brand.svelte';
+  import { action } from '#lib/client.ts';
+  import { fadeMotion } from '#lib/motion.ts';
+  import { notify } from '#lib/notifications.ts';
+  import Spinner from '#lib/Spinner.svelte';
+  import Turnstile from '#lib/Turnstile.svelte';
   import { page } from '$app/state';
-  import Brand from '$lib/Brand.svelte';
-  import { action } from '$lib/client';
-  import { fadeMotion } from '$lib/motion';
-  import { notify } from '$lib/notifications';
-  import Spinner from '$lib/Spinner.svelte';
-  import Turnstile from '$lib/Turnstile.svelte';
 
   import type { PageProps as PageProperties } from './$types';
 

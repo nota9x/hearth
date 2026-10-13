@@ -17,7 +17,7 @@ Read the first failing command, not just the final exit status. Confirm generate
 production files exist, actual UUID/site-key values replaced placeholders, and
 `pnpm build` produced the web bundle. Run a deployment dry run before remote changes.
 
-**Resolution:** Use Node 24/pnpm 12.10.1 and frozen installation. Preserve policy
+**Resolution:** Use Node 24/the pnpm version pinned in `package.json` and frozen installation. Preserve policy
 settings; do not force installs or approve arbitrary build scripts. Inspect existing
 `production.local.jsonc` files rather than deleting them blindly or rerunning
 `configure` over edits. Build before deploying web. Check resource ownership with

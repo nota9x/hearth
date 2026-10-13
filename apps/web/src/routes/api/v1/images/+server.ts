@@ -2,11 +2,12 @@ import { authenticateKey } from '@hearth/core/auth';
 import { digest } from '@hearth/core/digest';
 import { rateLimit } from '@hearth/core/security';
 import { upload } from '@hearth/core/upload';
-import { json, type RequestHandler } from '@sveltejs/kit';
+import type { RequestHandler } from '@sveltejs/kit';
+import { waitUntil } from 'cloudflare:workers';
 
-import { failure } from '$lib/server/http';
+import { failure } from '#lib/server/http.ts';
 
-export const POST: RequestHandler = async ({ request, locals, platform }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
   try {
     const key =
       /^Bearer\s+(\S+)$/i.exec(
@@ -28,9 +29,9 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
     await rateLimit(locals.env.UPLOAD_LIMIT, authenticated.user.id);
     const task = upload(request, authenticated.user, locals.env, 'bearer');
     // eslint-disable-next-line unicorn/prefer-await -- Cleanup must also run after a client disconnect.
-    platform?.context.waitUntil(task.catch(() => {}));
+    waitUntil(task.catch(() => {}));
     const result = await task;
-    return json(
+    return Response.json(
       result.url
         ? result
         : {

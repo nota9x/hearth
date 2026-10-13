@@ -26,7 +26,7 @@ type Environment = Parameters<typeof upload>[2];
 let mf: Miniflare, env: Environment;
 let sanitized: User, retained: User;
 
-function localRuntime(script?: string, imagesBinding = false) {
+function localRuntime(script?: string) {
   return new Miniflare(
     convertV4MiniflareOptions({
       modules: true,
@@ -38,7 +38,6 @@ function localRuntime(script?: string, imagesBinding = false) {
       ...workerCompatibility('web'),
       d1Databases: ['DB'],
       r2Buckets: ['BUCKET'],
-      ...(imagesBinding && { images: { binding: 'IMAGES' } }),
       bindings: {
         MAX_UPLOAD_BYTES: '26214400',
         APP_ORIGIN: 'https://app.example.com',
@@ -93,15 +92,10 @@ afterEach(async () => {
   await mf?.dispose();
 });
 
-function filePart(
-  bytes = png,
-  name = 'file',
-  mime = 'image/png',
-  filename = 'image.png',
-) {
+function filePart(bytes = png, mime = 'image/png', filename = 'image.png') {
   return Buffer.concat([
     Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="${name}"; filename="${filename}"\r\nContent-Type: ${mime}\r\n\r\n`,
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${mime}\r\n\r\n`,
     ),
     bytes,
     Buffer.from('\r\n'),
@@ -115,12 +109,8 @@ function fieldPart(name: string, value: string) {
 function multipart(parts: Buffer[], ending = `--${boundary}--\r\n`) {
   return Buffer.concat([...parts, Buffer.from(ending)]);
 }
-function request(
-  body = multipart([filePart()]),
-  key = 'a'.repeat(64),
-  headers?: HeadersInit,
-) {
-  const values = new Headers(headers);
+function request(body = multipart([filePart()]), key = 'a'.repeat(64)) {
+  const values = new Headers();
   values.set('Content-Type', `multipart/form-data; boundary="${boundary}"`);
   values.set('Idempotency-Key', key);
   return new Request('https://app.example.com/api/upload', {
@@ -270,7 +260,7 @@ describe('bounded upload parser corpus with real storage rollback', () => {
   it('canonicalizes contradictory MIME and filename metadata and preserves delivery isolation', async () => {
     const result = await upload(
       request(
-        multipart([filePart(png, 'file', 'text/html', '../attack.html')]),
+        multipart([filePart(png, 'text/html', '../attack.html')]),
         'c'.repeat(64),
       ),
       sanitized,
@@ -546,7 +536,7 @@ it('repeats upload parser boundary cases inside actual workerd, with real D1/R2'
       expect(await state(person, currentEnv)).toEqual(before);
     }
     const acceptedBody = multipart([
-      filePart(png, 'file', 'application/javascript', 'payload.js'),
+      filePart(png, 'application/javascript', 'payload.js'),
     ]);
     const acceptedRequest = request(acceptedBody, '7'.repeat(64));
     const accepted = await runtime.dispatchFetch(acceptedRequest.url, {

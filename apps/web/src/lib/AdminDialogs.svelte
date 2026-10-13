@@ -2,9 +2,9 @@
   import { usersURL } from '@hearth/core/user-search';
   import { onDestroy } from 'svelte';
 
+  import { fadeMotion } from '#lib/motion.ts';
   import { beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { fadeMotion } from '$lib/motion';
 
   import type { PageData } from '../routes/[...path]/$types';
   import { action, ActionError } from './client';
@@ -153,7 +153,7 @@
     if (busy) return;
     modal = '';
     secret = '';
-    if (revoked) void goto('/login', { invalidateAll: true });
+    if (revoked) void goto('/login', { refreshAll: true });
   }
   async function confirm() {
     busy = true;
@@ -163,9 +163,12 @@
         await action('user-delete', { userId: target, token });
         notify.success('Account removed. Stored files are queued for cleanup.');
         modal = '';
-        await goto(target === data.user.id ? '/login' : usersURL(page.url), {
-          invalidateAll: true,
-        });
+        await goto(
+          target === data.user.id ? '/login' : usersURL(new URL(page.url.href)),
+          {
+            refreshAll: true,
+          },
+        );
         return;
       }
       if (modal === 'findings') {

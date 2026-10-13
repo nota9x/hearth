@@ -1,1 +1,1 @@
-export { load } from '$lib/server/dashboard';
+export { load } from '#lib/server/dashboard.ts';

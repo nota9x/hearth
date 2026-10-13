@@ -1,7 +1,6 @@
 import { Buffer } from 'node:buffer';
 
 import { AppError } from '@hearth/core/common';
-import { json } from '@sveltejs/kit';
 import { z } from 'zod';
 
 export function logFailure(
@@ -27,7 +26,7 @@ export function logFailure(
 
 export function failure(error: unknown, environment: string | undefined) {
   if (error instanceof z.ZodError)
-    return json(
+    return Response.json(
       {
         error: {
           code: 'INVALID_INPUT',
@@ -37,7 +36,7 @@ export function failure(error: unknown, environment: string | undefined) {
       { status: 400 },
     );
   if (error instanceof AppError)
-    return json(
+    return Response.json(
       { error: { code: error.code, message: error.message } },
       {
         status: error.status,
@@ -46,7 +45,7 @@ export function failure(error: unknown, environment: string | undefined) {
     );
   const message = String(error);
   if (message.includes('UNIQUE constraint'))
-    return json(
+    return Response.json(
       {
         error: {
           code: 'CONFLICT',
@@ -56,7 +55,7 @@ export function failure(error: unknown, environment: string | undefined) {
       { status: 409 },
     );
   if (message.includes('last_admin'))
-    return json(
+    return Response.json(
       {
         error: {
           code: 'LAST_ADMIN',
@@ -66,7 +65,7 @@ export function failure(error: unknown, environment: string | undefined) {
       { status: 409 },
     );
   if (message.includes('delivery_access_denied'))
-    return json(
+    return Response.json(
       {
         error: {
           code: 'DELIVERY_UNAVAILABLE',
@@ -77,7 +76,7 @@ export function failure(error: unknown, environment: string | undefined) {
       { status: 403 },
     );
   logFailure(error, environment);
-  return json(
+  return Response.json(
     {
       error: {
         code: 'UNAVAILABLE',

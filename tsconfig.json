@@ -12,8 +12,7 @@
     "types": ["node"],
     "noEmit": true,
     "paths": {
-      "@hearth/core/*": ["./packages/core/*.ts"],
-      "$lib/*": ["./apps/web/src/lib/*"]
+      "@hearth/core/*": ["./packages/core/*.ts"]
     }
   },
   "include": [

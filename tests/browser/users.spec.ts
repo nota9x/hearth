@@ -361,8 +361,7 @@ test('Users restores interrupted searches and recovers from collection load fail
           { type: 'skip' },
           {
             type: 'error',
-            status: 500,
-            error: { message: 'The user list is unavailable.' },
+            error: { status: 500, message: 'The user list is unavailable.' },
           },
         ],
       },

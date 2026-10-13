@@ -62,8 +62,8 @@ describe('document negotiation', () => {
   );
 });
 
-function fixture(value: string | null = 'My Hearth') {
-  const first = vi.fn(() => Promise.resolve(value === null ? null : { value }));
+function fixture() {
+  const first = vi.fn(() => Promise.resolve({ value: 'My Hearth' }));
   const prepare = vi.fn(() => ({ bind: vi.fn(() => ({ first })) }));
   const DB = { prepare } as unknown as D1Database;
   return { DB, prepare, first, APP_ORIGIN: 'https://app.example.com' };

@@ -12,10 +12,10 @@
   import X from '@lucide/svelte/icons/x';
   import { onDestroy, onMount, untrack } from 'svelte';
 
+  import { fadeMotion } from '#lib/motion.ts';
+  import { notify } from '#lib/notifications.ts';
   import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
   import { navigating, page } from '$app/state';
-  import { fadeMotion } from '$lib/motion';
-  import { notify } from '$lib/notifications';
 
   const {
     total,
@@ -98,7 +98,7 @@
   async function update(replaceState = false) {
     clearTimeout(timer);
     const url = searchURL(
-      page.url,
+      new URL(page.url.href),
       values,
       query,
       filterKeys,
@@ -114,7 +114,7 @@
     try {
       // SvelteKit cancels superseded navigations; previous data stays rendered.
       requestedURL = url.href;
-      await goto(url, { keepFocus: true, noScroll: true, replaceState });
+      await goto(url, { reset: false, replace: replaceState });
     } catch {
       notify.error('Search could not update. Please try again.');
     }

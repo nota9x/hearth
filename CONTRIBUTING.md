@@ -86,7 +86,7 @@ the built application, run `pnpm build` followed by `pnpm preview`.
 Follow the [repository instructions](AGENTS.md) and existing conventions. Prefer
 native platform features, minimal dependencies, and straightforward code. Shared
 domain logic belongs in core; HTTP/page behavior belongs in the web app. Use Svelte
-5 runes, `$lib` for browser imports, and `@hearth/core/<module>` for shared imports.
+5 runes, native `#lib` subpath imports with file extensions for browser imports, and `@hearth/core/<module>` for shared imports.
 
 Read [architecture and invariants](docs/development/architecture.md) before changing
 authentication, uploads, delivery, persistence, or audit. In particular:

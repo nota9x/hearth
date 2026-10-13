@@ -3,7 +3,7 @@
   import X from '@lucide/svelte/icons/x';
   import type { Snippet } from 'svelte';
 
-  import { fadeMotion } from '$lib/motion';
+  import { fadeMotion } from '#lib/motion.ts';
 
   const {
     count,

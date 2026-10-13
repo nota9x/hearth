@@ -2,8 +2,8 @@
   import Download from '@lucide/svelte/icons/download';
   import { onDestroy, type Snippet } from 'svelte';
 
-  import { action, ActionError, downloadConfig } from '$lib/client';
-  import Spinner from '$lib/Spinner.svelte';
+  import { action, ActionError, downloadConfig } from '#lib/client.ts';
+  import Spinner from '#lib/Spinner.svelte';
 
   /* eslint-disable prefer-const -- Reactive callbacks share the single Svelte props declaration with bindable state. */
   let {

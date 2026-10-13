@@ -263,7 +263,6 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig({
   resolve: { alias: [
     { find: /^@hearth\/core\/(.+)$/, replacement: fileURLToPath(new URL('./packages/core/', import.meta.url)) + '$1.ts' },
-    { find: '$lib', replacement: fileURLToPath(new URL('./apps/web/src/lib', import.meta.url)) },
   ] },
   test: { include: ['tests/unit/**/*.test.ts','tests/integration/**/*.test.ts'], setupFiles: ['tests/helpers/cleanup.ts'], globalSetup: ['tests/helpers/build-workers.ts'], sequence: {hooks: 'list'}, testTimeout: 30000, hookTimeout: 30000, maxWorkers: 2 },
 });

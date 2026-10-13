@@ -1,9 +1,15 @@
-import type { Handle, HandleServerError } from '@sveltejs/kit';
+import type { Handle, HandleServerError } from '@sveltejs/kit/hooks';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { handle, handleError } from '../../apps/web/src/hooks.server';
 import { load } from '../../apps/web/src/lib/server/dashboard';
 import { failure } from '../../apps/web/src/lib/server/http';
+
+const cloudflare = vi.hoisted(() => ({ env: {} }));
+vi.mock('cloudflare:workers', () => ({
+  env: cloudflare.env,
+  waitUntil: () => {},
+}));
 
 const origin = 'https://app.example.com';
 function input(
@@ -12,7 +18,6 @@ function input(
   options: {
     method?: string;
     data?: boolean;
-    platform?: boolean;
     production?: boolean;
   } = {},
 ) {
@@ -28,20 +33,15 @@ function input(
     isDataRequest: options.data ?? false,
     cookies: { get: () => {} },
     locals: {},
-    platform:
-      options.platform === false
-        ? undefined
-        : {
-            env: {
-              DB,
-              APP_ORIGIN: origin,
-              ENVIRONMENT: options.production ? 'production' : 'test',
-              TURNSTILE_SITE_KEY: 'real-site-key',
-              MAX_UPLOAD_BYTES: '26214400',
-            },
-          },
   };
-  return { event, resolve, first };
+  Object.assign(cloudflare.env, {
+    DB,
+    APP_ORIGIN: origin,
+    ENVIRONMENT: options.production ? 'production' : 'test',
+    TURNSTILE_SITE_KEY: 'real-site-key',
+    MAX_UPLOAD_BYTES: '26214400',
+  });
+  return { event, resolve, first, env: cloudflare.env };
 }
 afterEach(() => vi.restoreAllMocks());
 
@@ -74,8 +74,10 @@ describe('application error integration', () => {
       expect(cancel).toHaveBeenCalledOnce();
     },
   );
-  it('renders early missing-platform errors without layout or branding storage', async () => {
-    const test = input('/missing', undefined, { platform: false });
+  it('renders invalid-binding errors without layout or branding storage', async () => {
+    const test = input('/missing');
+    for (const key of Object.keys(cloudflare.env))
+      Reflect.deleteProperty(cloudflare.env, key);
     const response = await handle(test as unknown as Parameters<Handle>[0]);
     expect(response.status).toBe(503);
     expect(await response.text()).toContain('hearth');
@@ -109,10 +111,10 @@ describe('application error integration', () => {
     expect(html).not.toMatch(/secret|internal-id|password|private exception/);
     expect(
       handleError({
-        status: 500,
+        kind: 'unknown',
         event: test.event,
       } as unknown as Parameters<HandleServerError>[0]),
-    ).toEqual({ message: 'Something went wrong on our end' });
+    ).toEqual({ status: 500, message: 'Something went wrong on our end' });
   });
   it.each([
     'D1_ERROR: no such table: users: SQLITE_ERROR',
@@ -123,7 +125,7 @@ describe('application error integration', () => {
     async (message) => {
       const log = vi.spyOn(console, 'error').mockImplementation(() => {});
       const test = input('/api/example');
-      test.event.platform!.env.ENVIRONMENT = 'development';
+      Object.assign(test.env, { ENVIRONMENT: 'development' });
       const error = new Error('Failed query: private SQL and parameters', {
         cause: new Error(message),
       });
@@ -140,7 +142,7 @@ describe('application error integration', () => {
       await handleError({
         error,
         event: test.event,
-        status: 500,
+        kind: 'unknown',
       } as unknown as Parameters<HandleServerError>[0]);
       expect(log).toHaveBeenLastCalledWith(
         expect.stringContaining('pnpm db:migrate'),
