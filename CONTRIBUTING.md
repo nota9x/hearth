@@ -34,7 +34,7 @@ and keep exploit details out of public issues.
 
 ## Set up locally
 
-Use **Git**, **Node 24** (the CI version), and **pnpm 12.10.1**. Check
+Use **Git**, **Node 24** (the CI version), and **pnpm**. Check
 `node --version` and `pnpm --version` before installing. The workspace enforces
 engine versions, a 24-hour dependency release age, and an explicit build-script
 allowlist; preserve those policies.
