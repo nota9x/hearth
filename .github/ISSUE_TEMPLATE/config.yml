@@ -1,4 +1,4 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
   - name: Self-hosting and usage guides
     url: https://github.com/nota9x/hearth/blob/main/docs/README.md

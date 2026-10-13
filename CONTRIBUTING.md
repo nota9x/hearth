@@ -20,9 +20,10 @@ Read the relevant [guide](docs/README.md) and search
   identify the page or section and what would make it clearer or more accurate.
 
 For setup questions, start with [troubleshooting](docs/operations/troubleshooting.md).
-If you still need help, use a blank issue and include the failing step and redacted
-error. For a substantial feature or architecture change, discuss the approach in
-an issue before investing in a large implementation.
+If you still need help, use the appropriate
+[issue template](https://github.com/nota9x/hearth/issues/new/choose) and include the
+failing step and redacted error. For a substantial feature or architecture change,
+discuss the approach in an issue before investing in a large implementation.
 
 Keep account keys, Authorization headers, cookies, `.sxcu` files, deletion URLs,
 private images, and production secrets out of reports and pull requests. Follow
