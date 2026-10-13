@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
+  import { fadeMotion } from '#lib/motion.ts';
   import { afterNavigate, beforeNavigate } from '$app/navigation';
-  import { fadeMotion } from '$lib/motion';
 
   let leavingRoute = false;
   beforeNavigate(({ from, to }) => {

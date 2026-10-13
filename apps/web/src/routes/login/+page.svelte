@@ -2,14 +2,17 @@
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import KeyRound from '@lucide/svelte/icons/key-round';
 
+  import Brand from '#lib/Brand.svelte';
+  import { action } from '#lib/client.ts';
+  import { fadeMotion } from '#lib/motion.ts';
+  import { notify } from '#lib/notifications.ts';
+  import {
+    clearOnboardingKey,
+    holdOnboardingKey,
+  } from '#lib/onboarding-key.ts';
+  import Spinner from '#lib/Spinner.svelte';
+  import Turnstile from '#lib/Turnstile.svelte';
   import { goto } from '$app/navigation';
-  import Brand from '$lib/Brand.svelte';
-  import { action } from '$lib/client';
-  import { fadeMotion } from '$lib/motion';
-  import { notify } from '$lib/notifications';
-  import { clearOnboardingKey, holdOnboardingKey } from '$lib/onboarding-key';
-  import Spinner from '$lib/Spinner.svelte';
-  import Turnstile from '$lib/Turnstile.svelte';
 
   import type { PageProps as PageProperties } from './$types';
 
@@ -30,7 +33,7 @@
       if (result.destination === '/onboarding')
         holdOnboardingKey(result.userId, key);
       key = '';
-      await goto(result.destination, { invalidateAll: true });
+      await goto(result.destination, { refreshAll: true });
     } catch (error_) {
       notify.error(
         error_ instanceof Error ? error_.message : 'Could not sign in.',

@@ -23,39 +23,39 @@
   import Upload from '@lucide/svelte/icons/upload';
   import { untrack } from 'svelte';
 
-  import { afterNavigate, goto } from '$app/navigation';
-  import { navigating, page } from '$app/state';
-  import type { AdminComponents } from '$lib/admin-types';
-  import BackLink from '$lib/BackLink.svelte';
-  import BulkActions from '$lib/BulkActions.svelte';
-  import { action } from '$lib/client';
-  import { copyText } from '$lib/clipboard';
-  import CollectionEmpty from '$lib/CollectionEmpty.svelte';
-  import CollectionHeader from '$lib/CollectionHeader.svelte';
-  import { dashboard } from '$lib/dashboard';
-  import DashboardNotice from '$lib/DashboardNotice.svelte';
+  import type { AdminComponents } from '#lib/admin-types.ts';
+  import BackLink from '#lib/BackLink.svelte';
+  import BulkActions from '#lib/BulkActions.svelte';
+  import { action } from '#lib/client.ts';
+  import { copyText } from '#lib/clipboard.ts';
+  import CollectionEmpty from '#lib/CollectionEmpty.svelte';
+  import CollectionHeader from '#lib/CollectionHeader.svelte';
+  import { dashboard } from '#lib/dashboard.ts';
+  import DashboardNotice from '#lib/DashboardNotice.svelte';
   import {
     deleteSelectedImages,
     imageDeletion,
     linkDeletion,
     reconcileDeletedImages,
-  } from '$lib/deletion';
-  import { downloadImages, downloads } from '$lib/downloads';
-  import ExpiryFields from '$lib/ExpiryFields.svelte';
-  import ImageCard from '$lib/ImageCard.svelte';
-  import ImageSearch from '$lib/ImageSearch.svelte';
-  import LinkRow from '$lib/LinkRow.svelte';
-  import Modal from '$lib/Modal.svelte';
-  import { fadeMotion } from '$lib/motion';
-  import { notify } from '$lib/notifications';
-  import Pagination from '$lib/Pagination.svelte';
-  import { refreshInterval, watchRefresh } from '$lib/refresh';
-  import SearchControls from '$lib/SearchControls.svelte';
-  import { reconcileSelection } from '$lib/selection';
-  import ShareXConfig from '$lib/ShareXConfig.svelte';
-  import Statistics from '$lib/Statistics.svelte';
-  import { uploads } from '$lib/uploads';
-  import UserDomains from '$lib/UserDomains.svelte';
+  } from '#lib/deletion.ts';
+  import { downloadImages, downloads } from '#lib/downloads.ts';
+  import ExpiryFields from '#lib/ExpiryFields.svelte';
+  import ImageCard from '#lib/ImageCard.svelte';
+  import ImageSearch from '#lib/ImageSearch.svelte';
+  import LinkRow from '#lib/LinkRow.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import { fadeMotion } from '#lib/motion.ts';
+  import { notify } from '#lib/notifications.ts';
+  import Pagination from '#lib/Pagination.svelte';
+  import { refreshInterval, watchRefresh } from '#lib/refresh.ts';
+  import SearchControls from '#lib/SearchControls.svelte';
+  import { reconcileSelection } from '#lib/selection.ts';
+  import ShareXConfig from '#lib/ShareXConfig.svelte';
+  import Statistics from '#lib/Statistics.svelte';
+  import { uploads } from '#lib/uploads.ts';
+  import UserDomains from '#lib/UserDomains.svelte';
+  import { afterNavigate, goto } from '$app/navigation';
+  import { navigating, page } from '$app/state';
 
   import type { PageData } from '../routes/[...path]/$types';
 
@@ -332,12 +332,12 @@
     }
   }
   function imageListURL() {
-    const url = new URL(page.url);
+    const url = new URL(page.url.href);
     url.searchParams.delete('linkPage');
     return `${data.admin ? '/admin' : ''}/images${url.search}`;
   }
   function searchLink(keys: string[]) {
-    const url = new URL(page.url);
+    const url = new URL(page.url.href);
     for (const key of [...keys, 'page']) url.searchParams.delete(key);
     return url.pathname + url.search;
   }

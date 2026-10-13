@@ -1,4 +1,4 @@
-import type { Handle } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit/hooks';
 import { convertV4MiniflareOptions, Miniflare } from 'miniflare';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -16,6 +16,12 @@ import type { Env } from '../../packages/core/env';
 import { images } from '../../packages/core/schema';
 import { migrateDatabase } from '../helpers/database';
 import { workerCompatibility } from '../helpers/workers';
+
+const cloudflare = vi.hoisted(() => ({ env: {} }));
+vi.mock('cloudflare:workers', () => ({
+  env: cloudflare.env,
+  waitUntil: () => {},
+}));
 
 const origin = 'https://app.example.com';
 let mf: Miniflare, member: User, other: User;
@@ -85,6 +91,7 @@ afterEach(async () => {
 });
 
 function hookInput(path: string, method: string, requestOrigin?: string) {
+  Object.assign(cloudflare.env, env);
   const event = {
     url: new URL(path, origin),
     request: new Request(new URL(path, origin), {
@@ -96,19 +103,14 @@ function hookInput(path: string, method: string, requestOrigin?: string) {
       get: (name: string) => (name === '__Host-hearth' ? token : undefined),
     },
     locals: {} as App.Locals,
-    platform: { env },
   };
   const resolve = vi.fn(() => Promise.resolve(new Response('allowed')));
   return { event, resolve };
 }
 
-function dashboard(
-  path: string,
-  parameters = new URLSearchParams(),
-  user = member,
-) {
+function dashboard(path: string, parameters = new URLSearchParams()) {
   return load({
-    locals: { env, user },
+    locals: { env, user: member },
     params: { path },
     url: new URL(`${origin}/${path}?${parameters}`),
     depends: () => {},

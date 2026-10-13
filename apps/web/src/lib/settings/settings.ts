@@ -1,7 +1,7 @@
 import { getContext } from 'svelte';
 
-import { action } from '$lib/client';
-import { dashboard } from '$lib/dashboard';
+import { action } from '#lib/client.ts';
+import { dashboard } from '#lib/dashboard.ts';
 
 export const settingsContext = Symbol('settings');
 export interface SettingsState {

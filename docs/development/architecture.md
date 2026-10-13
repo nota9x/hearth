@@ -20,7 +20,7 @@ bindings. Domain validation deliberately calls the delivery HTTPS public front d
 local validation uses only configured loopback delivery. Production web keeps
 `global_fetch_strictly_public` to preserve that distinction.
 
-Browser imports use `$lib`; shared imports use `@hearth/core/<module>`. Use Svelte 5
+Browser imports use native `#lib` subpath imports with file extensions; shared imports use `@hearth/core/<module>`. Use Svelte 5
 runes and direct Lucide imports. Unix-second helpers and `AppError` live in core
 `common.ts`; intentional SQL/JSON nulls should stay null.
 

@@ -1,7 +1,7 @@
 <script lang="ts">
-  import AdminSettings from '$lib/AdminSettings.svelte';
-  import AdminTabs from '$lib/AdminTabs.svelte';
-  import SettingsPage from '$lib/settings/SettingsPage.svelte';
+  import AdminSettings from '#lib/AdminSettings.svelte';
+  import AdminTabs from '#lib/AdminTabs.svelte';
+  import SettingsPage from '#lib/settings/SettingsPage.svelte';
 
   import type { PageProps as PageProperties } from './$types';
 

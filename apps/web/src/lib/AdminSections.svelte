@@ -3,7 +3,7 @@
   import Clock from '@lucide/svelte/icons/clock';
   import type { Snippet } from 'svelte';
 
-  import { fadeMotion } from '$lib/motion';
+  import { fadeMotion } from '#lib/motion.ts';
 
   import type { PageData } from '../routes/[...path]/$types';
   import type { AdminActions } from './admin-types';

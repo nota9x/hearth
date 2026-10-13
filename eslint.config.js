@@ -10,8 +10,6 @@ import unicorn from 'eslint-plugin-unicorn';
 import globals from 'globals';
 import ts from 'typescript-eslint';
 
-import svelteConfig from './apps/web/svelte.config.js';
-
 export default defineConfig(
   globalIgnores([
     '**/node_modules/**',
@@ -82,7 +80,7 @@ export default defineConfig(
     extends: [svelte.configs.recommended],
     languageOptions: {
       globals: globals.browser,
-      parserOptions: { parser: ts.parser, svelteConfig },
+      parserOptions: { parser: ts.parser },
     },
     rules: {
       // The application is deployed at the origin root and also links to API endpoints.
@@ -108,6 +106,13 @@ export default defineConfig(
       'apps/web/*config.ts',
     ],
     languageOptions: { globals: globals.node },
+  },
+  {
+    files: ['*config.{js,ts}', 'apps/web/*config.ts'],
+    rules: {
+      // Tool configuration is constructed by each tool's configuration factory.
+      'unicorn/no-top-level-side-effects': 'off',
+    },
   },
   {
     files: ['scripts/server.ts', 'scripts/development-service.ts'],

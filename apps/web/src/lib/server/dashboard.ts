@@ -97,11 +97,10 @@ export async function readDashboard({
       ? await availableDeliveryDomains(locals.env.DB, user.id)
       : [];
   const ownership = admin ? undefined : eq(images.userId, user.id);
-  const searchQuery = imageSearchQuery(
+  const { sort, query: search } = imageSearchQuery(
     url.searchParams,
     admin ? undefined : user.id,
   );
-  const { sort, query: search } = searchQuery;
   const userManagement =
     admin && section === 'users'
       ? await import('@hearth/core/user-management')
@@ -202,7 +201,7 @@ export async function readDashboard({
           ),
         )
     : [{ count: 0 }];
-  const [key] = await database_
+  const [key = null] = await database_
     .select({
       rotatedAt: apiKeys.rotatedAt,
       createdAt: apiKeys.createdAt,
@@ -359,7 +358,7 @@ export async function readDashboard({
       : admin && section === 'audit-log'
         ? url.searchParams.get('actorId')
         : null;
-  const [scopedUser] = scopedId
+  const [scopedUser = null] = scopedId
     ? await database_
         .select({ id: users.id, displayName: users.displayName })
         .from(users)
@@ -410,7 +409,7 @@ export async function readDashboard({
     .select()
     .from(settings)
     .where(eq(settings.key, 'siteName'));
-  const [capacitySettings] =
+  const [capacitySettings = null] =
     admin && section === 'settings'
       ? await database_
           .select()
@@ -423,7 +422,7 @@ export async function readDashboard({
       admin && section === 'storage'
         ? await storageOverview(locals.env.DB)
         : null,
-    storageCapacity: capacitySettings ?? null,
+    storageCapacity: capacitySettings,
     section,
     shareSlugConfiguration:
       admin && section === 'settings'
@@ -456,7 +455,7 @@ export async function readDashboard({
       activity?.status === 'rejected'
         ? 'Activity could not be loaded. Please try again.'
         : null,
-    scopedUser: scopedUser ?? null,
+    scopedUser,
     linkTotal: linkTotal.count,
     linkUnfilteredTotal: linkUnfiltered.count,
     linkDeliveryDomains,
@@ -483,7 +482,7 @@ export async function readDashboard({
     allowed,
     domainPage,
     deliverySelection,
-    key: key || null,
+    key,
     links: linkList.map((r) => ({
       ...r.alias,
       filename: r.filename,

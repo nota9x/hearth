@@ -15,12 +15,12 @@
   import Scale from '@lucide/svelte/icons/scale';
   import { type Snippet, untrack } from 'svelte';
 
+  import { action, downloadConfig } from '#lib/client.ts';
+  import Copy from '#lib/Copy.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import ShareXConfig from '#lib/ShareXConfig.svelte';
+  import Turnstile from '#lib/Turnstile.svelte';
   import { goto } from '$app/navigation';
-  import { action, downloadConfig } from '$lib/client';
-  import Copy from '$lib/Copy.svelte';
-  import Modal from '$lib/Modal.svelte';
-  import ShareXConfig from '$lib/ShareXConfig.svelte';
-  import Turnstile from '$lib/Turnstile.svelte';
 
   import { version } from '../../../../../package.json';
   import type { PageData } from '../../routes/[...path]/$types';
@@ -115,7 +115,7 @@
     if (busy) return;
     modal = secret = token = error = '';
     config = null;
-    if (revoked) void goto('/login', { invalidateAll: true });
+    if (revoked) void goto('/login', { refreshAll: true });
   }
   async function rotate(event: SubmitEvent) {
     event.preventDefault();
@@ -291,8 +291,8 @@
       <a
         class="button"
         href="/onboarding?revisit=1"
-        data-sveltekit-preload-data="off"
-        data-sveltekit-preload-code="off"
+        data-sveltekit-preload-data="false"
+        data-sveltekit-preload-code="false"
         >Revisit onboarding<ArrowRight size={16} /></a
       >
     </SettingsRow>

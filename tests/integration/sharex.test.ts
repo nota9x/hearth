@@ -144,8 +144,8 @@ function send(
     locals: { env },
   } as Parameters<typeof POST>[0]);
 }
-async function uploaded(body = nativeBody, authorization?: string) {
-  const response = await send(body, authorization);
+async function uploaded(body = nativeBody) {
+  const response = await send(body);
   expect(response.status).toBe(201);
   expect(response.headers.get('Content-Type')).toContain('application/json');
   return resultSchema.parse(await response.json());

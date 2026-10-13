@@ -2,8 +2,8 @@
   import X from '@lucide/svelte/icons/x';
   import { onMount, type Snippet } from 'svelte';
 
+  import { fadeMotion, surfaceMotion } from '#lib/motion.ts';
   import { onNavigate } from '$app/navigation';
-  import { fadeMotion, surfaceMotion } from '$lib/motion';
 
   const {
     title,

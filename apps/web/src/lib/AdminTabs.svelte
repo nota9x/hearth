@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { indicatorMotion } from '$lib/motion';
+  import { indicatorMotion } from '#lib/motion.ts';
 
   const [sendIndicator, receiveIndicator] = indicatorMotion();
   const { section }: { section: string } = $props();

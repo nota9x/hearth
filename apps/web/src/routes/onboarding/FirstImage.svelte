@@ -5,8 +5,8 @@
   import { onMount, untrack } from 'svelte';
   import { z } from 'zod';
 
-  import { action } from '$lib/client';
-  import Spinner from '$lib/Spinner.svelte';
+  import { action } from '#lib/client.ts';
+  import Spinner from '#lib/Spinner.svelte';
 
   type Status = 'waiting' | 'verified' | 'skipped' | null;
   const {

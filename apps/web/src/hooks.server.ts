@@ -1,6 +1,7 @@
 import { authenticateSession } from '@hearth/core/auth';
 import { getInstanceName } from '@hearth/core/branding';
 import { configSchema } from '@hearth/core/common';
+import type { Env } from '@hearth/core/env';
 import {
   acceptsErrorHtml,
   httpErrorContent,
@@ -8,12 +9,15 @@ import {
   renderHttpErrorDocument,
 } from '@hearth/core/http-error';
 import { appOrigin } from '@hearth/core/public-urls';
-import type { Handle, HandleServerError } from '@sveltejs/kit';
+import type { Handle, HandleServerError } from '@sveltejs/kit/hooks';
+import { env as bindings } from 'cloudflare:workers';
 
-import { logFailure } from '$lib/server/http';
+import { logFailure } from '#lib/server/http.ts';
+
+const env: Env = bindings;
 
 const resolveRequest: Handle = async ({ event, resolve }) => {
-  if (!event.platform?.env)
+  if (!env.DB)
     return Response.json(
       {
         error: {
@@ -23,7 +27,7 @@ const resolveRequest: Handle = async ({ event, resolve }) => {
       },
       { status: 503, headers: { 'Cache-Control': 'no-store' } },
     );
-  event.locals.env = event.platform.env;
+  event.locals.env = env;
   configSchema.parse(event.locals.env);
   if (
     event.locals.env.ENVIRONMENT === 'production' &&
@@ -58,10 +62,10 @@ const resolveRequest: Handle = async ({ event, resolve }) => {
   return resolve(event);
 };
 
-export const handleError: HandleServerError = ({ error, event, status }) => {
-  if (status >= 500)
-    logFailure(error, event.platform?.env.ENVIRONMENT, 'page.failed', status);
-  return { message: httpErrorContent(status).heading };
+export const handleError: HandleServerError = ({ error, kind }) => {
+  const status = kind === 'unknown' ? 500 : error.status;
+  if (status >= 500) logFailure(error, env.ENVIRONMENT, 'page.failed', status);
+  return { status, message: httpErrorContent(status).heading };
 };
 
 export const handle: Handle = async (input) => {
@@ -70,7 +74,7 @@ export const handle: Handle = async (input) => {
   try {
     response = await resolveRequest(input);
   } catch (error) {
-    logFailure(error, event.platform?.env.ENVIRONMENT);
+    logFailure(error, env.ENVIRONMENT);
     response = Response.json(
       {
         error: { code: 'UNAVAILABLE', message: httpErrorContent(500).heading },
@@ -86,11 +90,11 @@ export const handle: Handle = async (input) => {
     response.status >= 400 &&
     acceptsErrorHtml(event.request)
   ) {
-    const origin = event.platform?.env.APP_ORIGIN ?? '';
+    const origin = env.APP_ORIGIN ?? '';
     let name = event.locals.siteName;
-    if (!name && event.platform?.env.DB) {
+    if (!name && env.DB) {
       try {
-        name = await getInstanceName(event.platform.env.DB);
+        name = await getInstanceName(env.DB);
       } catch {
         /*
         Error pages survive storage outages.
@@ -120,7 +124,7 @@ export const handle: Handle = async (input) => {
     'Permissions-Policy',
     'camera=(), microphone=(), geolocation=()',
   );
-  if (event.platform?.env.ENVIRONMENT === 'production')
+  if (env.ENVIRONMENT === 'production')
     response.headers.set('Strict-Transport-Security', 'max-age=31536000');
   return response;
 };

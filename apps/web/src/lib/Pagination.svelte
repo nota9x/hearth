@@ -38,7 +38,7 @@
   <div class="page-links">
     {#if current > 1}<a
         class="button icon-button"
-        href={pageURL(page.url, current - 1, parameter)}
+        href={pageURL(new URL(page.url.href), current - 1, parameter)}
         onclick={(event) => {
           if (!onchange) {
             return;
@@ -59,7 +59,7 @@
     {#each pageWindow(current, pages) as item (item)}
       {#if typeof item === 'number'}<a
           class="button page-number"
-          href={pageURL(page.url, item, parameter)}
+          href={pageURL(new URL(page.url.href), item, parameter)}
           onclick={(event) => {
             if (!onchange) {
               return;
@@ -74,7 +74,7 @@
     {/each}
     {#if current < pages}<a
         class="button icon-button"
-        href={pageURL(page.url, current + 1, parameter)}
+        href={pageURL(new URL(page.url.href), current + 1, parameter)}
         onclick={(event) => {
           if (!onchange) {
             return;
@@ -102,7 +102,7 @@
           Math.max(1, Math.floor(Number(input)) || 1),
         );
         if (onchange) onchange(target);
-        else void goto(pageURL(page.url, target, parameter));
+        else void goto(pageURL(new URL(page.url.href), target, parameter));
       }}
     >
       <label

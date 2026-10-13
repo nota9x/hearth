@@ -1,4 +1,4 @@
-import { load as loadDashboard } from '$lib/server/dashboard';
+import { load as loadDashboard } from '#lib/server/dashboard.ts';
 
 import type { PageServerLoad } from './$types';
 

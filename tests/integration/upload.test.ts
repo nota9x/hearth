@@ -128,12 +128,11 @@ function deferred() {
 function requestFor(
   bytes: Uint8Array = png,
   chunkSize = 8191,
-  suffix = footer,
   failAfter = Infinity,
   onFailure = () => {},
   failureReady?: Promise<void>,
 ) {
-  const segments = [header, bytes, suffix];
+  const segments = [header, bytes, footer];
   let segment = 0,
     offset = 0,
     pulled = 0,
@@ -577,7 +576,6 @@ describe('streaming upload', () => {
     const source = requestFor(
       imageBytes(partSize * 2),
       65_536,
-      footer,
       partSize + header.length,
       failed.resolve,
       entered.promise,

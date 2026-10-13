@@ -1,8 +1,7 @@
 import { resolveExpiryPolicy } from '@hearth/core/expiry-policy';
 import { getInstanceExpiryPolicy } from '@hearth/core/expiry-policy-store';
-import { json } from '@sveltejs/kit';
 
-import { readDashboard } from '$lib/server/dashboard';
+import { readDashboard } from '#lib/server/dashboard.ts';
 
 import type { RequestHandler } from './$types';
 
@@ -15,7 +14,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
     },
   });
   const instanceExpiryPolicy = await getInstanceExpiryPolicy(locals.env.DB);
-  return json(
+  return Response.json(
     {
       ...data,
       instanceExpiryPolicy,

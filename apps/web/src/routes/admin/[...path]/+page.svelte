@@ -1,8 +1,8 @@
 <script lang="ts">
-  import Sections from '$lib/AdminSections.svelte';
-  import Tabs from '$lib/AdminTabs.svelte';
-  import Dashboard from '$lib/Dashboard.svelte';
-  import Domains from '$lib/DomainManagement.svelte';
+  import Sections from '#lib/AdminSections.svelte';
+  import Tabs from '#lib/AdminTabs.svelte';
+  import Dashboard from '#lib/Dashboard.svelte';
+  import Domains from '#lib/DomainManagement.svelte';
 
   import type { PageProps as PageProperties } from './$types';
 

@@ -34,13 +34,13 @@ const env = () =>
   }) as Env;
 const list = (query = '') =>
   userPage(database(binding), admin, new URLSearchParams(query));
-const collection = (query = '', owner?: string, size = 6) =>
+const collection = (query = '', owner?: string) =>
   imageCollection(
     database(binding),
     env(),
     new URLSearchParams(query),
     owner,
-    size,
+    6,
   );
 beforeEach(async () => {
   mf = new Miniflare(

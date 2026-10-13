@@ -2,7 +2,7 @@
 
 Private ShareX image host: TypeScript, SvelteKit/Svelte 5 on Cloudflare Workers,
 D1/Drizzle, private R2. One pnpm workspace/release stream; Workers have no package
-manifests. Use Node 24 (CI) and pnpm 12.10.1; dependency installs enforce engines,
+manifests. Use Node 24 (CI) and the pnpm version pinned in `package.json`; dependency installs enforce engines,
 24-hour release age, and the build allowlist in `pnpm-workspace.yaml`.
 
 ## Commands (repository root)
@@ -39,7 +39,7 @@ manifests. Use Node 24 (CI) and pnpm 12.10.1; dependency installs enforce engine
   `routes/api/actions/[action]/+server.ts`; `lib/client.ts` calls them.
 - `apps/web/src/lib/server/dashboard.ts`: user/admin catch-all page loader;
   `lib/Dashboard.svelte` renders it. `src/app.css` holds shared styling.
-  Browser imports use `$lib`, core imports
+  Browser imports use native `#lib` subpath imports with file extensions, core imports
   `@hearth/core/<module>`; use Svelte 5 runes and direct Lucide icon imports.
 - `packages/core`: shared domain operations, authorization, search/collections,
   storage, and validation; independent of SvelteKit. `schema.ts` defines Drizzle

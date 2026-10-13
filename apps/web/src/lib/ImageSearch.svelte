@@ -5,7 +5,7 @@
     sortOptions,
   } from '@hearth/core/image-search';
 
-  import SearchControls from '$lib/SearchControls.svelte';
+  import SearchControls from '#lib/SearchControls.svelte';
 
   const {
     total,

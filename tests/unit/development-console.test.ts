@@ -40,10 +40,10 @@ function harness(
   return { dashboard, stdout, stderr };
 }
 
-async function screen(chunks: string[], columns = 80, rows = 24) {
+async function screen(chunks: string[]) {
   const terminal = new Terminal({
-    cols: columns,
-    rows,
+    cols: 80,
+    rows: 24,
     scrollback: 1000,
     allowProposedApi: true,
     convertEol: true,

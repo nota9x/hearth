@@ -7,7 +7,7 @@
   import CheckCheck from '@lucide/svelte/icons/check-check';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 
-  import { notify } from '$lib/notifications';
+  import { notify } from '#lib/notifications.ts';
 
   import type { PageData } from '../routes/[...path]/$types';
   import type { AdminActions } from './admin-types';

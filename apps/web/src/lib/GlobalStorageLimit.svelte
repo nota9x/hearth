@@ -6,11 +6,11 @@
   } from '@hearth/core/storage-view';
   import { untrack } from 'svelte';
 
-  import { saveSettings } from '$lib/settings/settings';
-  import SettingsForm from '$lib/settings/SettingsForm.svelte';
-  import SettingsRow from '$lib/settings/SettingsRow.svelte';
-  import SettingsSection from '$lib/settings/SettingsSection.svelte';
-  import SettingsToggle from '$lib/settings/SettingsToggle.svelte';
+  import { saveSettings } from '#lib/settings/settings.ts';
+  import SettingsForm from '#lib/settings/SettingsForm.svelte';
+  import SettingsRow from '#lib/settings/SettingsRow.svelte';
+  import SettingsSection from '#lib/settings/SettingsSection.svelte';
+  import SettingsToggle from '#lib/settings/SettingsToggle.svelte';
 
   import type { PageData } from '../routes/[...path]/$types';
 

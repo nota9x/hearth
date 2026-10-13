@@ -9,7 +9,7 @@
   import ImageUp from '@lucide/svelte/icons/image-up';
   import { onMount } from 'svelte';
 
-  import { fadeMotion } from '$lib/motion';
+  import { fadeMotion } from '#lib/motion.ts';
 
   import { dashboard } from './dashboard';
   import { listenForFileDrop } from './file-drop';

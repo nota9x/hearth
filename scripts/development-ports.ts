@@ -63,7 +63,9 @@ export async function findDevelopmentServer(
         )
         .map((fields) => Number(fields[4])),
     );
-    const parsed = JSON.parse(processes || '[]') as ProcessInfo | ProcessInfo[];
+    const parsed = processes
+      ? (JSON.parse(processes) as ProcessInfo | ProcessInfo[])
+      : [];
     const list = Array.isArray(parsed) ? parsed : [parsed];
     for (const listener of listeners) {
       let entry = list.find((candidate) => candidate.pid === listener);

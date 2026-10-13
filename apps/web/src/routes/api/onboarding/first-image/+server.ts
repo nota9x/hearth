@@ -1,12 +1,12 @@
 import { requireUser } from '@hearth/core/auth';
-import { json, type RequestHandler } from '@sveltejs/kit';
+import type { RequestHandler } from '@sveltejs/kit';
 
-import { failure } from '$lib/server/http';
+import { failure } from '#lib/server/http.ts';
 
 export const GET: RequestHandler = ({ locals }) => {
   try {
     const user = requireUser(locals.user);
-    return json(
+    return Response.json(
       {
         status: user.onboardingUploadStatus,
         imageId: user.onboardingUploadImageId,

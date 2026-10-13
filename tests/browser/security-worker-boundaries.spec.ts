@@ -78,8 +78,8 @@ test('actual web and delivery Workers respect completed credential, account and 
       deliveryDomainId: domain.id,
     });
     expect(preference.status()).toBe(200);
-    const upload = (client: APIRequestContext, credential?: string) =>
-      client.post('/api/v1/images', {
+    const upload = (credential?: string) =>
+      ownerClient.post('/api/v1/images', {
         headers: credential ? { Authorization: `Bearer ${credential}` } : {},
         multipart: {
           file: {
@@ -92,7 +92,7 @@ test('actual web and delivery Workers respect completed credential, account and 
           },
         },
       });
-    const uploaded = await upload(ownerClient, owner.key);
+    const uploaded = await upload(owner.key);
     expect(uploaded.status()).toBe(201);
     const image = imageSchema.parse(await uploaded.json());
     expect(image.url).not.toBeNull();
@@ -107,7 +107,7 @@ test('actual web and delivery Workers respect completed credential, account and 
       expiry: 'never',
     });
     expect(forbiddenLink.status()).toBe(404);
-    const cookieOnly = await upload(ownerClient);
+    const cookieOnly = await upload();
     expect(cookieOnly.status()).toBe(401);
     const foreignOrigin = await ownerClient.post('/api/actions/image-delete', {
       headers: { Origin: 'https://evil.example' },
@@ -130,7 +130,7 @@ test('actual web and delivery Workers respect completed credential, account and 
     const replacement = z
       .object({ key: z.string() })
       .parse(await rotation.json());
-    const oldBearer = await upload(ownerClient, owner.key);
+    const oldBearer = await upload(owner.key);
     expect(oldBearer.status()).toBe(401);
     const staleCookie = await ownerClient.get(`/api/media/${image.id}`);
     expect(staleCookie.status()).toBe(401);
@@ -156,7 +156,7 @@ test('actual web and delivery Workers respect completed credential, account and 
       expect(response.status()).toBe(404);
       expect(response.headers().etag).toBeUndefined();
     }
-    const disabledBearer = await upload(ownerClient, replacement.key);
+    const disabledBearer = await upload(replacement.key);
     expect(disabledBearer.status()).toBe(401);
     const reenabled = await action(request, 'user-update', {
       userId: owner.userId,

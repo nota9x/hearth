@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, type Snippet } from 'svelte';
 
-  import Spinner from '$lib/Spinner.svelte';
+  import Spinner from '#lib/Spinner.svelte';
 
   import { settingsState } from './settings';
 

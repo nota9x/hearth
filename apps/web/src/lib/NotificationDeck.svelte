@@ -7,7 +7,7 @@
   import X from '@lucide/svelte/icons/x';
   import { onMount, tick } from 'svelte';
 
-  import { fadeMotion, revealMotion, surfaceMotion } from '$lib/motion';
+  import { fadeMotion, revealMotion, surfaceMotion } from '#lib/motion.ts';
 
   import Modal from './Modal.svelte';
   import NotificationItems from './NotificationItems.svelte';

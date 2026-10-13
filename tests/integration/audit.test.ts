@@ -103,7 +103,6 @@ async function action(
     isDataRequest: false,
     isSubRequest: false,
     isRemoteRequest: false,
-    platform: undefined,
     request: new Request(`http://localhost/api/actions/${name}`, {
       method: 'POST',
       headers: { 'cf-connecting-ip': auditIp },
@@ -115,6 +114,7 @@ async function action(
       get: () => 'audit-test-secret',
       getAll: () => [],
       serialize: () => '',
+      parse: () => ({ name: 'hearth-local', value: 'audit-test-secret' }),
       set: (_name: string, value: string) => {
         secrets.push(value);
       },

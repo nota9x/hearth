@@ -1,8 +1,8 @@
 <script lang="ts">
   import { instanceName } from '@hearth/core/branding-view';
 
+  import HttpError from '#lib/HttpError.svelte';
   import { page } from '$app/state';
-  import HttpError from '$lib/HttpError.svelte';
 </script>
 
 <svelte:head

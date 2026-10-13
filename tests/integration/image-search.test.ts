@@ -118,10 +118,10 @@ afterEach(async () => {
   await mf?.dispose();
 });
 
-async function find(parameters: string, userId: string | undefined = 'alice') {
+async function find(parameters: string) {
   const { filter, order } = imageSearchQuery(
     new URLSearchParams(parameters),
-    userId,
+    'alice',
   );
   const rows = await database(binding)
     .select({ id: images.id })

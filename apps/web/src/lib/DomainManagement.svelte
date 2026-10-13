@@ -24,9 +24,9 @@
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { onDestroy, untrack } from 'svelte';
 
+  import { fadeMotion } from '#lib/motion.ts';
   import { goto } from '$app/navigation';
   import { navigating, page } from '$app/state';
-  import { fadeMotion } from '$lib/motion';
 
   import ActionMenu from './ActionMenu.svelte';
   import { action } from './client';
@@ -121,15 +121,14 @@
   $effect(() => {
     const requested = Number(page.url.searchParams.get('page') || 1);
     if (navigating.to || requested <= result.pagination.pages) return;
-    const url = new URL(page.url);
+    const url = new URL(page.url.href);
     if (result.pagination.page === 1) url.searchParams.delete('page');
     else url.searchParams.set('page', String(result.pagination.page));
     untrack(
       () =>
         void goto(url, {
-          replaceState: true,
-          keepFocus: true,
-          noScroll: true,
+          replace: true,
+          reset: false,
         }),
     );
   });

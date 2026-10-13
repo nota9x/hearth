@@ -9,7 +9,7 @@
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import X from '@lucide/svelte/icons/x';
 
-  import { fadeMotion } from '$lib/motion';
+  import { fadeMotion } from '#lib/motion.ts';
 
   import type { NotificationItem } from './notifications';
   import Spinner from './Spinner.svelte';

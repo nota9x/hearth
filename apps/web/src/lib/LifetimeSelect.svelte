@@ -3,7 +3,7 @@
   import { formatLifetime } from '@hearth/core/expiry-policy';
   import { type Snippet, untrack } from 'svelte';
 
-  import { fadeMotion } from '$lib/motion';
+  import { fadeMotion } from '#lib/motion.ts';
 
   /* eslint-disable prefer-const -- Bindable props share one Svelte declaration. */
   let {

@@ -43,6 +43,16 @@
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["digest", "pinDigest"],
       "automerge": true
+    },
+    {
+      "description": "Upgrade SvelteKit and its Cloudflare adapter together",
+      "matchPackageNames": ["@sveltejs/kit", "@sveltejs/adapter-cloudflare"],
+      "groupName": "SvelteKit and Cloudflare adapter"
+    },
+    {
+      "description": "Keep TypeScript on versions supported by typescript-eslint",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": ">=6 <6.1"
     }
   ]
 }

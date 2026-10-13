@@ -5,9 +5,9 @@
   import Globe from '@lucide/svelte/icons/globe';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 
-  import { action, ActionError } from '$lib/client';
-  import DomainConnection from '$lib/DomainConnection.svelte';
-  import Spinner from '$lib/Spinner.svelte';
+  import { action, ActionError } from '#lib/client.ts';
+  import DomainConnection from '#lib/DomainConnection.svelte';
+  import Spinner from '#lib/Spinner.svelte';
 
   /* eslint-disable prefer-const -- Bindable state and reactive inputs use one Svelte props declaration. */
   let {

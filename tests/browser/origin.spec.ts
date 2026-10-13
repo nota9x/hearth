@@ -6,7 +6,7 @@ test('login from the delivery hostname gets a useful JSON error', async ({
 }) => {
   const response = await request.post('/api/actions/login', {
     // Reproduce the HTTP origin used by the local delivery hostname.
-    // eslint-disable-next-line unicorn/prefer-https
+
     headers: { Origin: 'http://shots.localhost:5173' },
     data: {},
   });

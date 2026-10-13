@@ -18,18 +18,18 @@
   import { prefersReducedMotion } from 'svelte/motion';
   import { MediaQuery } from 'svelte/reactivity';
 
+  import Brand from '#lib/Brand.svelte';
+  import { action } from '#lib/client.ts';
+  import { dashboardSnapshot } from '#lib/dashboard.ts';
+  import { linkDeletion, setDeletionOwner } from '#lib/deletion.ts';
+  import { downloads, setDownloadOwner } from '#lib/downloads.ts';
+  import GlobalUpload from '#lib/GlobalUpload.svelte';
+  import { indicatorMotion } from '#lib/motion.ts';
+  import NotificationDeck from '#lib/NotificationDeck.svelte';
+  import { notify } from '#lib/notifications.ts';
+  import { uploads } from '#lib/uploads.ts';
   import { beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/state';
-  import Brand from '$lib/Brand.svelte';
-  import { action } from '$lib/client';
-  import { dashboardSnapshot } from '$lib/dashboard';
-  import { linkDeletion, setDeletionOwner } from '$lib/deletion';
-  import { downloads, setDownloadOwner } from '$lib/downloads';
-  import GlobalUpload from '$lib/GlobalUpload.svelte';
-  import { indicatorMotion } from '$lib/motion';
-  import NotificationDeck from '$lib/NotificationDeck.svelte';
-  import { notify } from '$lib/notifications';
-  import { uploads } from '$lib/uploads';
 
   import type { LayoutProps as LayoutProperties } from './$types';
 
@@ -102,7 +102,7 @@
   async function logout() {
     try {
       await action('logout');
-      await goto('/login', { invalidateAll: true });
+      await goto('/login', { refreshAll: true });
     } catch (error_) {
       notify.error(
         error_ instanceof Error ? error_.message : 'Could not sign out.',

@@ -52,7 +52,8 @@ async function limit(bytes: number | null) {
     .bind(bytes)
     .run();
 }
-async function writer(key = id('object')) {
+async function writer() {
+  const key = id('object');
   const token = await beginStorage(env.DB, key, 'original');
   return new StorageWriter(env.DB, env.BUCKET, key, token!);
 }

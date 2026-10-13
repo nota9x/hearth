@@ -79,14 +79,13 @@ async function resource() {
 function get(
   path: string,
   options: Pick<RequestInit, 'method' | 'headers'> = {},
-  ip = '192.0.2.90',
 ) {
   return mf.dispatchFetch(
     path.startsWith('https:') ? path : `https://${host}${path}`,
     {
       ...options,
       headers: {
-        'CF-Connecting-IP': ip,
+        'CF-Connecting-IP': '192.0.2.90',
         ...Object.fromEntries(new Headers(options.headers)),
       },
     },

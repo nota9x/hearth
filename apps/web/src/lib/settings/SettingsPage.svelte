@@ -3,17 +3,17 @@
 
   import { onMount, setContext, type Snippet } from 'svelte';
 
-  import { beforeNavigate, goto } from '$app/navigation';
-  import { navigating } from '$app/state';
   import {
     dashboard,
     dashboardSnapshot,
     setDashboardRefresh,
-  } from '$lib/dashboard';
-  import DashboardNotice from '$lib/DashboardNotice.svelte';
-  import Modal from '$lib/Modal.svelte';
-  import { watchRefresh } from '$lib/refresh';
-  import { uploads } from '$lib/uploads';
+  } from '#lib/dashboard.ts';
+  import DashboardNotice from '#lib/DashboardNotice.svelte';
+  import Modal from '#lib/Modal.svelte';
+  import { watchRefresh } from '#lib/refresh.ts';
+  import { uploads } from '#lib/uploads.ts';
+  import { beforeNavigate, goto } from '$app/navigation';
+  import { navigating } from '$app/state';
 
   import type { PageData } from '../../routes/[...path]/$types';
   import { settingsContext, type SettingsState } from './settings';

@@ -4,7 +4,7 @@ import { ownedImage } from '@hearth/core/images';
 import { serveObject } from '@hearth/core/media';
 import type { RequestHandler } from '@sveltejs/kit';
 
-import { failure } from '$lib/server/http';
+import { failure } from '#lib/server/http.ts';
 
 export const GET: RequestHandler<{ id: string }> = async ({
   request,
