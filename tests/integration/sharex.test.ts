@@ -27,6 +27,8 @@ import {
 import { filename } from '../../packages/core/serve';
 import { migrateDatabase } from '../helpers/database';
 
+vi.mock('cloudflare:workers', () => ({ waitUntil: () => {} }));
+
 const boundary = '--------------------8df2247211d47b0';
 const contentType = `multipart/form-data; boundary=${boundary}`;
 const resultSchema = z.object({
