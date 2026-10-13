@@ -48,7 +48,7 @@ metadata details.
 
 ## Self-host Hearth
 
-The documented setup uses **Node 24**, **pnpm 12.10.1**, and a Cloudflare account
+The documented setup uses **Node 24**, **pnpm**, and a Cloudflare account
 with Workers, D1, R2, and Turnstile. You need an active Cloudflare domain with
 separate hostnames for the dashboard/API and image delivery. Cloudflare Images is
 optional for dashboard previews.
