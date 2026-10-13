@@ -88,7 +88,7 @@ guarantee a specific remediation timeframe.
 
 If you report a vulnerability by email and have not received an acknowledgment
 within **7 days**, please follow up at
-**[security@a9x.pro](mailto:security@a9x.pro)**.
+**[a9x@is.perish.ing](mailto:a9x@is.perish.ing)**.
 
 ## Coordinated Disclosure
 
