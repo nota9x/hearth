@@ -1,6 +1,6 @@
 <div align="center">
 
-# hearth
+<h1><img src="docs/assets/hearth-logo.svg" alt="hearth" width="320" /></h1>
 
 **Your screenshots, your domains, your image host.**
 
