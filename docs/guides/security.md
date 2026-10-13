@@ -66,15 +66,17 @@ D1 and R2 do not share a transaction. Uncertain writes stay charged and may leav
 objects for recovery instead of deleting possibly referenced data. Scheduled
 cleanup and reconciliation assist recovery; they are not backups.
 
-## Diagnose or report a problem safely
+## Respond to an incident safely
 
 Use [Worker logs](../operations/maintenance.md#read-worker-logs) and the application's
 domain/storage diagnostics. Redact Authorization headers, cookies, account keys,
 deletion fragments, exported data, and private image contents before sharing.
 
-Submit suspected vulnerabilities through
-[GitHub's private vulnerability reporting](https://github.com/nota9x/hearth/security/advisories/new).
-Do not publish credentials or exploit details in a public issue. Preserve evidence
-privately and revoke exposed credentials. Review
+Preserve evidence privately and revoke exposed credentials. Review
 [backups and recovery](../operations/backups-and-recovery.md) before taking
 destructive corrective actions.
+
+For suspected vulnerabilities in Hearth, follow the
+[Security Policy](../../SECURITY.md#reporting-a-vulnerability). It covers private
+reporting, supported versions, coordinated disclosure, and responsible research.
+Do not publish credentials or exploit details in a public issue.

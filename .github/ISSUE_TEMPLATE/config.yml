@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/nota9x/hearth/blob/main/SECURITY.md#reporting-a-vulnerability
+    about: Follow the Security Policy for private reporting and coordinated disclosure.
   - name: Self-hosting and usage guides
     url: https://github.com/nota9x/hearth/blob/main/docs/README.md
     about: Start here for installation, ShareX setup, configuration, and operations.

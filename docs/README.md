@@ -29,6 +29,7 @@ All terminal commands run from the repository root unless a guide says otherwise
 
 ## Common questions
 
+- **How do I report a security vulnerability?** Follow the [Security Policy](../SECURITY.md#reporting-a-vulnerability) to report it privately.
 - **How do I deploy Hearth?** Follow [installation](getting-started/installation.md).
 - **How do I configure a delivery domain?** Follow [domain connection](guides/custom-domains.md#connect-a-delivery-hostname).
 - **How do I connect ShareX?** Use the [generated uploader](getting-started/sharex-setup.md).

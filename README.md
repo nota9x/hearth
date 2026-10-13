@@ -111,7 +111,7 @@ features, and documentation feedback.
 
 Remove account keys, `.sxcu` contents, cookies, deletion URLs, and private images
 from public reports. For suspected vulnerabilities, follow the
-[security reporting guidance](docs/guides/security.md#diagnose-or-report-a-problem-safely)
+[Security Policy](SECURITY.md#reporting-a-vulnerability)
 and keep exploit details private.
 
 ## License

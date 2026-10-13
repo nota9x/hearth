@@ -27,7 +27,7 @@ discuss the approach in an issue before investing in a large implementation.
 
 Keep account keys, Authorization headers, cookies, `.sxcu` files, deletion URLs,
 private images, and production secrets out of reports and pull requests. Follow
-the [security reporting guidance](docs/guides/security.md#diagnose-or-report-a-problem-safely)
+the [Security Policy](SECURITY.md#reporting-a-vulnerability)
 for suspected vulnerabilities. Submit a
 [private vulnerability report](https://github.com/nota9x/hearth/security/advisories/new)
 and keep exploit details out of public issues.

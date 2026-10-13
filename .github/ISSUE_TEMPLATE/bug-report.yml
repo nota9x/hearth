@@ -6,7 +6,7 @@ body:
       value: |
         Check [troubleshooting](https://github.com/nota9x/hearth/blob/main/docs/operations/troubleshooting.md) and [existing issues](https://github.com/nota9x/hearth/issues) first.
         Remove account keys, Authorization headers, cookies, `.sxcu` contents, deletion URLs, and private images from all evidence.
-        Keep suspected vulnerabilities out of public issues; follow the [security reporting guidance](https://github.com/nota9x/hearth/blob/main/docs/guides/security.md#diagnose-or-report-a-problem-safely).
+        Keep suspected vulnerabilities out of public issues; follow the [Security Policy](https://github.com/nota9x/hearth/blob/main/SECURITY.md#reporting-a-vulnerability).
   - type: textarea
     id: behavior
     attributes:
