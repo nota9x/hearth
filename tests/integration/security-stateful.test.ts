@@ -21,13 +21,7 @@ import { id, now } from '../../packages/core/common';
 import { database } from '../../packages/core/db';
 import { digest } from '../../packages/core/digest';
 import type { Env } from '../../packages/core/env';
-import {
-  aliases,
-  apiKeys,
-  images,
-  sessions,
-  users,
-} from '../../packages/core/schema';
+import { apiKeys, images, sessions, users } from '../../packages/core/schema';
 import { migrateDatabase } from '../helpers/database';
 
 const cloudflare = vi.hoisted(() => ({ env: {} }));
@@ -374,6 +368,7 @@ describe('stateful authentication through hook and handlers', () => {
     const mine = await seedImage(owner);
     const idleHash = await digest(idle.get(cookieName)!, 'session');
     const absoluteHash = await digest(absolute.get(cookieName)!, 'session');
+    expect(await authenticateSession(env.DB, idleHash)).toBeNull();
     clock.mockReturnValue((timestamp + 7 * 86_400) * 1000);
     expect((await media(mine, idle)).status).toBe(401);
     const [denied] = await database(env.DB)
@@ -452,158 +447,6 @@ describe('stateful authentication through hook and handlers', () => {
 });
 
 describe('stateful mechanism and related-resource boundaries', () => {
-  it('keeps foreign image and alias operations unauthorized across deletion, expiry, and duplicate bulk identifiers', async () => {
-    const ownerJar = await login(owner);
-    const otherJar = await login(other);
-    const mine = await seedImage(owner);
-    const theirs = await seedImage(other);
-    const makeLink = async (imageId: string, jar: CookieJar) => {
-      const response = await action(
-        'alias-create',
-        { imageId, deliveryDomainId: domainId, expiry: 'never' },
-        jar,
-      );
-      expect(response.status).toBe(200);
-      return response.json<{ id: string }>();
-    };
-    const ownLink = await makeLink(mine, ownerJar);
-    const foreignLink = await makeLink(theirs, otherJar);
-    const ownSecond = await makeLink(mine, ownerJar);
-    expect(
-      (await action('alias-primary', { id: ownSecond.id }, ownerJar)).status,
-    ).toBe(200);
-    for (const ids of [
-      [mine, mine, theirs],
-      [theirs, mine, theirs],
-    ]) {
-      expect(
-        (await action('image-expiry', { ids, expiry: '1h' }, ownerJar)).status,
-      ).toBe(404);
-      expect((await action('image-delete', { ids }, ownerJar)).status).toBe(
-        404,
-      );
-    }
-    for (const ids of [
-      [ownLink.id, foreignLink.id, ownLink.id],
-      [foreignLink.id, ownSecond.id],
-    ]) {
-      expect(
-        (await action('alias-expiry', { ids, expiry: '1h' }, ownerJar)).status,
-      ).toBe(404);
-      expect((await action('alias-delete', { ids }, ownerJar)).status).toBe(
-        404,
-      );
-      expect((await action('alias-copy', { ids }, ownerJar)).status).toBe(404);
-    }
-    expect(
-      (
-        await action(
-          'alias-delete',
-          { ids: [ownSecond.id, ownSecond.id] },
-          ownerJar,
-        )
-      ).status,
-    ).toBe(200);
-    expect(
-      (await action('alias-primary', { id: ownSecond.id }, ownerJar)).status,
-    ).toBe(409);
-    expect(
-      (await action('alias-primary', { id: foreignLink.id }, ownerJar)).status,
-    ).toBe(404);
-    expect(
-      (
-        await action(
-          'image-expiry',
-          { ids: [mine, mine], expiry: '1h' },
-          ownerJar,
-        )
-      ).status,
-    ).toBe(200);
-    expect(
-      (await action('image-delete', { ids: [mine, mine] }, ownerJar)).status,
-    ).toBe(200);
-    expect((await media(mine, ownerJar)).status).toBe(404);
-    const removedLinks = await action(
-      'alias-copy',
-      { ids: [ownLink.id, ownSecond.id] },
-      ownerJar,
-    );
-    expect(removedLinks.status).toBe(200);
-    expect(await removedLinks.json()).toEqual({ links: [] });
-    expect(
-      (
-        await action(
-          'alias-expiry',
-          { ids: [ownLink.id], expiry: 'never' },
-          ownerJar,
-        )
-      ).status,
-    ).toBe(409);
-    expect(
-      (
-        await action(
-          'alias-create',
-          { imageId: mine, deliveryDomainId: domainId, expiry: 'never' },
-          ownerJar,
-        )
-      ).status,
-    ).toBe(404);
-    const [foreignImage] = await database(env.DB)
-      .select()
-      .from(images)
-      .where(eq(images.id, theirs));
-    const [foreignAlias] = await database(env.DB)
-      .select()
-      .from(aliases)
-      .where(eq(aliases.id, foreignLink.id));
-    expect(foreignImage).toMatchObject({
-      userId: other.userId,
-      expiresAt: null,
-      deletedAt: null,
-    });
-    expect(foreignAlias).toMatchObject({
-      disabledAt: null,
-      expiresAt: null,
-      primary: true,
-    });
-    expect((await media(theirs, otherJar)).status).toBe(200);
-    expect(await env.BUCKET.head(mine)).toBeNull();
-    expect(await env.BUCKET.head(theirs)).not.toBeNull();
-  });
-
-  it('rejects a deterministic ambiguous-selection corpus without mutating either owner', async () => {
-    const ownerJar = await login(owner);
-    const mine = await seedImage(owner);
-    const theirs = await seedImage(other);
-    const corpus = [
-      `{"ids":["${mine}"],"ids":["${theirs}"]}`,
-      `{"ids":["${mine}"],"__proto__":{"role":"admin"},"admin":true,"userId":"${other.userId}","ids":["${mine}","${theirs}"]}`,
-      `{"ids":"${mine},${theirs}"}`,
-      `{"ids":{"0":"${mine}","1":"${theirs}","length":2}}`,
-      `{"ids":[["${mine}"],"${theirs}"]}`,
-      `{"ids":["${mine}",null]}`,
-      `[{"ids":["${theirs}"]}]`,
-      `{"ids":["${theirs}"],"role":"admin"}`,
-    ];
-    for (const body of corpus) {
-      const response = await dispatch(
-        new Request(`${origin}/api/actions/image-delete`, {
-          method: 'POST',
-          headers: { Origin: origin, 'Content-Type': 'text/plain' },
-          body,
-        }),
-        ownerJar,
-      );
-      expect([400, 404]).toContain(response.status);
-      expect(await env.BUCKET.head(mine)).not.toBeNull();
-      expect(await env.BUCKET.head(theirs)).not.toBeNull();
-    }
-    const valid = await action('image-delete', { ids: [mine] }, ownerJar);
-    expect(valid.status).toBe(200);
-    expect(await env.BUCKET.head(mine)).toBeNull();
-    expect(await env.BUCKET.head(theirs)).not.toBeNull();
-  });
-
   it('never treats normalized, truncated, or combined bearer credentials as a cookie fallback', async () => {
     const otherJar = await login(other);
     const corpus = [

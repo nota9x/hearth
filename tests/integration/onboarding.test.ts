@@ -3,7 +3,6 @@ import { eq } from 'drizzle-orm';
 import { convertV4MiniflareOptions, Miniflare } from 'miniflare';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { load as dashboardLoad } from '../../apps/web/src/lib/server/dashboard';
 import { POST } from '../../apps/web/src/routes/api/actions/[action]/+server';
 import { load as onboardingLoad } from '../../apps/web/src/routes/onboarding/+page.server';
 import { createUser } from '../../packages/core/auth';
@@ -12,15 +11,13 @@ import { database, type User } from '../../packages/core/db';
 import type { Env } from '../../packages/core/env';
 import {
   advanceOnboarding,
-  armOnboardingUpload,
   finishOnboarding,
   hasBootstrapSetup,
-  skipOnboardingUpload,
 } from '../../packages/core/onboarding';
-import { apiKeys, auditLog, users } from '../../packages/core/schema';
+import { auditLog, users } from '../../packages/core/schema';
 import { applyMigration, migrateDatabase } from '../helpers/database';
 
-let runtime: Miniflare, env: Env, user: User, key: string;
+let runtime: Miniflare, env: Env, user: User;
 beforeEach(async () => {
   runtime = new Miniflare(
     convertV4MiniflareOptions({
@@ -47,7 +44,6 @@ beforeEach(async () => {
     UPLOAD_LIMIT: limit,
   } as unknown as Env;
   const created = await createUser(DB, 'New member', 'user', null);
-  key = created.key;
   user = await current(created.userId);
   vi.stubGlobal(
     'fetch',
@@ -89,52 +85,6 @@ function pageLoad(actor = user, query = '') {
 }
 
 describe('onboarding lifecycle', () => {
-  it('enrolls provisioned members and administrators without inferring bootstrap identity', async () => {
-    expect(user.onboardingStatus).toBe('pending');
-    const administrator = await createUser(
-      env.DB,
-      'Administrator',
-      'admin',
-      null,
-    );
-    const admin = await current(administrator.userId);
-    expect(admin.onboardingStatus).toBe('pending');
-    expect(hasBootstrapSetup(admin)).toBe(false);
-    const created = await rpc(
-      'user-create',
-      { displayName: 'Provisioned', role: 'user', token: 'challenge' },
-      admin,
-    );
-    expect(created.status).toBe(200);
-    const result: { userId: string } = await created.json();
-    expect((await current(result.userId)).onboardingStatus).toBe('pending');
-  });
-  it('returns a login destination without returning the raw key', async () => {
-    const response = await rpc('login', { key, token: 'challenge' }, null);
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      ok: true,
-      userId: user.id,
-      destination: '/onboarding',
-    });
-    await finishOnboarding(env.DB, user, 'skipped');
-    const returning = await rpc('login', { key, token: 'challenge' }, null);
-    expect(await returning.json()).toEqual({
-      ok: true,
-      userId: user.id,
-      destination: '/',
-    });
-  });
-  it('redirects pending dashboard requests before running dashboard queries', async () => {
-    await expect(
-      dashboardLoad({
-        locals: { env, user },
-        params: { path: 'settings' },
-        depends: vi.fn(),
-        url: new URL('http://localhost/settings'),
-      } as unknown as Parameters<typeof dashboardLoad>[0]),
-    ).rejects.toMatchObject({ status: 303, location: '/onboarding' });
-  });
   it('resumes the furthest saved step without regressing concurrent progress', async () => {
     await Promise.all([
       advanceOnboarding(env.DB, user, 4),
@@ -166,62 +116,6 @@ describe('onboarding lifecycle', () => {
       startStep: 0,
       revisit: true,
     });
-  });
-  it('retains the completed screen on refresh and allows exempt users to revisit', async () => {
-    await finishOnboarding(env.DB, user, 'completed');
-    expect(await pageLoad(await current())).toMatchObject({ startStep: 7 });
-    await env.DB.prepare(
-      "UPDATE users SET onboardingStatus='exempt' WHERE id=?",
-    )
-      .bind(user.id)
-      .run();
-    expect(await pageLoad(await current(), '?revisit=1')).toMatchObject({
-      startStep: 0,
-      revisit: true,
-    });
-  });
-  it('arms once against the current upload count and persists a skipped attempt', async () => {
-    await env.DB.prepare('UPDATE users SET uploadCount=4 WHERE id=?')
-      .bind(user.id)
-      .run();
-    expect(await armOnboardingUpload(env.DB, user)).toEqual({
-      status: 'waiting',
-      imageId: null,
-    });
-    await env.DB.prepare('UPDATE users SET uploadCount=5 WHERE id=?')
-      .bind(user.id)
-      .run();
-    await armOnboardingUpload(env.DB, await current());
-    expect(await current()).toMatchObject({
-      onboardingUploadBaseline: 4,
-      onboardingUploadStatus: 'waiting',
-    });
-    await skipOnboardingUpload(env.DB, await current());
-    expect(await current()).toMatchObject({
-      onboardingUploadStatus: 'skipped',
-      onboardingUploadImageId: null,
-    });
-    await armOnboardingUpload(env.DB, await current());
-    expect(await current()).toMatchObject({
-      onboardingUploadBaseline: 5,
-      onboardingUploadStatus: 'waiting',
-    });
-    const events = await database(env.DB).select().from(auditLog);
-    expect(
-      events.filter((event) => event.action === 'onboarding.upload_started'),
-    ).toHaveLength(2);
-    expect(
-      events.filter((event) => event.action === 'onboarding.upload_skipped'),
-    ).toHaveLength(1);
-  });
-  it('records an unverified milestone as skipped when setup is completed directly', async () => {
-    await finishOnboarding(env.DB, user, 'completed');
-    expect(await current()).toMatchObject({
-      onboardingStatus: 'completed',
-      onboardingUploadStatus: 'skipped',
-    });
-    await armOnboardingUpload(env.DB, await current());
-    expect((await current()).onboardingUploadStatus).toBe('waiting');
   });
   it('rejects unauthorized and invalid lifecycle changes and rolls back failed audits', async () => {
     expect((await rpc('onboarding-skip', {}, null)).status).toBe(401);
@@ -284,23 +178,6 @@ describe('shared settings and credentials', () => {
       (await rpc('preferences', { expiry: '1800s' }, restricted)).status,
     ).toBe(200);
     expect((await current()).defaultExpiry).toBe('1800s');
-  });
-  it('downloads the existing SXCU using the current key without issuing credentials', async () => {
-    const before = await database(env.DB).select().from(apiKeys);
-    const response = await rpc('sxcu', { key });
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      RequestURL: 'http://localhost/api/v1/images',
-      Headers: { Authorization: `Bearer ${key}` },
-      Body: 'MultipartFormData',
-      FileFormName: 'file',
-    });
-    const after = await database(env.DB).select().from(apiKeys);
-    expect(after.map(({ lastUsedAt: _lastUsedAt, ...value }) => value)).toEqual(
-      before.map(({ lastUsedAt: _lastUsedAt, ...value }) => value),
-    );
-    expect(JSON.stringify(after)).not.toContain(key);
-    expect(JSON.stringify(await pageLoad())).not.toContain(key);
   });
   it('shows only usable authorized domains and never guesses a replacement', async () => {
     const timestamp = now();

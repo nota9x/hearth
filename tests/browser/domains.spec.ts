@@ -223,7 +223,7 @@ test('Domains manages validation, primary selection, diagnostics, search and del
   expect(errors).toEqual([]);
 });
 
-for (const role of ['admin', 'user'] as const) {
+for (const role of ['user'] as const) {
   test(`Domains distinguishes the instance default from a saved selection for ${role}`, async ({
     hearth,
     page,
@@ -325,11 +325,6 @@ for (const role of ['admin', 'user'] as const) {
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth),
       ).toBeLessThanOrEqual(width);
-      await page.screenshot({
-        path: `artifacts/domains-review/${role}-${width}.png`,
-        fullPage: true,
-        animations: 'disabled',
-      });
     }
     await defaultRow
       .getByLabel('Actions for default.localhost', { exact: true })

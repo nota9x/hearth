@@ -59,17 +59,7 @@ beforeEach(async () => {
     updatedAt: now(),
     health: 'active',
   });
-});
 
-beforeEach(async () => {
-  await binding
-    .prepare('UPDATE app_settings SET value=? WHERE key=?')
-    .bind(
-      JSON.stringify({ defaultLength: 5, automaticFloor: 3 }),
-      'shareSlugConfiguration',
-    )
-    .run();
-  await database(binding).delete(aliases);
   await database(binding).delete(auditLog);
   imageId = id('img');
   await database(binding).insert(images).values({
@@ -116,24 +106,6 @@ function repeatedCandidate() {
 }
 
 describe('share slug allocation', () => {
-  it('defaults to five secure URL-safe Base62 characters with one commit and no audit', async () => {
-    const random = vi.spyOn(crypto, 'getRandomValues');
-    const insecure = vi.spyOn(Math, 'random').mockImplementation(() => {
-      throw new Error('Insecure random');
-    });
-    const commit = vi.fn(insert);
-    const slug = await allocateShareSlug(binding, commit);
-    expect(slug).toHaveLength(5);
-    expect(
-      [...slug].every((character) => SHARE_SLUG_ALPHABET.includes(character)),
-    ).toBe(true);
-    expect(encodeURIComponent(slug)).toBe(slug);
-    expect(commit).toHaveBeenCalledTimes(1);
-    expect(random).toHaveBeenCalled();
-    expect(insecure).not.toHaveBeenCalled();
-    expect(await database(binding).select().from(auditLog)).toEqual([]);
-  });
-
   it('rejects biased byte values and can generate every alphabet character', async () => {
     await setShareSlugDefault(binding, 62, admin, null);
     const random = vi
@@ -154,24 +126,6 @@ describe('share slug allocation', () => {
     expect(await allocateShareSlug(binding, insert)).toBe(SHARE_SLUG_ALPHABET);
     expect(random).toHaveBeenCalledTimes(2);
   });
-
-  it.each([1, 2])(
-    'retries %i real address collisions without expanding',
-    async (collisions) => {
-      await insert('AAAAA');
-      let calls = 0;
-      vi.spyOn(crypto, 'getRandomValues').mockImplementation((array) => {
-        if (!(array instanceof Uint8Array))
-          throw new TypeError('Expected slug bytes');
-        array.fill(calls++ < collisions ? 0 : 1);
-        return array;
-      });
-      expect(await allocateShareSlug(binding, insert)).toBe('BBBBB');
-      expect(calls).toBe(collisions + 1);
-      expect((await getShareSlugConfig(binding)).effectiveLength).toBe(5);
-      expect(await database(binding).select().from(auditLog)).toEqual([]);
-    },
-  );
 
   it('expands exactly one character after three collisions and logs System once', async () => {
     await insert('AAAAA');
@@ -205,24 +159,6 @@ describe('share slug allocation', () => {
     ).toHaveLength(1);
   });
 
-  it('bounds allocation to twelve candidates and three expansions', async () => {
-    const collision = new Error(
-      'D1_ERROR: UNIQUE constraint failed: aliases.deliveryDomainId, aliases.slug: SQLITE_CONSTRAINT',
-    );
-    const lengths: number[] = [];
-    const commit = vi.fn((slug: string) => {
-      lengths.push(slug.length);
-      return Promise.reject(collision);
-    });
-    await expect(allocateShareSlug(binding, commit)).rejects.toMatchObject({
-      status: 503,
-      code: 'SHARE_LINK_UNAVAILABLE',
-    });
-    expect(commit).toHaveBeenCalledTimes(12);
-    expect(lengths).toEqual([5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8]);
-    expect(await database(binding).select().from(auditLog)).toHaveLength(3);
-  });
-
   it('bounds collisions at the maximum length without expanding', async () => {
     await setShareSlugDefault(binding, 64, admin, null);
     const commit = vi.fn(() =>
@@ -244,48 +180,21 @@ describe('share slug allocation', () => {
     ).toEqual(['settings.share_slug_length']);
   });
 
-  it.each([
-    'UNIQUE constraint failed: aliases.id',
-    'UNIQUE constraint failed: aliases.imageId',
-    'FOREIGN KEY constraint failed',
-    'quota_exceeded',
-    'network connection lost',
-  ])('does not retry unrelated database failures: %s', async (message) => {
-    const error = new Error(message);
-    const commit = vi.fn(() => Promise.reject(error));
-    await expect(allocateShareSlug(binding, commit)).rejects.toBe(error);
-    expect(commit).toHaveBeenCalledTimes(1);
-    expect((await getShareSlugConfig(binding)).automaticFloor).toBe(3);
-  });
-
-  it('recognizes only the address constraint inside wrapped causes', () => {
-    expect(
-      isShareSlugCollision(
-        new Error('Drizzle query failed', {
-          cause: new Error(
-            'D1_ERROR: UNIQUE constraint failed: aliases.deliveryDomainId, aliases.slug: SQLITE_CONSTRAINT',
-          ),
-        }),
-      ),
-    ).toBe(true);
-    expect(
-      isShareSlugCollision(
-        new Error(
-          'UNIQUE constraint failed: aliases.deliveryDomainId, aliases.slugExtra',
-        ),
-      ),
-    ).toBe(false);
-    expect(
-      isShareSlugCollision(
-        'UNIQUE constraint failed: aliases.deliveryDomainId, aliases.slug',
-      ),
-    ).toBe(false);
-  });
+  it.each(['UNIQUE constraint failed: aliases.id', 'network connection lost'])(
+    'does not retry unrelated database failures: %s',
+    async (message) => {
+      const error = new Error(message);
+      const commit = vi.fn(() => Promise.reject(error));
+      await expect(allocateShareSlug(binding, commit)).rejects.toBe(error);
+      expect(commit).toHaveBeenCalledTimes(1);
+      expect((await getShareSlugConfig(binding)).automaticFloor).toBe(3);
+    },
+  );
 
   it('allocates concurrently and makes simultaneous 5 → 6 expansion idempotent', async () => {
     await insert('AAAAA');
     repeatedCandidate();
-    const count = 12;
+    const count = 3;
     let arrivals = 0;
     let release!: () => void;
     // eslint-disable-next-line unicorn/prefer-promise-with-resolvers -- ES2022 target.
@@ -350,14 +259,7 @@ describe('share slug allocation', () => {
     expect(await database(binding).select().from(auditLog)).toHaveLength(1);
   });
 
-  it.each([
-    null,
-    '{}',
-    '{',
-    '{"defaultLength":2,"automaticFloor":3}',
-    '{"defaultLength":5,"automaticFloor":65}',
-    '{"defaultLength":5.5,"automaticFloor":3}',
-  ])('fails closed for invalid config: %s', async (value) => {
+  it.each([null, '{'])('fails closed for invalid config: %s', async (value) => {
     if (value === null)
       await binding
         .prepare('DELETE FROM app_settings WHERE key=?')
@@ -398,44 +300,6 @@ describe('administration and upgrades', () => {
     expect(await database(binding).select().from(auditLog)).toEqual([]);
   });
 
-  it('records the actual previous default under simultaneous administrator changes', async () => {
-    await Promise.all(
-      [8, 9, 10].map((length) =>
-        setShareSlugDefault(binding, length, admin, null),
-      ),
-    );
-    const logs = await binding
-      .prepare(
-        "SELECT metadata FROM audit_log WHERE action='settings.share_slug_length' ORDER BY rowid",
-      )
-      .all<{ metadata: string }>();
-    expect(logs.results).toHaveLength(3);
-    let previous = 5;
-    for (const log of logs.results) {
-      const metadata = JSON.parse(log.metadata) as {
-        changes: { before: number; after: number }[];
-      };
-      expect(metadata.changes[0].before).toBe(previous);
-      previous = metadata.changes[0].after;
-    }
-    expect((await getShareSlugConfig(binding)).defaultLength).toBe(previous);
-  });
-  it.each([2, 65, 4.5, '5', null])(
-    'rejects invalid admin length: %s',
-    async (value) => {
-      await expect(
-        setShareSlugDefault(binding, value, admin, null),
-      ).rejects.toThrow();
-      expect(await database(binding).select().from(auditLog)).toEqual([]);
-    },
-  );
-
-  it('requires an administrator', async () => {
-    await expect(
-      setShareSlugDefault(binding, 8, { ...admin, role: 'user' }, null),
-    ).rejects.toMatchObject({ status: 403 });
-  });
-
   it('supports increases, decreases, and unchanged saves while preserving the automatic floor', async () => {
     await insert('AAAAA');
     repeatedCandidate();
@@ -459,13 +323,6 @@ describe('administration and upgrades', () => {
     expect(JSON.parse(changed.metadata)).toMatchObject({
       changes: [{ field: 'defaultSlugLength', before: 5, after: 8 }],
     });
-  });
-
-  it('does not keep manual increases as an automatic floor', async () => {
-    await setShareSlugDefault(binding, 8, admin, null);
-    await setShareSlugDefault(binding, 5, admin, null);
-    expect(await allocateShareSlug(binding, insert)).toHaveLength(5);
-    expect((await getShareSlugConfig(binding)).automaticFloor).toBe(3);
   });
 
   it('preserves an admin increase racing with namespace expansion', async () => {

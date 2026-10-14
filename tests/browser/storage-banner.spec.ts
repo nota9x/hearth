@@ -102,10 +102,6 @@ test('storage banner follows thresholds, role priority, navigation and focus ref
     'inert',
     true,
   );
-  await page.screenshot({
-    path: 'artifacts/storage-banner-mobile.png',
-    animations: 'disabled',
-  });
   await hearth.DB.prepare(
     'UPDATE storage_capacity SET persistedBytes=1000 WHERE id=1',
   ).run();

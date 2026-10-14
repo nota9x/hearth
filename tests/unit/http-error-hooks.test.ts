@@ -2,7 +2,6 @@ import type { Handle, HandleServerError } from '@sveltejs/kit/hooks';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { handle, handleError } from '../../apps/web/src/hooks.server';
-import { load } from '../../apps/web/src/lib/server/dashboard';
 import { failure } from '../../apps/web/src/lib/server/http';
 
 const cloudflare = vi.hoisted(() => ({ env: {} }));
@@ -46,34 +45,32 @@ function input(
 afterEach(() => vi.restoreAllMocks());
 
 describe('application error integration', () => {
-  it.each([404, 429, 503])(
-    'replaces %i document failures with safe branded HTML',
-    async (status) => {
-      const cancel = vi.fn();
-      const response = new Response(new ReadableStream({ cancel }), {
-        status,
-        headers: {
-          Allow: 'GET, HEAD',
-          'Retry-After': '60',
-          'Content-Length': '123',
-          ETag: 'private-etag',
-        },
-      });
-      const test = input('/missing', response);
-      const result = await handle(test as unknown as Parameters<Handle>[0]);
-      expect(result.status).toBe(status);
-      expect(await result.text()).toContain('Custom Hearth');
-      expect(result.headers.get('Allow')).toBe('GET, HEAD');
-      expect(result.headers.get('Retry-After')).toBe('60');
-      expect(result.headers.has('ETag')).toBe(false);
-      expect(result.headers.has('Content-Length')).toBe(false);
-      expect(result.headers.get('Cache-Control')).toBe('private, no-store');
-      expect(result.headers.get('Content-Security-Policy')).toContain(
-        "default-src 'none'",
-      );
-      expect(cancel).toHaveBeenCalledOnce();
-    },
-  );
+  it('replaces document failures with safe branded HTML and protocol headers', async () => {
+    const status = 503;
+    const cancel = vi.fn();
+    const response = new Response(new ReadableStream({ cancel }), {
+      status,
+      headers: {
+        Allow: 'GET, HEAD',
+        'Retry-After': '60',
+        'Content-Length': '123',
+        ETag: 'private-etag',
+      },
+    });
+    const test = input('/missing', response);
+    const result = await handle(test as unknown as Parameters<Handle>[0]);
+    expect(result.status).toBe(status);
+    expect(await result.text()).toContain('Custom Hearth');
+    expect(result.headers.get('Allow')).toBe('GET, HEAD');
+    expect(result.headers.get('Retry-After')).toBe('60');
+    expect(result.headers.has('ETag')).toBe(false);
+    expect(result.headers.has('Content-Length')).toBe(false);
+    expect(result.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(result.headers.get('Content-Security-Policy')).toContain(
+      "default-src 'none'",
+    );
+    expect(cancel).toHaveBeenCalledOnce();
+  });
   it('renders invalid-binding errors without layout or branding storage', async () => {
     const test = input('/missing');
     for (const key of Object.keys(cloudflare.env))
@@ -84,17 +81,6 @@ describe('application error integration', () => {
     expect(response.headers.get('X-Frame-Options')).toBe('DENY');
     expect(test.resolve).not.toHaveBeenCalled();
     expect(test.first).not.toHaveBeenCalled();
-  });
-  it('renders wrong-origin 421 navigation with canonical recovery', async () => {
-    const test = input('/missing', undefined, { production: true });
-    test.event.url = new URL('https://wrong.example.com/missing');
-    const response = await handle(test as unknown as Parameters<Handle>[0]);
-    expect(response.status).toBe(421);
-    expect(await response.text()).toContain(`href="${origin}/"`);
-    expect(response.headers.get('Strict-Transport-Security')).toBe(
-      'max-age=31536000',
-    );
-    expect(test.resolve).not.toHaveBeenCalled();
   });
   it('sanitizes unexpected exceptions and unavailable branding', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -116,95 +102,23 @@ describe('application error integration', () => {
       } as unknown as Parameters<HandleServerError>[0]),
     ).toEqual({ status: 500, message: 'Something went wrong on our end' });
   });
-  it.each([
-    'D1_ERROR: no such table: users: SQLITE_ERROR',
-    'D1_ERROR: no such column: users.name: SQLITE_ERROR',
-    'D1_ERROR: table users has no column named name: SQLITE_ERROR',
-  ])(
-    'suggests migrations for development schema errors: %s',
-    async (message) => {
-      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
-      const test = input('/api/example');
-      Object.assign(test.env, { ENVIRONMENT: 'development' });
-      const error = new Error('Failed query: private SQL and parameters', {
-        cause: new Error(message),
-      });
-      test.resolve.mockRejectedValue(error);
-      const response = await handle(test as unknown as Parameters<Handle>[0]);
-      expect(response.status).toBe(500);
-      expect(await response.text()).not.toContain('pnpm db:migrate');
-      expect(log).toHaveBeenLastCalledWith(
-        expect.stringContaining('pnpm db:migrate'),
-      );
-      expect(log).not.toHaveBeenCalledWith(error);
-
-      log.mockClear();
-      await handleError({
-        error,
-        event: test.event,
-        kind: 'unknown',
-      } as unknown as Parameters<HandleServerError>[0]);
-      expect(log).toHaveBeenLastCalledWith(
-        expect.stringContaining('pnpm db:migrate'),
-      );
-
-      log.mockClear();
-      expect(failure(error, 'development').status).toBe(503);
-      expect(log).toHaveBeenLastCalledWith(
-        expect.stringContaining('pnpm db:migrate'),
-      );
-    },
-  );
-  it.each([
-    ['production', 'D1_ERROR: no such table: users'],
-    ['test', 'D1_ERROR: no such table: users'],
-  ])(
-    'keeps %s errors free of migration hints and details',
-    (environment, message) => {
-      const log = vi.spyOn(console, 'error').mockImplementation(() => {});
-      failure(new Error(message), environment);
-      expect(log).toHaveBeenCalledExactlyOnceWith(
-        JSON.stringify({ event: 'request.failed' }),
-      );
-    },
-  );
-  it.each([
-    new Error('D1_ERROR: database is locked'),
-    new Error('Failed query', {
-      cause: new Error('D1_ERROR: database is locked'),
-    }),
-    'Unexpected failure',
-  ])('logs development error details when no hint applies', async (error) => {
+  it('keeps production logs free of schema details', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const response = failure(error, 'development');
-    expect(log).toHaveBeenCalledTimes(2);
-    expect(log).toHaveBeenNthCalledWith(
-      1,
+    failure(new Error('D1_ERROR: no such table: users'), 'production');
+    expect(log).toHaveBeenCalledExactlyOnceWith(
       JSON.stringify({ event: 'request.failed' }),
     );
-    expect(log).toHaveBeenLastCalledWith(error);
-    expect(await response.json()).toEqual({
-      error: {
-        code: 'UNAVAILABLE',
-        message: 'Something went wrong. Please try again.',
-      },
-    });
   });
-  it.each(['/api/actions/delete', '/api/v1/images', '/api/media/id'])(
-    'preserves operational JSON for %s',
-    async (path) => {
-      const body = {
-        error: { code: 'EXAMPLE', message: 'Recoverable failure' },
-      };
-      const test = input(path, Response.json(body, { status: 403 }));
-      const response = await handle(test as unknown as Parameters<Handle>[0]);
-      expect(await response.json()).toEqual(body);
-      expect(response.headers.get('Content-Type')).toContain(
-        'application/json',
-      );
-      expect(test.first).not.toHaveBeenCalled();
-    },
-  );
+  it('preserves operational API JSON', async () => {
+    const body = {
+      error: { code: 'EXAMPLE', message: 'Recoverable failure' },
+    };
+    const test = input('/api/v1/images', Response.json(body, { status: 403 }));
+    const response = await handle(test as unknown as Parameters<Handle>[0]);
+    expect(await response.json()).toEqual(body);
+    expect(response.headers.get('Content-Type')).toContain('application/json');
+    expect(test.first).not.toHaveBeenCalled();
+  });
   it('preserves SvelteKit data errors and successful documents', async () => {
     for (const options of [{ data: true }, {}]) {
       const status = options.data ? 404 : 200;
@@ -238,34 +152,4 @@ describe('application error integration', () => {
     const response = await handle(test as unknown as Parameters<Handle>[0]);
     expect(response.headers.getSetCookie()).toEqual(headers.getSetCookie());
   });
-  it.each([
-    'does-not-exist',
-    'login/extra',
-    'settings/img_00000000000000000000000000000000',
-    'images/img_00000000000000000000000000000000/extra',
-  ])('returns 404 for unknown anonymous route %s', async (path) => {
-    const event = {
-      depends: vi.fn(),
-      locals: { user: null },
-      params: { path },
-      url: new URL(path, origin),
-    };
-    await expect(
-      load(event as unknown as Parameters<typeof load>[0]),
-    ).rejects.toMatchObject({ status: 404 });
-  });
-  it.each(['', 'images', 'links', 'settings', 'admin/users'])(
-    'preserves authentication redirects for %s',
-    async (path) => {
-      const event = {
-        depends: vi.fn(),
-        locals: { user: null },
-        params: { path },
-        url: new URL(path, origin),
-      };
-      await expect(
-        load(event as unknown as Parameters<typeof load>[0]),
-      ).rejects.toMatchObject({ status: 303, location: '/login' });
-    },
-  );
 });

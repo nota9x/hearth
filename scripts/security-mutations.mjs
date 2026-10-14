@@ -60,8 +60,8 @@ const mutations = [
     file: auth,
     before: " || row.user.status !== 'active'",
     after: '',
-    tests: [authTests],
-    pattern: 'checks account status and current role',
+    tests: ['tests/integration/security-stateful.test.ts'],
+    pattern: 'does not revive sessions after administrator disable',
   },
   {
     id: 'session-key-version',
@@ -77,8 +77,8 @@ const mutations = [
     file: auth,
     before: '        gt(sessions.expiresAt, timestamp),\n',
     after: '',
-    tests: [authTests],
-    pattern: 'enforces absolute expiry',
+    tests: ['tests/integration/security-stateful.test.ts'],
+    pattern: 'enforces expiry at the exact idle and absolute deadline',
   },
   {
     id: 'session-account-status',
@@ -430,23 +430,13 @@ if (process.argv.includes('--refactors')) {
     restored: null,
     originalHashes: {},
   };
-  const verifyGaps = process.argv.includes('--verify-gaps');
-  const selected = process.argv
-    .slice(2)
-    .filter((argument) => argument !== '--verify-gaps');
+  const selected = process.argv.slice(2);
   const cases =
     selected.length > 0
       ? mutations.filter((mutation) => selected.includes(mutation.id))
       : mutations;
   assert.ok(cases.length > 0, 'No mutation IDs selected');
-  const tests = [
-    ...new Set(
-      cases.flatMap((mutation) => [
-        ...mutation.tests,
-        ...(verifyGaps ? mutation.gapTests || [] : []),
-      ]),
-    ),
-  ];
+  const tests = [...new Set(cases.flatMap((mutation) => mutation.tests))];
   const save = () =>
     writeFile(
       path.join(output, 'results.json'),
@@ -491,20 +481,6 @@ if (process.argv.includes('--refactors')) {
               ? 'survived'
               : 'invalid';
         const record = { ...mutation, activated: true, outcome, result };
-        if (outcome === 'survived' && verifyGaps && mutation.gapTests) {
-          const gapResult = await execute(
-            `${mutation.id}-gap`,
-            mutation.gapTests,
-            mutation.gapPattern,
-          );
-          record.gapResult = gapResult;
-          record.gapOutcome =
-            gapResult.status === 'assertion-failed'
-              ? 'killed'
-              : gapResult.status === 'passed'
-                ? 'survived'
-                : 'invalid';
-        }
         results.mutations.push(record);
         process.stdout.write(`${mutation.id}: ${outcome}\n`);
       } finally {

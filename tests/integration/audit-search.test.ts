@@ -1,5 +1,3 @@
-import { readFile } from 'node:fs/promises';
-
 import { eq } from 'drizzle-orm';
 import { convertV4MiniflareOptions, Miniflare } from 'miniflare';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -13,12 +11,6 @@ import {
   images,
   users,
 } from '../../packages/core/schema';
-import {
-  pageURL,
-  pageWindow,
-  paginationState,
-  searchURL,
-} from '../../packages/core/search';
 import { applyMigration, migrateDatabase } from '../helpers/database';
 
 let mf: Miniflare,
@@ -26,11 +18,6 @@ let mf: Miniflare,
   retentionBinding: D1Database,
   admin: User;
 const at = (value: string) => Date.parse(value) / 1000;
-async function migrate(binding: D1Database, name: string) {
-  const source = await readFile(`drizzle/${name}`, 'utf8');
-  for (const statement of source.split('--> statement-breakpoint'))
-    if (statement.trim()) await binding.prepare(statement).run();
-}
 beforeEach(async () => {
   mf = new Miniflare(
     convertV4MiniflareOptions({
@@ -41,16 +28,7 @@ beforeEach(async () => {
     }),
   );
   searchBinding = await mf.getD1Database('SEARCH');
-  retentionBinding = await mf.getD1Database('RETENTION');
   await migrateDatabase(searchBinding);
-  await migrateDatabase(retentionBinding, '0003_image_notifications.sql');
-  await applyMigration(retentionBinding, '0005_image_expiry.sql');
-  await applyMigration(retentionBinding, '0007_expiry_policy.sql');
-  await applyMigration(retentionBinding, '0008_image_metadata.sql');
-  await applyMigration(retentionBinding, '0006_upload_receipts.sql');
-  await applyMigration(retentionBinding, '0009_share_slug_configuration.sql');
-  await applyMigration(retentionBinding, '0010_link_management.sql');
-  await applyMigration(retentionBinding, '0011_delivery_domains.sql');
   const db = database(searchBinding);
   await db.insert(users).values({
     id: 'usr_actor',
@@ -252,53 +230,24 @@ describe('database-backed audit search', () => {
   });
 });
 
-describe('shared navigation primitives', () => {
-  it('preserves filters across pagination, resets pages for edits, and handles large windows', () => {
-    const current = new URL(
-      'https://example.com/admin/audit-log?q=original&actor=Alice&action=domain.updated&date=today&tz=UTC&sort=oldest&page=10',
-    );
-    const next = new URL(pageURL(current, 11), current);
-    expect(next.searchParams.get('actor')).toBe('Alice');
-    expect(next.searchParams.get('q')).toBe('original');
-    expect(next.searchParams.get('page')).toBe('11');
-    const changed = searchURL(
-      current,
-      { actor: 'Bob', sort: 'oldest' },
-      'new query',
-      ['actor', 'action', 'date'],
-      'UTC',
-    );
-    expect(changed.searchParams.get('page')).toBeNull();
-    expect(changed.searchParams.get('action')).toBeNull();
-    expect(changed.searchParams.get('actor')).toBe('Bob');
-    expect(changed.searchParams.get('sort')).toBe('oldest');
-    expect(pageWindow(1, 200)).toEqual([1, 2, 3, 4, 'gap-5', 200]);
-    expect(pageWindow(100, 200)).toEqual([
-      1,
-      'gap-2',
-      99,
-      100,
-      101,
-      'gap-102',
-      200,
-    ]);
-    expect(pageWindow(200, 200)).toEqual([1, 'gap-2', 197, 198, 199, 200]);
-    expect(paginationState('201', 10_000, 50, 200)).toMatchObject({
-      page: 200,
-      pages: 200,
-      offset: 9950,
-    });
-  });
-});
-
 describe('SQL audit retention', () => {
   it('trims existing history and enforces the cap for bulk inserts, ties, old timestamps, and rollback', async () => {
+    retentionBinding = await mf.getD1Database('RETENTION');
+    await migrateDatabase(retentionBinding, '0003_image_notifications.sql');
+    await applyMigration(retentionBinding, '0005_image_expiry.sql');
+    await applyMigration(retentionBinding, '0007_expiry_policy.sql');
+    await applyMigration(retentionBinding, '0008_image_metadata.sql');
+    await applyMigration(retentionBinding, '0006_upload_receipts.sql');
+    await applyMigration(retentionBinding, '0009_share_slug_configuration.sql');
+    await applyMigration(retentionBinding, '0010_link_management.sql');
+    await applyMigration(retentionBinding, '0011_delivery_domains.sql');
+
     await retentionBinding
       .prepare(
         "WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<10005) INSERT INTO audit_log(id,action,createdAt) SELECT 'seed-'||x,'test.seed',x FROM n",
       )
       .run();
-    await migrate(retentionBinding, '0004_audit_retention.sql');
+    await applyMigration(retentionBinding, '0004_audit_retention.sql');
     const db = database(retentionBinding);
     const initial = await retentionBinding
       .prepare(

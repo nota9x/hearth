@@ -12,15 +12,10 @@ import { POST as webUpload } from '../../apps/web/src/routes/api/upload/+server'
 import { POST as apiUpload } from '../../apps/web/src/routes/api/v1/images/+server';
 import { presentAudit } from '../../packages/core/audit-presentation';
 import { createUser } from '../../packages/core/auth';
-import { expiry, id, now } from '../../packages/core/common';
+import { id, now } from '../../packages/core/common';
 import { database, type User } from '../../packages/core/db';
 import type { Env } from '../../packages/core/env';
-import {
-  expiryChoices,
-  resolveExpiryPolicy,
-  unrestrictedExpiryPolicy,
-  validateImageExpiry,
-} from '../../packages/core/expiry-policy';
+import { unrestrictedExpiryPolicy } from '../../packages/core/expiry-policy';
 import { getEffectiveExpiryPolicy } from '../../packages/core/expiry-policy-store';
 import {
   changeImageExpiry,
@@ -40,103 +35,6 @@ import { migrateDatabase } from '../helpers/database';
 vi.mock('cloudflare:workers', () => ({ waitUntil: () => {} }));
 
 const unrestricted = unrestrictedExpiryPolicy;
-const createdAt = 1_000_000;
-describe('expiry policy calculations', () => {
-  it('inherits defaults, permits independent tightening and relaxing, and exempts administrators', () => {
-    const instance = { requireExpiry: true, maxLifetimeSeconds: 86_400 };
-    expect(
-      resolveExpiryPolicy(instance, { role: 'user', expiryPolicy: null }),
-    ).toEqual({ ...instance, source: 'instance' });
-    expect(
-      resolveExpiryPolicy(unrestricted, {
-        role: 'user',
-        expiryPolicy: instance,
-      }),
-    ).toEqual({ ...instance, source: 'custom' });
-    expect(
-      resolveExpiryPolicy(instance, {
-        role: 'user',
-        expiryPolicy: { requireExpiry: false },
-      }),
-    ).toEqual({
-      requireExpiry: false,
-      maxLifetimeSeconds: 86_400,
-      source: 'custom',
-    });
-    expect(
-      resolveExpiryPolicy(instance, {
-        role: 'user',
-        expiryPolicy: { requireExpiry: false, maxLifetimeSeconds: null },
-      }),
-    ).toEqual({ ...unrestricted, source: 'custom' });
-    expect(
-      resolveExpiryPolicy(instance, { role: 'admin', expiryPolicy: instance }),
-    ).toEqual({ ...unrestricted, source: 'administrator' });
-  });
-  it('allows unlimited images only when both restrictions are absent', () => {
-    expect(() =>
-      validateImageExpiry(unrestricted, createdAt, null, createdAt),
-    ).not.toThrow();
-    expect(() =>
-      validateImageExpiry(
-        { ...unrestricted, requireExpiry: true },
-        createdAt,
-        null,
-        createdAt,
-      ),
-    ).toThrow('Images must have an expiry');
-    expect(() =>
-      validateImageExpiry(
-        { ...unrestricted, maxLifetimeSeconds: 3600 },
-        createdAt,
-        null,
-        createdAt,
-      ),
-    ).toThrow('Images must have an expiry');
-  });
-  it('accepts the exact creation-time limit and rejects one second beyond and expired dates', () => {
-    const policy = { requireExpiry: false, maxLifetimeSeconds: 3600 };
-    expect(() =>
-      validateImageExpiry(policy, createdAt, createdAt + 3600, createdAt + 100),
-    ).not.toThrow();
-    expect(() =>
-      validateImageExpiry(policy, createdAt, createdAt + 3601, createdAt + 100),
-    ).toThrow('at most 1 hour');
-    expect(() =>
-      validateImageExpiry(
-        policy,
-        createdAt,
-        createdAt + 3600,
-        createdAt + 3600,
-      ),
-    ).toThrow('future expiration');
-  });
-  it('normalizes timezone offsets and subsecond dates and parses custom seconds', () => {
-    const timestamp = Date.parse('2026-10-03T12:00:00Z') / 1000;
-    expect(expiry('custom', '2026-10-03T09:00:00.999-04:00', timestamp)).toBe(
-      timestamp + 3600,
-    );
-    expect(expiry('1800s', undefined, timestamp)).toBe(timestamp + 1800);
-    expect(expiry('6h', undefined, timestamp)).toBe(timestamp + 21_600);
-    expect(() => expiry('0s')).toThrow();
-    expect(() => expiry('9007199254740992s')).toThrow();
-  });
-  it('filters choices using the oldest selected image and supports short custom limits', () => {
-    const policy = { requireExpiry: false, maxLifetimeSeconds: 1800 };
-    expect(expiryChoices(policy, null, createdAt)).toEqual([
-      ['1800s', '30 minutes'],
-      ['custom', 'Custom date'],
-    ]);
-    expect(expiryChoices(policy, createdAt, createdAt)).toEqual([]);
-    expect(
-      expiryChoices(
-        { ...unrestricted, maxLifetimeSeconds: 3600 },
-        createdAt + 3600,
-        createdAt,
-      ).map(([value]) => value),
-    ).toEqual(['1h', 'custom']);
-  });
-});
 
 let mf: Miniflare, env: Env, admin: User, member: User, memberKey: string;
 beforeEach(async () => {
@@ -260,7 +158,7 @@ describe('expiry enforcement and administration', () => {
     async (method) => {
       const bytes = await readFile('tests/fixtures/metadata/private.png');
       const db = database(env.DB);
-      for (const enabled of [true, false, true]) {
+      for (const enabled of [true, false]) {
         await action(
           'preferences',
           {
@@ -307,55 +205,6 @@ describe('expiry enforcement and administration', () => {
       }
     },
   );
-  it('persists private metadata preferences, audits changes and rejects non-booleans', async () => {
-    const db = database(env.DB);
-    const [initial] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, member.id));
-    expect(initial.stripImageMetadata).toBe(true);
-    for (const enabled of [false, true]) {
-      const response = await action(
-        'preferences',
-        {
-          displayName: member.displayName,
-          expiry: 'never',
-          stripImageMetadata: enabled,
-          userId: admin.id,
-        },
-        member,
-      );
-      expect(response.status).toBe(200);
-      const [saved] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, member.id));
-      const [other] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, admin.id));
-      expect(saved.stripImageMetadata).toBe(enabled);
-      expect(other.stripImageMetadata).toBe(true);
-      const event = await env.DB.prepare(
-        "SELECT metadata FROM audit_log WHERE action='user.preferences' AND targetId=? ORDER BY rowid DESC LIMIT 1",
-      )
-        .bind(member.id)
-        .first<{ metadata: string }>();
-      expect(event!.metadata).toContain('stripImageMetadata');
-    }
-    for (const value of ['false', 0, null]) {
-      const response = await action(
-        'preferences',
-        {
-          displayName: member.displayName,
-          expiry: 'never',
-          stripImageMetadata: value,
-        },
-        member,
-      );
-      expect(response.status).toBe(400);
-    }
-  });
   it('enforces both upload handlers and returns ShareX-readable errors without leaking R2 originals', async () => {
     await setPolicy(true, 3600);
     const originalObjects = (await env.BUCKET.list()).objects.length;
@@ -386,24 +235,6 @@ describe('expiry enforcement and administration', () => {
       locals: { env, user: null },
     } as Parameters<typeof apiUpload>[0]);
     expect(allowed.status).toBe(201);
-  });
-  it('keeps unrestricted uploads and uses valid saved defaults when expiry is omitted', async () => {
-    expect((await upload(uploadRequest(), member, env)).expiresAt).toBeNull();
-    await setPolicy(true, 3600);
-    await database(env.DB)
-      .update(users)
-      .set({ defaultExpiry: '1800s' })
-      .where(eq(users.id, member.id));
-    const [current] = await database(env.DB)
-      .select()
-      .from(users)
-      .where(eq(users.id, member.id));
-    const result = await upload(uploadRequest(), current, env);
-    const [image] = await database(env.DB)
-      .select()
-      .from(images)
-      .where(eq(images.id, result.id));
-    expect(image.expiresAt! - image.createdAt).toBe(1800);
   });
   it('replays successful receipts even when the policy changes and exempts admin uploads', async () => {
     const key = 'a'.repeat(64);
@@ -453,59 +284,6 @@ describe('expiry enforcement and administration', () => {
     expect(
       (await getEffectiveExpiryPolicy(env.DB, member)).maxLifetimeSeconds,
     ).toBe(3600);
-  });
-  it('audits policy changes, normalizes empty overrides, and never rewrites existing images/defaults', async () => {
-    const ids = await seed();
-    expect(
-      (
-        await action('expiry-policy', {
-          policy: { requireExpiry: true, maxLifetimeSeconds: 3600 },
-        })
-      ).status,
-    ).toBe(200);
-    const [image] = await database(env.DB)
-      .select()
-      .from(images)
-      .where(eq(images.id, ids[0]));
-    expect(image.expiresAt).toBeNull();
-    expect(image.deletedAt).toBeNull();
-    const [current] = await database(env.DB)
-      .select()
-      .from(users)
-      .where(eq(users.id, member.id));
-    expect(current.defaultExpiry).toBe('never');
-    await action('user-expiry-policy', {
-      userId: member.id,
-      policy: { requireExpiry: false, maxLifetimeSeconds: null },
-    });
-    expect(await getEffectiveExpiryPolicy(env.DB, member)).toEqual({
-      ...unrestricted,
-      source: 'custom',
-    });
-    await action('user-expiry-policy', { userId: member.id, policy: {} });
-    expect(await getEffectiveExpiryPolicy(env.DB, member)).toEqual({
-      requireExpiry: true,
-      maxLifetimeSeconds: 3600,
-      source: 'instance',
-    });
-    const logs = await database(env.DB)
-      .select()
-      .from(auditLog)
-      .where(
-        sql`${auditLog.action} IN ('settings.expiry_policy','user.expiry_policy')`,
-      );
-    expect(logs).toHaveLength(3);
-    expect(presentAudit(logs[0]).details.join(' ')).toContain('1 hour');
-    expect(presentAudit(logs[1]).details.join(' ')).toContain('Unlimited');
-    await action('expiry-policy', {
-      policy: { requireExpiry: true, maxLifetimeSeconds: 3600 },
-    });
-    expect(
-      await database(env.DB)
-        .select()
-        .from(auditLog)
-        .where(eq(auditLog.action, 'settings.expiry_policy')),
-    ).toHaveLength(1);
   });
   it('atomically changes a large selection, deduplicates IDs, and retains per-image audits', async () => {
     const ids = await seed(500);

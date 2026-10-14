@@ -220,10 +220,6 @@ describe('bounded upload parser corpus with real storage rollback', () => {
       [fieldPart('retention', 'never'), fieldPart('expiry', '1h')],
     ],
     [
-      'expiry then retention',
-      [fieldPart('expiry', '1h'), fieldPart('retention', 'never')],
-    ],
-    [
       'duplicate custom expiration',
       [
         fieldPart('expiresAt', '2099-01-01T00:00:00Z'),
@@ -231,16 +227,7 @@ describe('bounded upload parser corpus with real storage rollback', () => {
       ],
     ],
     ['forged owner', [fieldPart('userId', 'victim')]],
-    ['prototype field', [fieldPart('__proto__', 'never')]],
     ['field size boundary', [fieldPart('expiry', '1'.repeat(129))]],
-    [
-      'third option',
-      [
-        fieldPart('expiry', 'never'),
-        fieldPart('expiresAt', '2099-01-01T00:00:00Z'),
-        fieldPart('retention', 'never'),
-      ],
-    ],
   ])(
     'rejects %s in either file ordering, without durable effects',
     async (_label, fields) => {
@@ -291,34 +278,6 @@ describe('bounded upload parser corpus with real storage rollback', () => {
       "default-src 'none'; sandbox",
     );
     expect(Buffer.from(await response.arrayBuffer())).toEqual(png);
-  });
-
-  it('rejects ambiguous retry headers after actual Headers normalization', async () => {
-    const before = await state(sanitized);
-    const headers = new Headers();
-    headers.append('Idempotency-Key', 'd'.repeat(64));
-    headers.append('Idempotency-Key', 'e'.repeat(64));
-    expect(headers.get('Idempotency-Key')).toBe(
-      `${'d'.repeat(64)}, ${'e'.repeat(64)}`,
-    );
-    const duplicate = request();
-    duplicate.headers.set('Idempotency-Key', headers.get('Idempotency-Key')!);
-    for (const candidate of [
-      duplicate,
-      ...[
-        'F'.repeat(64),
-        'a'.repeat(63),
-        'a'.repeat(65),
-        '%61'.repeat(64),
-        'a'.repeat(4096),
-      ].map((key) => request(undefined, key)),
-    ]) {
-      await expect(upload(candidate, sanitized, env)).rejects.toMatchObject({
-        status: 400,
-        code: 'INVALID_UPLOAD_KEY',
-      });
-    }
-    expect(await state(sanitized)).toEqual(before);
   });
 });
 

@@ -132,7 +132,7 @@ For a focused test:
 
 ```sh
 pnpm exec vitest run tests/unit/core.test.ts
-pnpm exec vitest run tests/unit/core.test.ts -t "generates multipart bearer request"
+pnpm exec vitest run tests/unit/core.test.ts -t "normalizes custom addresses"
 ```
 
 Use `pnpm test:unit`, `pnpm test:integration`, or `pnpm test` for broader Vitest

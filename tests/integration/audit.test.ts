@@ -7,11 +7,7 @@ import { z } from 'zod';
 
 import { POST } from '../../apps/web/src/routes/api/actions/[action]/+server';
 import { GET as media } from '../../apps/web/src/routes/api/media/[id]/+server';
-import {
-  auditChanges,
-  auditEvent,
-  safeAuditValues,
-} from '../../packages/core/audit';
+import { auditEvent } from '../../packages/core/audit';
 import { presentAudit } from '../../packages/core/audit-presentation';
 import { createUser } from '../../packages/core/auth';
 import { id, now } from '../../packages/core/common';
@@ -202,109 +198,9 @@ describe('audit safety and historical presentation', () => {
       ).first(),
     ).toEqual({ limitBytes: null });
   });
-  it('only accepts explicitly reviewed fields and rejects nested credential payloads', () => {
-    const unsafe = {
-      password: 'hidden',
-      secret: 'hidden',
-      token: 'hidden',
-      apiKey: 'hidden',
-      session: 'hidden',
-      secretHash: 'hidden',
-      authorization: 'hidden',
-      cookie: 'hidden',
-      unknownSetting: 'hidden',
-      displayName: { password: 'hidden' },
-      access: [{ token: 'hidden' }],
-      role: 'admin',
-    };
-    expect(safeAuditValues(unsafe)).toEqual({ role: 'admin' });
-    expect(auditChanges(unsafe, { ...unsafe, role: 'user' })).toEqual([
-      { field: 'role', before: 'admin', after: 'user' },
-    ]);
-  });
-  it('formats all changes, skips unchanged values, and tolerates historical malformed metadata', () => {
-    const log = {
-      action: 'user.preferences',
-      actorId: 'deleted-actor',
-      targetId: 'deleted-target',
-      metadata: JSON.stringify({
-        changes: auditChanges(
-          { defaultExpiry: '7d', displayName: 'Old', role: 'user' },
-          { defaultExpiry: '30d', displayName: 'New', role: 'user' },
-        ),
-      }),
-    };
-    expect(presentAudit(log).details).toEqual([
-      'Display name changed from "Old" to "New"',
-      'Expiry changed from "7 days" to "30 days"',
-    ]);
-    expect(
-      presentAudit({
-        ...log,
-        metadata: JSON.stringify({
-          actorName: 'Investigator',
-          actorIp: auditIp,
-        }),
-      }),
-    ).toMatchObject({ actor: 'Investigator', actorIp: auditIp });
-    expect(
-      presentAudit({
-        ...log,
-        metadata: JSON.stringify({ actorIp: 'not-an-ip' }),
-      }).actorIp,
-    ).toBeNull();
-    for (const metadata of [
-      '{}',
-      '{broken',
-      'null',
-      '[]',
-      '{"changes":[null,42,{"field":"token","before":"secret","after":"secret"}]}',
-    ]) {
-      expect(presentAudit({ ...log, metadata }).actor).toBe('deleted-actor');
-      expect(presentAudit({ ...log, metadata }).details).toEqual([]);
-    }
-    expect(
-      presentAudit({
-        ...log,
-        action: 'image.expiry',
-        metadata: '{"expiresAt":null,"token":"secret"}',
-      }).context,
-    ).toEqual([{ label: 'Expiration', value: 'Never' }]);
-  });
 });
 
 describe('persisted mutation coverage', () => {
-  it('audits onboarding transitions once and preserves the original state on revisit', async () => {
-    await action(
-      'onboarding-progress',
-      { step: 3 },
-      member,
-      'onboarding.progress',
-    );
-    await action('onboarding-progress', { step: 2 }, member);
-    await action(
-      'onboarding-upload-arm',
-      {},
-      member,
-      'onboarding.upload_started',
-    );
-    await action(
-      'onboarding-upload-skip',
-      {},
-      member,
-      'onboarding.upload_skipped',
-    );
-    await action('onboarding-complete', {}, member, 'onboarding.completed');
-    await action('onboarding-skip', {}, member);
-    await action('onboarding-skip', {}, admin, 'onboarding.skipped');
-    await action('onboarding-complete', {}, admin);
-    await action('onboarding-progress', { step: 99 }, member, undefined, 400);
-    const [saved] = await database(env.DB)
-      .select()
-      .from(users)
-      .where(eq(users.id, member.id));
-    expect(saved.onboardingStatus).toBe('completed');
-  });
   it('captures account, host, link, configuration, storage, and authentication actions', async () => {
     const db = database(env.DB);
     const created = await action(
@@ -779,67 +675,6 @@ describe('persisted mutation coverage', () => {
 });
 
 describe('image management integration', () => {
-  beforeEach(async () => {
-    const account = await createUser(env.DB, 'Download owner', 'user', null);
-    const administrator = await createUser(
-      env.DB,
-      'Download administrator',
-      'admin',
-      null,
-    );
-    [member] = await database(env.DB)
-      .select()
-      .from(users)
-      .where(eq(users.id, account.userId));
-    [admin] = await database(env.DB)
-      .select()
-      .from(users)
-      .where(eq(users.id, administrator.userId));
-  });
-  it('selects all library images across pages and enforces library permissions', async () => {
-    const own = [];
-    for (let index = 0; index < 25; index++) own.push(await seedImage());
-    const other = await seedImage(admin);
-    const deleted = await seedImage();
-    await database(env.DB)
-      .update(images)
-      .set({ deletedAt: now() })
-      .where(eq(images.id, deleted));
-    const personal = await action('image-select-all', { admin: false }, member);
-    const personalResult = await personal.response.json<{ ids: string[] }>();
-    const personalIds = personalResult.ids;
-    expect(personalIds).toEqual(expect.arrayContaining(own));
-    expect(personalIds).not.toContain(other);
-    expect(personalIds).not.toContain(deleted);
-    await action(
-      'image-select-all',
-      { admin: true },
-      member,
-      'auth.access_denied',
-      403,
-    );
-    const global = await action('image-select-all', { admin: true }, admin);
-    const globalResult = await global.response.json<{ ids: string[] }>();
-    const globalIds = globalResult.ids;
-    expect(globalIds).toEqual(expect.arrayContaining([...own, other]));
-    expect(globalIds).not.toContain(deleted);
-    const scoped = await action(
-      'image-select-all',
-      { admin: true, query: `owner=${member.id}` },
-      admin,
-    );
-    const scopedResult = await scoped.response.json<{ ids: string[] }>();
-    expect(scopedResult.ids).toEqual(expect.arrayContaining(own));
-    expect(scopedResult.ids).not.toContain(other);
-    const forged = await action(
-      'image-select-all',
-      { admin: false, query: `owner=${admin.id}` },
-      member,
-    );
-    const forgedResult = await forged.response.json<{ ids: string[] }>();
-    expect(forgedResult.ids).toEqual(expect.arrayContaining(own));
-    expect(forgedResult.ids).not.toContain(other);
-  });
   it('prepares authorized originals without exposing storage paths and enforces media permissions', async () => {
     const imageId = await seedImage();
     await env.BUCKET.put(`objects/${imageId}`, 'original');

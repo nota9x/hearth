@@ -18,7 +18,7 @@ manifests. Use Node 24 (CI) and the pnpm version pinned in `package.json`; depen
 - Format touched files: `pnpm exec prettier --write AGENTS.md` (substitute paths).
   `pnpm format:check` checks all; `pnpm format` rewrites all.
 - Focused test: `pnpm exec vitest run tests/unit/core.test.ts`; add
-  `-t "generates multipart bearer request"` to select a case. All unit/integration
+  `-t "normalizes custom addresses"` to select a case. All unit/integration
   tests: `pnpm test`.
 - Browser: install Chromium (`pnpm exec playwright install chromium`), run
   `pnpm build`, then `pnpm exec playwright test tests/browser/domains.spec.ts`

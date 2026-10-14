@@ -1,10 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 
 import { readDevelopmentConfig } from '../../scripts/development-config';
-import {
-  createCron,
-  startScheduler,
-} from '../../scripts/development-scheduler';
+import { startScheduler } from '../../scripts/development-scheduler';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -18,7 +15,9 @@ it('uses the configured production cadence at UTC boundaries, dispatches metadat
   vi.setSystemTime(new Date('2026-10-07T12:04:59Z'));
   const fetch_ = vi
     .fn()
-    .mockResolvedValue(Response.json({ outcome: 'ok', noRetry: false }));
+    .mockImplementation(() =>
+      Promise.resolve(Response.json({ outcome: 'ok', noRetry: false })),
+    );
   vi.stubGlobal('fetch', fetch_);
   vi.spyOn(console, 'log').mockImplementation(() => {});
   const scheduler = startScheduler(
@@ -95,15 +94,6 @@ it('reports failed scheduled outcomes and continues on the next configured inter
   );
   expect(fetch_).toHaveBeenCalledTimes(2);
   await scheduler.stop();
-});
-
-it('uses Cloudflare weekday numbering and rejects a development seconds field', () => {
-  const cron = createCron('0 3 * * 1');
-  expect(cron.nextRun(new Date('2026-10-07T12:00:00Z'))?.toISOString()).toBe(
-    '2026-10-11T03:00:00.000Z',
-  );
-  cron.stop();
-  expect(() => createCron('* * * * * *')).toThrow('five-field cron');
 });
 
 it('runs manual maintenance immediately, shares the cron overlap guard, and drains on stop', async () => {

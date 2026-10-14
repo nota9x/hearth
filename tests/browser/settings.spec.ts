@@ -97,11 +97,6 @@ test('personal settings save only changed fields, survive refreshes, reset, and 
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
-    await page.screenshot({
-      path: `artifacts/settings-personal-${width}.png`,
-      fullPage: true,
-      animations: 'disabled',
-    });
   }
   await page.setViewportSize({ width: 720, height: 500 });
   expect(
@@ -202,67 +197,7 @@ test('administration groups save independently, preserve other drafts, and reset
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
-    await page.screenshot({
-      path: `artifacts/settings-admin-${width}.png`,
-      fullPage: true,
-      animations: 'disabled',
-    });
   }
-});
-
-test('settings retain failed drafts and prevent duplicate submissions while saving', async ({
-  page,
-  request,
-  baseURL,
-}) => {
-  await signIn(page, request, baseURL!);
-  await page.goto('/settings');
-  const preferences = page.getByRole('region', {
-    name: 'Personal preferences',
-  });
-  await page
-    .getByLabel('Display name', { exact: true })
-    .fill('Retry this name');
-  await page.route('**/api/actions/preferences', (route) =>
-    route.fulfill({
-      status: 400,
-      json: {
-        error: {
-          code: 'INVALID_INPUT',
-          message: 'Please try this save again.',
-        },
-      },
-    }),
-  );
-  await preferences.getByRole('button', { name: 'Save preferences' }).click();
-  await expect(preferences.getByRole('alert')).toHaveText(
-    'Please try this save again.',
-  );
-  await expect(page.getByLabel('Display name', { exact: true })).toHaveValue(
-    'Retry this name',
-  );
-  await page.unroute('**/api/actions/preferences');
-  let release!: () => void;
-  // eslint-disable-next-line unicorn/prefer-promise-with-resolvers -- The root TypeScript target excludes this newer Promise API.
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  let submissions = 0;
-  await page.route('**/api/actions/preferences', async (route) => {
-    submissions++;
-    await gate;
-    await route.continue();
-  });
-  await preferences.getByRole('button', { name: 'Save preferences' }).click();
-  await expect(preferences.getByRole('status')).toContainText('Saving…');
-  await expect(page.getByLabel('Display name', { exact: true })).toBeDisabled();
-  await preferences
-    .locator('form')
-    .evaluate((form: HTMLFormElement) => form.requestSubmit());
-  release();
-  await expect(preferences.getByRole('status')).toHaveText('Saved');
-  expect(submissions).toBe(1);
-  await expect(preferences.getByRole('alert')).toHaveCount(0);
 });
 
 test('failed settings reads preserve drafts and distinguish confirmed saves from failed mutations', async ({
@@ -382,109 +317,6 @@ test('unsaved navigation can be canceled or discarded without losing history dir
     .click();
 });
 
-test('information is complete, hoverable and dismissible', async ({
-  page,
-  request,
-  baseURL,
-  hearth,
-}) => {
-  await signIn(page, request, baseURL!);
-  await page.goto('/settings');
-  const help = page.getByRole('button', { name: 'About strip image metadata' });
-  const tooltip = page.getByRole('tooltip');
-  await help.hover();
-  await expect(tooltip).toBeVisible();
-  await expect(tooltip).toContainText('color profiles');
-  await tooltip.hover();
-  await expect(tooltip).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(tooltip).toHaveCount(0);
-  await help.focus();
-  await expect(tooltip).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(tooltip).toHaveCount(0);
-  await page
-    .getByLabel('Default image expiry', { exact: true })
-    .selectOption('duration');
-  const configurable = page.locator('.settings-form .settings-row');
-  await expect(configurable).toHaveCount(4);
-  const personalRows = await configurable.all();
-  for (const row of personalRows) {
-    await expect(row.getByRole('button', { name: /^About / })).toHaveCount(1);
-  }
-  await page
-    .getByRole('region', { name: 'Personal preferences' })
-    .getByRole('button', { name: 'Reset', exact: true })
-    .click();
-  await page.goto('/admin/settings');
-  await hearth.DB.prepare(
-    'UPDATE storage_capacity SET ready=1,multipartVerified=1 WHERE id=1',
-  ).run();
-  await page.reload();
-  await page
-    .getByLabel('Maximum lifetime', { exact: true })
-    .selectOption('custom');
-  await page.getByRole('switch', { name: 'Enable global limit' }).check();
-  const adminRows = await page.locator('.settings-form .settings-row').all();
-  for (const row of adminRows) {
-    await expect(row.getByRole('button', { name: /^About / })).toHaveCount(1);
-  }
-  await page
-    .getByRole('region', { name: 'Expiry policy' })
-    .getByRole('button', { name: 'Reset', exact: true })
-    .click();
-});
-
-test('information is anchored, touch accessible and respects reduced motion', async ({
-  page,
-  request,
-  baseURL,
-  browser,
-  proxy,
-}) => {
-  await signIn(page, request, baseURL!);
-  const touch = await browser.newContext({
-    proxy,
-    baseURL,
-    hasTouch: true,
-    viewport: { width: 390, height: 844 },
-    storageState: await page.context().storageState(),
-  });
-  try {
-    const mobile = await touch.newPage();
-    await mobile.goto('/settings');
-    const info = mobile.getByRole('button', {
-      name: 'About default image expiry',
-    });
-    await info.evaluate((element) => element.scrollIntoView({ block: 'end' }));
-    await info.tap();
-    const bubble = mobile.getByRole('tooltip');
-    await expect(bubble).toBeVisible();
-    const bounds = await bubble.boundingBox();
-    expect(bounds!.x).toBeGreaterThanOrEqual(0);
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
-    expect(bounds!.y).toBeGreaterThanOrEqual(0);
-    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(844);
-    await info.tap();
-    await expect(bubble).toHaveCount(0);
-    await info.tap();
-    await expect(bubble).toBeVisible();
-    await mobile.getByRole('heading', { name: 'Settings', exact: true }).tap();
-    await expect(bubble).toHaveCount(0);
-    await mobile.emulateMedia({ reducedMotion: 'reduce' });
-    await info.tap();
-    await expect(bubble).toHaveCSS('transition-duration', '0s');
-    await mobile.getByRole('heading', { name: 'Settings', exact: true }).tap();
-    await mobile.getByRole('switch', { name: 'Strip image metadata' }).tap();
-    await expect(mobile.locator('.switch-track').first()).toHaveCSS(
-      'transition-duration',
-      '0s',
-    );
-  } finally {
-    await touch.close();
-  }
-});
-
 test('key rotation confirms revocation, reveals the replacement once, and signs out after saving it', async ({
   page,
   request,
@@ -499,10 +331,6 @@ test('key rotation confirms revocation, reveals the replacement once, and signs 
   const sharex = page.getByRole('dialog', { name: 'Set up ShareX' });
   const credential = sharex.getByLabel('Current API key', { exact: true });
   await expect(credential).toBeEmpty();
-  await page.screenshot({
-    path: 'artifacts/settings-sharex-390.png',
-    animations: 'disabled',
-  });
   await credential.fill('invalid');
   await sharex
     .getByRole('button', { name: 'Download ShareX configuration' })

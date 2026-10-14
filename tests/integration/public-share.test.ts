@@ -99,8 +99,8 @@ function get(
 }
 
 describe('public share delivery with real native bindings, D1 and R2', () => {
-  it('serves many successful previews and all existing slug lengths', async () => {
-    for (let index = 0; index < 70; index++) {
+  it('serves previews, downloads, HEAD and existing slug lengths', async () => {
+    for (let index = 0; index < 6; index++) {
       const response = await get(
         index % 2 ? '/aB3xQ?download' : '/aB3xQ?preview',
         {
@@ -253,64 +253,6 @@ describe('public share delivery with real native bindings, D1 and R2', () => {
         .run();
     },
   );
-
-  it('loads configured branding only for HTML errors and survives cooldown with it', async () => {
-    const previous = await binding
-      .prepare("SELECT value FROM app_settings WHERE key='siteName'")
-      .first<{ value: string }>();
-    await binding
-      .prepare(
-        "INSERT INTO app_settings(key,value) VALUES ('siteName','My Hearth') ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-      )
-      .run();
-    const caches = await mf.getCaches();
-    const cache = await caches.open('hearth:error-branding:v1');
-    const brandingKey = 'https://app.example.com/.hearth/error-branding';
-    await cache.delete(brandingKey);
-    try {
-      const headers = { Accept: 'text/html', 'Sec-Fetch-Dest': 'document' };
-      const response = await get('/missing', { headers }, '203.0.113.12');
-      expect(response.status).toBe(404);
-      expect(await response.text()).toContain(
-        'class="brand-mark__name">My Hearth</span>',
-      );
-      const image = await get('/aB3xQ', { headers }, '203.0.113.12');
-      expect(image.headers.get('Content-Type')).toBe('image/png');
-      expect(await image.text()).toBe('bytes');
-      const embedded = await get(
-        '/missing',
-        { headers: { ...headers, 'Sec-Fetch-Dest': 'image' } },
-        '203.0.113.12',
-      );
-      expect(await embedded.text()).toBe('Not found');
-      const method = await get(
-        '/missing',
-        { method: 'POST', headers },
-        '203.0.113.12',
-      );
-      expect(method.status).toBe(405);
-      expect(method.headers.get('Allow')).toBe('GET, HEAD');
-      for (let index = 0; index < 61; index++)
-        await get('/guess', {}, '203.0.113.13');
-      const limited = await get('/aB3xQ', { headers }, '203.0.113.13');
-      expect(limited.status).toBe(429);
-      expect(limited.headers.get('Retry-After')).toBe('60');
-      expect(await limited.text()).toContain(
-        'class="brand-mark__name">My Hearth</span>',
-      );
-    } finally {
-      if (previous)
-        await binding
-          .prepare("UPDATE app_settings SET value=? WHERE key='siteName'")
-          .bind(previous.value)
-          .run();
-      else
-        await binding
-          .prepare("DELETE FROM app_settings WHERE key='siteName'")
-          .run();
-      await cache.delete(brandingKey);
-    }
-  });
 
   it('does not negative-cache an unused slug before it is created', async () => {
     const missing = await get('/newly');

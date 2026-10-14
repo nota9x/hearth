@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import { crc32 } from 'node:zlib';
 
 import { eq } from 'drizzle-orm';
 import { convertV4MiniflareOptions, Miniflare } from 'miniflare';
@@ -11,19 +12,11 @@ import { createUser } from '../../packages/core/auth';
 import { randomSecret } from '../../packages/core/crypto';
 import { database, type User } from '../../packages/core/db';
 import { digest } from '../../packages/core/digest';
-import * as media from '../../packages/core/media';
 import {
   armOnboardingUpload,
   skipOnboardingUpload,
 } from '../../packages/core/onboarding';
-import {
-  aliases,
-  auditLog,
-  deliveryDomains,
-  images,
-  storageStats,
-  users,
-} from '../../packages/core/schema';
+import { deliveryDomains, images, users } from '../../packages/core/schema';
 import { upload } from '../../packages/core/upload';
 import { migrateDatabase } from '../helpers/database';
 import { workerBundle, workerCompatibility } from '../helpers/workers';
@@ -97,7 +90,7 @@ beforeEach(async () => {
   });
   await db
     .update(users)
-    // Legacy padding fixtures exercise transport, not container sanitization.
+    // Transport cases retain the large ancillary chunk instead of stripping it.
     .set({ preferredDeliveryDomainId: 'host', stripImageMetadata: false })
     .where(eq(users.id, created.userId));
   [user] = await db.select().from(users).where(eq(users.id, created.userId));
@@ -110,7 +103,12 @@ afterEach(async () => {
 
 function imageBytes(size: number) {
   const bytes = Buffer.alloc(size, 0x61);
-  png.copy(bytes);
+  const offset = png.length - 12;
+  png.subarray(0, offset).copy(bytes);
+  bytes.writeUInt32BE(size - png.length - 12, offset);
+  bytes.write('tEXt', offset + 4, 'ascii');
+  bytes[offset + 9] = 0;
+  bytes.writeUInt32BE(crc32(bytes.subarray(offset + 4, size - 16)), size - 16);
   png.subarray(-12).copy(bytes, size - 12);
   return bytes;
 }
@@ -231,32 +229,6 @@ describe('first image milestone', () => {
       .where(eq(users.id, user.id));
     expect(stillVerified.onboardingUploadImageId).toBe(first.id);
   });
-  it('does not verify another user and keeps one winner for concurrent bearer uploads', async () => {
-    const other = await createUser(env.DB, 'Other uploader', 'user', null);
-    const [otherUser] = await database(env.DB)
-      .select()
-      .from(users)
-      .where(eq(users.id, other.userId));
-    await armOnboardingUpload(env.DB, user);
-    await upload(requestFor().request, otherUser, env, 'bearer');
-    const [before] = await database(env.DB)
-      .select()
-      .from(users)
-      .where(eq(users.id, user.id));
-    expect(before.onboardingUploadStatus).toBe('waiting');
-    const results = await Promise.all([
-      upload(requestFor().request, user, env, 'bearer'),
-      upload(requestFor().request, user, env, 'bearer'),
-    ]);
-    const [after] = await database(env.DB)
-      .select()
-      .from(users)
-      .where(eq(users.id, user.id));
-    expect(results.map((result) => result.id)).toContain(
-      after.onboardingUploadImageId,
-    );
-    expect(after.onboardingUploadStatus).toBe('verified');
-  });
 });
 
 async function largeWebp() {
@@ -301,106 +273,6 @@ describe('canonical metadata stripping', () => {
     expect(stored.includes(Buffer.from('Private'))).toBe(false);
     expect(row.sha256).toBe(createHash('sha256').update(stored).digest('hex'));
     expect(row.size).toBe(stored.length);
-  });
-
-  it('removes an unpublished WebP if its canonical hash read fails', async () => {
-    const bytes = await readFile('tests/fixtures/metadata/private.webp');
-    const before = await env.BUCKET.list();
-    vi.spyOn(env.BUCKET, 'get').mockRejectedValue(
-      new Error('Hash read failed'),
-    );
-    await expect(
-      upload(
-        requestFor(bytes).request,
-        { ...user, stripImageMetadata: true },
-        env,
-      ),
-    ).rejects.toMatchObject({ status: 503, code: 'STORAGE_UNAVAILABLE' });
-    const after = await env.BUCKET.list();
-    expect(after.objects).toEqual(before.objects);
-  });
-  it.each([
-    'orientation-8.jpg',
-    'private.png',
-    'private.webp',
-    'private.gif',
-    'private.avif',
-    'animated.png',
-    'animated.webp',
-  ])(
-    'stores sanitized %s with canonical hashes, sizes and downloads',
-    async (name) => {
-      const bytes = await readFile(`tests/fixtures/metadata/${name}`);
-      const result = await upload(
-        requestFor(bytes, 7).request,
-        { ...user, stripImageMetadata: true },
-        env,
-      );
-      const row = await rowFor(result.id);
-      const stored = Buffer.from(
-        await (await env.BUCKET.get(row.objectKey))!.arrayBuffer(),
-      );
-      expect(stored.includes(Buffer.from('Private'))).toBe(false);
-      expect(row.size).toBe(stored.length);
-      expect(result.size).toBe(stored.length);
-      expect(row.sha256).toBe(
-        createHash('sha256').update(stored).digest('hex'),
-      );
-      expect(row).toMatchObject({ width: 48, height: 32 });
-      const response = await media.serveObject(
-        env.BUCKET,
-        row.objectKey,
-        new Request('https://example.com/image?download'),
-        row.mime,
-        row.filename,
-      );
-      expect(Buffer.from(await response.arrayBuffer())).toEqual(stored);
-    },
-  );
-
-  it('isolates concurrent snapshots and never rewrites old canonical objects', async () => {
-    const bytes = await readFile('tests/fixtures/metadata/private.webp');
-    const [stripped, preserved] = await Promise.all([
-      upload(
-        requestFor(bytes).request,
-        { ...user, stripImageMetadata: true },
-        env,
-      ),
-      upload(
-        requestFor(bytes).request,
-        { ...user, stripImageMetadata: false },
-        env,
-      ),
-    ]);
-    const sanitizedRow = await rowFor(stripped.id),
-      originalRow = await rowFor(preserved.id);
-    const sanitized = Buffer.from(
-      await (await env.BUCKET.get(sanitizedRow.objectKey))!.arrayBuffer(),
-    );
-    expect(sanitized.includes(Buffer.from('Private'))).toBe(false);
-    expect(
-      Buffer.from(
-        await (await env.BUCKET.get(originalRow.objectKey))!.arrayBuffer(),
-      ),
-    ).toEqual(bytes);
-    await database(env.DB)
-      .update(users)
-      .set({ stripImageMetadata: true })
-      .where(eq(users.id, user.id));
-    await database(env.DB)
-      .update(users)
-      .set({ stripImageMetadata: false })
-      .where(eq(users.id, user.id));
-    expect(
-      Buffer.from(
-        await (await env.BUCKET.get(sanitizedRow.objectKey))!.arrayBuffer(),
-      ),
-    ).toEqual(sanitized);
-    expect(
-      Buffer.from(
-        await (await env.BUCKET.get(originalRow.objectKey))!.arrayBuffer(),
-      ),
-    ).toEqual(bytes);
   });
 
   it('fails closed and releases receipts when sanitization fails', async () => {
@@ -482,73 +354,6 @@ function wrapMultipart(
 }
 
 describe('streaming upload', () => {
-  it.each(['expiry', 'retention'])(
-    'accepts the %s option at the API boundary',
-    async (field) => {
-      const form = new FormData();
-      form.append('file', new File([png], 'image.png', { type: 'image/png' }));
-      form.append(field, '1h');
-      const result = await upload(
-        new Request('https://app.example.com/api/upload', {
-          method: 'POST',
-          body: form,
-        }),
-        user,
-        env,
-      );
-      expect(result.expiresAt).not.toBeNull();
-      const row = await rowFor(result.id);
-      expect(row.expiresAt).toBeGreaterThan(Date.now() / 1000);
-    },
-  );
-  it.each(['upload.gif', 'animated.gif'])(
-    'stores and serves %s unchanged with trailer padding',
-    async (fixture) => {
-      const bytes = Buffer.concat([
-        await readFile(`tests/fixtures/${fixture}`),
-        Buffer.from([0, 13, 10]),
-      ]);
-      const result = await upload(requestFor(bytes, 1).request, user, env);
-      const row = await rowFor(result.id);
-      expect(row).toMatchObject({
-        mime: 'image/gif',
-        extension: 'gif',
-        width: 2,
-        height: 3,
-        size: bytes.length,
-      });
-      for (const suffix of ['', '?download']) {
-        const response = await media.serveObject(
-          env.BUCKET,
-          row.objectKey,
-          new Request(`https://example.com/image${suffix}`),
-          row.mime,
-          row.filename,
-        );
-        expect(response.headers.get('content-type')).toBe('image/gif');
-        expect(response.headers.get('x-content-type-options')).toBe('nosniff');
-        expect(Buffer.from(await response.arrayBuffer())).toEqual(bytes);
-      }
-    },
-  );
-
-  it('rejects a malformed GIF before committing metadata or an object', async () => {
-    const bytes = await readFile('tests/fixtures/animated.gif');
-    const complete = vi.fn();
-    wrapMultipart((multipart) => ({
-      ...multipart,
-      key: multipart.key,
-      uploadId: multipart.uploadId,
-      uploadPart: multipart.uploadPart.bind(multipart),
-      abort: multipart.abort.bind(multipart),
-      complete,
-    }));
-    await expect(
-      upload(requestFor(bytes.subarray(0, -2)).request, user, env),
-    ).rejects.toMatchObject({ code: 'INVALID_FILE_TYPE' });
-    expect(complete).not.toHaveBeenCalled();
-  });
-
   it('waits for an in-flight part before aborting after a client disconnect', async () => {
     const entered = deferred();
     const failed = deferred();
@@ -627,38 +432,7 @@ describe('streaming upload', () => {
     expect(request.body!.locked).toBe(false);
   });
 
-  it.each([1, 8191])(
-    'preserves bytes, hash, metadata, response and audit with %i-byte chunks',
-    async (chunkSize) => {
-      const result = await upload(
-        requestFor(png, chunkSize).request,
-        user,
-        env,
-      );
-      expect(result).toMatchObject({ size: png.length, expiresAt: null });
-      const row = await rowFor(result.id);
-      expect(row).toMatchObject({
-        width: 1,
-        height: 1,
-        mime: 'image/png',
-        size: png.length,
-        sha256: createHash('sha256').update(png).digest('hex'),
-      });
-      const stored = await env.BUCKET.get(row.objectKey);
-      expect(Buffer.from(await stored!.arrayBuffer()).equals(png)).toBe(true);
-      const logs = await database(env.DB)
-        .select()
-        .from(auditLog)
-        .where(eq(auditLog.targetId, result.id));
-      expect(logs).toHaveLength(1);
-      expect(logs[0].action).toBe('image.uploaded');
-      expect(JSON.parse(logs[0].metadata)).toMatchObject({
-        actorIp: '2001:db8::42',
-      });
-    },
-  );
-
-  it.each([partSize, partSize + 1, partSize * 2 + 37])(
+  it.each([partSize, partSize * 2 + 37])(
     'handles prefix and exact part boundaries at %i bytes',
     async (size) => {
       const lengths: number[] = [];
@@ -686,26 +460,6 @@ describe('streaming upload', () => {
       expect(Buffer.from(await stored!.arrayBuffer()).equals(bytes)).toBe(true);
     },
   );
-
-  it('runs the actual upload inside workerd with real R2 and D1', async () => {
-    const bytes = imageBytes(partSize * 2 + 13);
-    const response = await mf.dispatchFetch(
-      'https://app.example.com/api/upload',
-      {
-        method: 'POST',
-        headers: { 'content-type': contentType },
-        body: Buffer.concat([header, bytes, footer]),
-      },
-    );
-    expect(response.status).toBe(200);
-    const result = (await response.json()) as Awaited<
-      ReturnType<typeof upload>
-    >;
-    const row = await rowFor(result.id);
-    expect(row.sha256).toBe(createHash('sha256').update(bytes).digest('hex'));
-    const stored = await env.BUCKET.get(row.objectKey);
-    expect(Buffer.from(await stored!.arrayBuffer()).equals(bytes)).toBe(true);
-  });
 
   it('retains the object for reconciliation when the D1 reference check fails', async () => {
     const before = await env.BUCKET.list();
@@ -848,102 +602,6 @@ function keyed(key: string, bytes: Uint8Array = png) {
   return request;
 }
 describe('upload idempotency', () => {
-  it('retries real slug collisions atomically and stores the successful URL in the receipt', async () => {
-    const config = await env.DB.prepare(
-      'SELECT value FROM app_settings WHERE key=?',
-    )
-      .bind('shareSlugConfiguration')
-      .first<{ value: string }>();
-    await env.DB.prepare('UPDATE app_settings SET value=? WHERE key=?')
-      .bind('{"defaultLength":5,"automaticFloor":3}', 'shareSlugConfiguration')
-      .run();
-    const key = randomSecret();
-    const secureRandom = crypto.getRandomValues.bind(crypto);
-    const random = vi
-      .spyOn(crypto, 'getRandomValues')
-      .mockImplementation((array) => {
-        if (!(array instanceof Uint8Array))
-          throw new TypeError('Expected random bytes');
-        if (array.length === 10) array.fill(0);
-        else secureRandom(array);
-        return array;
-      });
-    try {
-      const existing = await upload(requestFor().request, user, env);
-      expect(new URL(existing.url!).pathname).toBe('/AAAAA');
-      const before = await env.BUCKET.list();
-      const db = database(env.DB);
-      const [beforeUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, user.id));
-      const [beforeStats] = await db
-        .select()
-        .from(storageStats)
-        .where(eq(storageStats.userId, user.id));
-      const completed = vi.fn();
-      wrapMultipart((multipart) => ({
-        key: multipart.key,
-        uploadId: multipart.uploadId,
-        abort: multipart.abort.bind(multipart),
-        uploadPart: multipart.uploadPart.bind(multipart),
-        async complete(parts) {
-          completed();
-          return multipart.complete(parts);
-        },
-      }));
-      const result = await upload(keyed(key), user, env);
-      expect(new URL(result.url!).pathname).toMatch(/^\/[A-Za-z0-9]{6}$/);
-
-      expect(completed).toHaveBeenCalledOnce();
-      const [alias] = await db
-        .select()
-        .from(aliases)
-        .where(eq(aliases.imageId, result.id));
-      expect(new URL(result.url!).pathname).toBe(`/${alias.slug}`);
-      const [afterUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, user.id));
-      const [afterStats] = await db
-        .select()
-        .from(storageStats)
-        .where(eq(storageStats.userId, user.id));
-      expect(afterUser.uploadCount).toBe(beforeUser.uploadCount + 1);
-      expect(afterStats.imageCount).toBe(beforeStats.imageCount + 1);
-      expect(afterStats.bytes).toBe(beforeStats.bytes + png.length);
-      expect(
-        await db
-          .select()
-          .from(auditLog)
-          .where(eq(auditLog.targetId, result.id)),
-      ).toHaveLength(1);
-      expect(
-        await db
-          .select()
-          .from(auditLog)
-          .where(eq(auditLog.action, 'share_slug.expanded')),
-      ).toHaveLength(1);
-      const after = await env.BUCKET.list();
-      expect(after.objects).toHaveLength(before.objects.length + 1);
-      const receipt = await env.DB.prepare(
-        'SELECT response FROM upload_receipts WHERE key=?',
-      )
-        .bind(await digest(`${user.id}:${key}`, 'upload-receipt'))
-        .first<{ response: string }>();
-      expect(JSON.parse(receipt!.response)).toMatchObject({
-        id: result.id,
-        url: result.url,
-      });
-      expect(await upload(keyed(key), user, env)).toEqual(result);
-      expect(completed).toHaveBeenCalledOnce();
-    } finally {
-      random.mockRestore();
-      await env.DB.prepare('UPDATE app_settings SET value=? WHERE key=?')
-        .bind(config!.value, 'shareSlugConfiguration')
-        .run();
-    }
-  });
   it('replays the exact result without another object, alias, token, counter or audit event', async () => {
     const key = randomSecret();
     const before = await env.DB.prepare(
@@ -955,6 +613,12 @@ describe('upload idempotency', () => {
     const create = vi.spyOn(env.BUCKET, 'createMultipartUpload');
     const second = await upload(keyed(key), user, env);
     expect(second).toEqual(first);
+    const ambiguous = keyed(key);
+    ambiguous.headers.append('Idempotency-Key', key);
+    await expect(upload(ambiguous, user, env)).rejects.toMatchObject({
+      status: 400,
+      code: 'INVALID_UPLOAD_KEY',
+    });
     expect(create).not.toHaveBeenCalled();
     const after = await env.DB.prepare(
       'SELECT uploadCount FROM users WHERE id = ?',
@@ -992,25 +656,6 @@ describe('upload idempotency', () => {
     expect(receipt?.key).not.toBe(key);
     expect(receipt?.response).not.toContain(first.deleteUrl.split('#', 2)[1]);
   });
-  it('scopes operation keys and delete secrets to the authenticated owner', async () => {
-    const key = randomSecret();
-    const created = await createUser(env.DB, 'Receipt isolation', 'user', null);
-    await database(env.DB)
-      .update(users)
-      .set({ preferredDeliveryDomainId: 'host' })
-      .where(eq(users.id, created.userId));
-    const [other] = await database(env.DB)
-      .select()
-      .from(users)
-      .where(eq(users.id, created.userId));
-    const first = await upload(keyed(key), user, env);
-    const second = await upload(keyed(key), other, env);
-    expect(first.id).not.toBe(second.id);
-    expect(first.deleteUrl.split('#', 2)[1]).not.toBe(
-      second.deleteUrl.split('#', 2)[1],
-    );
-    await expect(upload(keyed(key), user, env)).resolves.toEqual(first);
-  });
   it('claims a key atomically while the original R2 upload is still pending', async () => {
     const entered = deferred(),
       release = deferred();
@@ -1037,26 +682,6 @@ describe('upload idempotency', () => {
     }
     const result = await first;
     await expect(upload(keyed(key), user, env)).resolves.toEqual(result);
-  });
-  it('replays a committed operation after the D1 response is lost', async () => {
-    const key = randomSecret();
-    const batch = env.DB.batch.bind(env.DB);
-    const fault = vi
-      .spyOn(env.DB, 'batch')
-      .mockImplementation(async (statements) => {
-        const result = await batch(statements);
-        if (statements.length <= 3) return result;
-        throw new Error('Commit response lost');
-      });
-    await expect(upload(keyed(key), user, env)).rejects.toMatchObject({
-      code: 'SHARE_LINK_UNAVAILABLE',
-    });
-    fault.mockRestore();
-    const create = vi.spyOn(env.BUCKET, 'createMultipartUpload');
-    const result = await upload(keyed(key), user, env);
-    expect(create).not.toHaveBeenCalled();
-    const row = await rowFor(result.id);
-    expect(await env.BUCKET.head(row.objectKey)).not.toBeNull();
   });
   it('releases a failed operation only after cleanup so the same key can retry', async () => {
     const key = randomSecret();

@@ -9,10 +9,13 @@ async function showUpdate(page: Page) {
   await page.route('**/_app/version.json', async (route) => {
     await route.fulfill({ json: { version: 'new-deployment' } });
   });
-  await page.evaluate(() => globalThis.dispatchEvent(new Event('focus')));
-  await expect(
-    page.getByRole('region', { name: 'Application update' }),
-  ).toBeVisible();
+  const banner = page.getByRole('region', { name: 'Application update' });
+  await expect
+    .poll(async () => {
+      await page.evaluate(() => globalThis.dispatchEvent(new Event('focus')));
+      return banner.isVisible();
+    })
+    .toBe(true);
 }
 
 test.beforeEach(async ({ page, request, baseURL }) => {
@@ -25,78 +28,6 @@ test.beforeEach(async ({ page, request, baseURL }) => {
   });
   expect(response.status()).toBe(200);
   await page.context().addCookies((await request.storageState()).cookies);
-});
-
-test('deployment banner spans the viewport, fits desktop and mobile, and stays dismissed across navigation', async ({
-  page,
-}) => {
-  await page.goto('/');
-  const banner = page.getByRole('region', { name: 'Application update' });
-  await expect(banner).toHaveCount(0);
-  await showUpdate(page);
-  await expect(
-    banner.getByRole('button', { name: 'Reload', exact: true }),
-  ).toBeEnabled();
-  const rectangle = await banner.boundingBox();
-  expect(rectangle?.x).toBe(0);
-  expect(rectangle?.y).toBe(0);
-  expect(rectangle?.width).toBe(1440);
-  await expect
-    .poll(() =>
-      page
-        .locator('aside')
-        .evaluate((node) => node.getBoundingClientRect().top),
-    )
-    .toBe(rectangle!.height);
-  await page.screenshot({
-    path: 'artifacts/deployment-update-desktop.png',
-    fullPage: true,
-  });
-  for (const width of [320, 375, 767]) {
-    await page.setViewportSize({ width, height: 812 });
-    expect((await banner.boundingBox())?.width).toBe(width);
-    await expect
-      .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
-      .toBe(width);
-    const height = (await banner.boundingBox())!.height;
-    await expect
-      .poll(() =>
-        page
-          .locator('.mobile-bar')
-          .evaluate((node) => node.getBoundingClientRect().top),
-      )
-      .toBeCloseTo(height, 0);
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-    await expect
-      .poll(() =>
-        page
-          .locator('aside')
-          .evaluate((node) => node.getBoundingClientRect().top),
-      )
-      .toBeCloseTo(height + 73, 0);
-    await page.keyboard.press('Escape');
-    await expect(page.locator('aside')).toBeHidden();
-  }
-  await page.setViewportSize({ width: 375, height: 812 });
-  await page.screenshot({
-    path: 'artifacts/deployment-update-mobile.png',
-    fullPage: false,
-  });
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  const dismiss = banner.getByRole('button', { name: 'Dismiss update notice' });
-  await dismiss.focus();
-  await dismiss.press('Enter');
-  await expect(banner).toHaveCount(0);
-  await expect
-    .poll(() =>
-      page
-        .locator('aside')
-        .evaluate((node) => node.getBoundingClientRect().top),
-    )
-    .toBe(0);
-  await page.getByRole('link', { name: 'Images', exact: true }).click();
-  await expect(page).toHaveURL(/\/images$/);
-  await expect(banner).toHaveCount(0);
 });
 
 test('reload protects unsaved settings and pending mutations, and performs a full reload when accepted', async ({

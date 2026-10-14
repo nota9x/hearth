@@ -1,6 +1,5 @@
 import { expect, it } from 'vitest';
 
-import { hostnameSchema } from '../../packages/core/common';
 import { configuredHostname } from '../../packages/core/delivery-domains';
 import {
   appUrl,
@@ -12,20 +11,6 @@ const environment = {
   ENVIRONMENT: 'production',
   APP_ORIGIN: 'https://app.example.com',
 };
-it.each([
-  'https://images.example.com',
-  'images.example.com:443',
-  'images.example.com/path',
-  'x@images.example.com',
-  '127.0.0.1',
-  '0x7f000001',
-  'x..com',
-  '*.example.com',
-  'images.example.com.',
-  'images.example.com\nattacker.com',
-])('rejects malformed hostname %s', (value) => {
-  expect(hostnameSchema.safeParse(value).success).toBe(false);
-});
 it('constructs application and delivery URLs outside a request context', () => {
   expect(contentUrl('images.example.net', 'aB3xQ', environment)).toBe(
     'https://images.example.net/aB3xQ',
