@@ -1,5 +1,8 @@
 name: Feature request
 description: Suggest an improvement to image hosting, sharing, administration, or self-hosting.
+labels:
+  - 'feature'
+  - 'needs triage'
 body:
   - type: markdown
     attributes:
