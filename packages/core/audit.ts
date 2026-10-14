@@ -164,9 +164,9 @@ export async function auditEvent(
       ? await auditResource(db, actorId)
       : null;
   const target =
-    options.name !== undefined && options.before !== undefined
-      ? { name: options.name, values: options.before }
-      : await auditResource(db, targetId);
+    options.name === undefined || options.before === undefined
+      ? await auditResource(db, targetId)
+      : { name: options.name, values: options.before };
   const actorIp = safeAuditActorIp(options.actorIp);
   return {
     id: id('evt'),

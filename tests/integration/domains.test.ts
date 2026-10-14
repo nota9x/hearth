@@ -673,17 +673,19 @@ describe('validation and safe public URLs', () => {
     expect(checked.health).toBe('unhealthy');
     expect(checked.diagnostics?.message).toContain('redirects');
     fetch.mockImplementation(async (input) =>
-      String(input).startsWith('https://cloudflare-dns.com')
-        ? Response.json({
-            Status: 0,
-            Answer: [{ type: 1, data: '104.16.0.1' }],
-          })
-        : Response.json({
-            domainId: domain.id,
-            nonce: 'wrong',
-            hash: 'wrong',
-            proof: '0'.repeat(64),
-          }),
+      Response.json(
+        String(input).startsWith('https://cloudflare-dns.com')
+          ? {
+              Status: 0,
+              Answer: [{ type: 1, data: '104.16.0.1' }],
+            }
+          : {
+              domainId: domain.id,
+              nonce: 'wrong',
+              hash: 'wrong',
+              proof: '0'.repeat(64),
+            },
+      ),
     );
     checked = await validateDeliveryDomain(environment, admin, domain.id);
     expect(checked.health).toBe('unhealthy');
