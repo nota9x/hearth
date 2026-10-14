@@ -6,8 +6,12 @@
 
 A self-hosted, invitation-only image host for ShareX, built on Cloudflare Workers.
 
+[![SvelteKit 3](https://img.shields.io/badge/SvelteKit-3-FF3E00?logo=svelte&logoColor=white)](https://svelte.dev/docs/kit/introduction)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![CI](https://github.com/nota9x/hearth/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/nota9x/hearth/actions/workflows/ci.yml)
-[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/nota9x/hearth?display_name=tag)](https://github.com/nota9x/hearth/releases)
+[![GitHub Stars](https://img.shields.io/github/stars/nota9x/hearth?style=flat)](https://github.com/nota9x/hearth/stargazers)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
 [Get started](docs/getting-started/installation.md) ·
 [Documentation](docs/README.md) ·
