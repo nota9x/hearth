@@ -1,6 +1,8 @@
 name: Bug report
 description: Report a problem with uploads, the dashboard, delivery, or self-hosting.
-labels: ["bug", "needs triage"]
+labels:
+  - 'bug'
+  - 'needs triage'
 body:
   - type: markdown
     attributes:
