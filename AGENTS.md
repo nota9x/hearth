@@ -57,6 +57,15 @@ manifests. Use Node 24 (CI) and the pnpm version pinned in `package.json`; depen
 
 - Preserve unrelated staged, unstaged, and untracked work. Prefer native features
   and minimal dependencies; avoid compatibility wrappers unless requested.
+- Prioritize performance and resource efficiency when choosing algorithms, data
+  structures, and native platform capabilities. Minimize CPU work, allocations,
+  I/O, network requests, database queries, and bundle size where practical.
+- Keep runtime and maintenance overhead low: avoid unnecessary abstractions,
+  intermediate operations, redundant work, and architectural complexity. Reuse
+  existing functionality when efficient; do not sacrifice performance for reuse.
+- Consider efficiency during implementation, especially in frequently executed or
+  resource-intensive paths. Keep optimized code readable; justify added complexity
+  with meaningful, measurable benefits. Avoid speculative micro-optimizations.
 - Schema changes update `packages/core/schema.ts` and add an ordered migration. Review
   generated SQL: quota/accounting, last-active-admin protection, alias permissions
   and primary selection, and audit retention rely on SQL triggers/unique indexes,
@@ -93,6 +102,10 @@ manifests. Use Node 24 (CI) and the pnpm version pinned in `package.json`; depen
 
 ## Validation by scope
 
+- Scale testing to the change's risk and complexity. Focus on important behaviors,
+  regressions, edge cases, and critical functionality; avoid redundant, brittle,
+  or implementation-specific tests and disproportionate coverage for trivial
+  changes or one-off fixes.
 - Docs-only: formatting and referenced paths/commands. Code: start with the affected
   `tests/unit` or `tests/integration`, then applicable lint/types. Broaden to `pnpm verify` for shared
   behavior, schema, toolchain, cross-Worker changes, or unresolved failures.
