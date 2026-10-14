@@ -1,5 +1,6 @@
 name: Documentation feedback
 description: Report unclear, missing, or incorrect setup, usage, or contributor guidance.
+labels: ["documentation", "needs triage"]
 body:
   - type: markdown
     attributes:
