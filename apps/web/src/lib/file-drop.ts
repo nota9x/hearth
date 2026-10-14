@@ -8,15 +8,15 @@ export function isFileDrag(transfer: DataTransfer | null) {
 }
 
 export function acceptsFileDrag(transfer: DataTransfer | null) {
-  if (!isFileDrag(transfer)) return false;
   // Browsers may hide MIME types until drop. The server validates actual bytes.
   return (
-    transfer!.items.length === 0 ||
-    [...transfer!.items].some(
-      (item) =>
-        item.kind === 'file' &&
-        (!item.type || /^image\/(png|jpeg|gif|webp|avif)$/.test(item.type)),
-    )
+    isFileDrag(transfer) &&
+    (transfer!.items.length === 0 ||
+      [...transfer!.items].some(
+        (item) =>
+          item.kind === 'file' &&
+          (!item.type || /^image\/(png|jpeg|gif|webp|avif)$/.test(item.type)),
+      ))
   );
 }
 
