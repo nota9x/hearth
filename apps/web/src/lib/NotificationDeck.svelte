@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import CircleCheck from '@lucide/svelte/icons/circle-check';
   import CircleX from '@lucide/svelte/icons/circle-x';
@@ -230,7 +231,8 @@
                 {card.guidance}
               </p>{/if}
             {#if card.link}<a class="notification-link" href={card.link.href}
-                >{card.link.label} <span aria-hidden="true">→</span></a
+                >{card.link.label}
+                <ArrowRight size={14} aria-hidden="true" /></a
               >{/if}
             <div
               id={`notification-details-${card.id}`}
@@ -297,6 +299,10 @@
 {/if}
 
 <style>
+  .notification-link :global(svg) {
+    display: inline-block;
+    vertical-align: -0.15em;
+  }
   .notification-link {
     display: inline-block;
     margin: 8px 0 0 27px;

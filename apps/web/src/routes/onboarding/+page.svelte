@@ -559,9 +559,14 @@
                 >
                 <p>
                   You can continue. Images save privately until a usable
-                  delivery domain is configured.{data.user.role === 'admin'
-                    ? ' You can finish setup in Administration → Domains.'
-                    : ' Ask your administrator to configure one.'}
+                  delivery domain is configured.{#if data.user.role === 'admin'}
+                    You can finish setup in Administration <ArrowRight
+                      size={14}
+                      aria-hidden="true"
+                    /> Domains.
+                  {:else}
+                    Ask your administrator to configure one.
+                  {/if}
                 </p>
               </div>{:else if selectedDomain}<div class="link-preview">
                 <Link size={15} /><span
@@ -1261,6 +1266,10 @@
   }
   .empty-guidance > :global(svg) {
     color: #c79e77;
+  }
+  .empty-guidance p :global(svg) {
+    display: inline-block;
+    vertical-align: -0.15em;
   }
   .empty-guidance strong {
     font-size: 0.87rem;

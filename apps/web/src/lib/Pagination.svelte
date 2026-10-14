@@ -2,6 +2,7 @@
   import { pageURL, pageWindow } from '@hearth/core/search';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
+  import Ellipsis from '@lucide/svelte/icons/ellipsis';
 
   import { goto } from '$app/navigation';
   import { navigating, page } from '$app/state';
@@ -70,7 +71,7 @@
           }}
           aria-label={`Page ${item}`}
           aria-current={item === current ? 'page' : undefined}>{item}</a
-        >{:else}<span aria-hidden="true">…</span>{/if}
+        >{:else}<Ellipsis size={18} aria-hidden="true" />{/if}
     {/each}
     {#if current < pages}<a
         class="button icon-button"

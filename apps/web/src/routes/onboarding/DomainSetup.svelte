@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { DeliveryDomain } from '@hearth/core/delivery-domains';
   import { domainStatusLabels } from '@hearth/core/domain-format';
+  import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Check from '@lucide/svelte/icons/check';
   import Globe from '@lucide/svelte/icons/globe';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
@@ -140,7 +141,7 @@
       </div>
       {#if !domain.enabled}<p>
           Delivery is disabled for this domain. You can manage it later in
-          Administration → Domains.
+          Administration <ArrowRight size={14} aria-hidden="true" /> Domains.
         </p>{/if}
     {/if}
   {/if}
@@ -148,6 +149,10 @@
 </div>
 
 <style>
+  p :global(svg) {
+    display: inline-block;
+    vertical-align: -0.15em;
+  }
   .domain-setup,
   form {
     display: grid;

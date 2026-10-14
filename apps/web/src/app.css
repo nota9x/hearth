@@ -597,9 +597,22 @@ nav a.active {
   font-size: 0.81rem;
   margin: 5px 0 0;
 }
-.upload-callout > button {
+.upload-callout-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-left: auto;
   flex-shrink: 0;
+}
+.sharex-dismiss {
+  --control-hover: transparent;
+  --control-pressed: transparent;
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+}
+.sharex-dismiss:hover {
+  color: inherit;
 }
 .panel {
   padding: 27px;
@@ -1252,10 +1265,10 @@ code {
     flex-wrap: wrap;
     padding: 20px;
   }
-  .upload-callout > button {
-    margin: 0;
+  .upload-callout-actions {
+    margin-left: 0;
   }
-  .upload-callout > div {
+  .upload-callout > div:not(.upload-callout-actions) {
     flex: 1;
     min-width: 180px;
   }

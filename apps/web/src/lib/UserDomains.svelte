@@ -263,12 +263,13 @@
     align-items: flex-start;
     gap: 0.4rem;
     flex-wrap: wrap;
-    max-width: 220px;
+    flex-shrink: 0;
   }
   .domain-state .badge {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
+    white-space: nowrap;
   }
   [data-status='active'] {
     color: var(--success, #74b892);
@@ -282,7 +283,7 @@
     color: var(--muted);
   }
   .diagnostic-summary {
-    max-width: 65ch;
+    overflow-wrap: anywhere;
   }
   .preference-panel {
     display: flex;
@@ -302,20 +303,22 @@
   }
   @media (max-width: 700px) {
     .domain-row {
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 0.75rem;
     }
     .domain-icon {
       display: none;
     }
     .domain-row .row-content {
-      flex-basis: calc(100% - 80px);
+      grid-column: 1 / -1;
+      min-width: 0;
     }
     .domain-state {
-      max-width: none;
-      order: 3;
-      flex-basis: 100%;
-      padding-top: 0.25rem;
+      align-self: center;
+    }
+    .domain-row .row-actions {
+      align-self: start;
     }
     .preference-panel {
       align-items: flex-start;

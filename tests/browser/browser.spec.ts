@@ -898,6 +898,16 @@ test('complete authenticated dashboard and ShareX workflow', async ({
   await expect(page.getByText('Your selection', { exact: true })).toBeVisible();
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+  await page.getByRole('button', { name: 'Dismiss ShareX banner' }).click();
+  await expect(page.getByRole('button', { name: 'Set up ShareX' })).toHaveCount(
+    0,
+  );
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Set up ShareX' })).toHaveCount(
+    0,
+  );
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==',
     'base64',

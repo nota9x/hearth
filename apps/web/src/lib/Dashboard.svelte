@@ -16,12 +16,12 @@
   import Download from '@lucide/svelte/icons/download';
   import HardDrive from '@lucide/svelte/icons/hard-drive';
   import Image from '@lucide/svelte/icons/image';
-  import KeyRound from '@lucide/svelte/icons/key-round';
   import Link from '@lucide/svelte/icons/link';
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import Upload from '@lucide/svelte/icons/upload';
-  import { untrack } from 'svelte';
+  import ShareX from '@thesvg/svelte/sharex';
+  import { onMount, untrack } from 'svelte';
 
   import type { AdminComponents } from '#lib/admin-types.ts';
   import BackLink from '#lib/BackLink.svelte';
@@ -75,6 +75,17 @@
     slug = $state(''),
     deliveryDomainId = $state('');
   let adminModal = $state('');
+  let shareXDismissed = $state(true);
+  const shareXDismissalKey = $derived(
+    `hearth:sharex-dismissed:${data.user.id}`,
+  );
+  onMount(() => {
+    shareXDismissed = localStorage.getItem(shareXDismissalKey) === '1';
+  });
+  function dismissShareX() {
+    shareXDismissed = true;
+    localStorage.setItem(shareXDismissalKey, '1');
+  }
   let uploadInput: HTMLInputElement;
   const titles: Record<string, string> = {
     overview: 'Overview',
@@ -585,16 +596,23 @@
     >
   </div>
   {@render gallery()}
-  <div class="upload-callout">
-    <KeyRound size={25} />
-    <div>
-      <h3>ShareX</h3>
-      <p>Upload screenshots directly from ShareX.</p>
-    </div>
-    <button onclick={() => open('sxcu')}
-      >Set up ShareX<ArrowUpRight size={16} /></button
-    >
-  </div>
+  {#if !shareXDismissed}<div class="upload-callout">
+      <ShareX width={25} height={25} fill="white" aria-hidden="true" />
+      <div>
+        <h3>ShareX</h3>
+        <p>Upload screenshots directly from ShareX.</p>
+      </div>
+      <div class="upload-callout-actions">
+        <button
+          class="sharex-dismiss"
+          aria-label="Dismiss ShareX banner"
+          onclick={dismissShareX}>Dismiss</button
+        >
+        <button onclick={() => open('sxcu')}
+          >Set up ShareX<ArrowUpRight size={16} /></button
+        >
+      </div>
+    </div>{/if}
 {:else if data.section === 'images'}
   <CollectionHeader title={titles.images} refresh={manualRefresh} {busy}>
     <button class="primary" disabled={busy} onclick={() => uploadInput.click()}

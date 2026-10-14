@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { DeliveryDomain } from '@hearth/core/delivery-domains';
+  import ArrowRight from '@lucide/svelte/icons/arrow-right';
+  import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
   import Check from '@lucide/svelte/icons/check';
   import CircleAlert from '@lucide/svelte/icons/circle-alert';
   import Info from '@lucide/svelte/icons/info';
@@ -54,8 +56,9 @@
             target="_blank"
             rel="noreferrer">Cloudflare dashboard</a
           >, choose the account that owns your delivery Worker. Open
-          <strong>Domains → Onboard a domain</strong>, enter the root domain
-          (for example, <code>example.com</code> for
+          <strong
+            >Domains <ArrowRight size={14} aria-hidden="true" /> Onboard a domain</strong
+          >, enter the root domain (for example, <code>example.com</code> for
           <code>images.example.com</code>), and choose a plan.
         </p>
         <p>
@@ -69,15 +72,21 @@
           Already active in this account? Continue to step 2. <a
             href="https://developers.cloudflare.com/dns/zone-setups/full-setup/setup/"
             target="_blank"
-            rel="noreferrer">Domain onboarding guide ↗</a
+            rel="noreferrer"
+            >Domain onboarding guide <ArrowUpRight
+              size={14}
+              aria-hidden="true"
+            /></a
           >
         </p>
       </li>
       <li>
         <h4>Connect it to the delivery Worker</h4>
         <p>
-          Open <strong>Compute → Workers & Pages</strong>, select your Hearth
-          delivery Worker, and open the <strong>Domains</strong>
+          Open <strong
+            >Compute <ArrowRight size={14} aria-hidden="true" /> Workers & Pages</strong
+          >, select your Hearth delivery Worker, and open the
+          <strong>Domains</strong>
           tab. Under <strong>Custom Domains and Routes</strong>, choose
           <strong>Add Domain</strong>.
         </p>
@@ -113,7 +122,11 @@
       <a
         href="https://developers.cloudflare.com/workers/configuration/routing/custom-domains/"
         target="_blank"
-        rel="noreferrer">Cloudflare Custom Domains documentation ↗</a
+        rel="noreferrer"
+        >Cloudflare Custom Domains documentation <ArrowUpRight
+          size={14}
+          aria-hidden="true"
+        /></a
       >
     </Disclosure>
   {/if}
@@ -124,6 +137,10 @@
 </div>
 
 <style>
+  .setup-guide :global(svg) {
+    display: inline-block;
+    vertical-align: -0.15em;
+  }
   .setup-guide {
     font-size: 0.9rem;
     line-height: 1.6;
