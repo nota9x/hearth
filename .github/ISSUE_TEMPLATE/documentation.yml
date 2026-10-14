@@ -1,5 +1,6 @@
 name: Documentation feedback
 description: Report unclear, missing, or incorrect setup, usage, or contributor guidance.
+title: '[DOCS] '
 labels:
   - 'documentation'
   - 'needs triage'
