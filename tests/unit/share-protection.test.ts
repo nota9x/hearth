@@ -23,7 +23,7 @@ function request(path = '/hello', options: RequestInit = {}, actor = ip) {
 
 function fixture(threshold = 60) {
   const entries = new Map<string, Response>();
-  const counts = new Map<string, { count: number; started: number }>();
+  const counts = new Map<string, { count: number; epoch: number }>();
   const match = vi.fn((key: Request) =>
     Promise.resolve(entries.get(key.url)?.clone()),
   );
@@ -34,9 +34,10 @@ function fixture(threshold = 60) {
   const open = vi.fn(() => Promise.resolve({ match, put }));
   vi.stubGlobal('caches', { open });
   const limit = vi.fn(({ key }: { key: string }) => {
+    const epoch = Math.floor(Date.now() / 60_000);
     let counter = counts.get(key);
-    if (!counter || Date.now() - counter.started >= 60_000) {
-      counter = { count: 0, started: Date.now() };
+    if (!counter || counter.epoch !== epoch) {
+      counter = { count: 0, epoch };
       counts.set(key, counter);
     }
     return Promise.resolve({ success: ++counter.count <= threshold });
@@ -85,6 +86,40 @@ afterEach(() => {
 });
 
 describe('share failure accounting and cooldown', () => {
+  it('resets the native budget at the minute boundary while preserving cached cooldown', async () => {
+    const { environment, first, entries, limit } = fixture(2);
+    first.mockResolvedValue(null);
+    vi.setSystemTime(new Date('2026-10-04T12:00:59.500Z'));
+    for (let index = 0; index < 2; index++)
+      await expect(
+        resolvePublicShare(request('/missing'), environment),
+      ).resolves.toHaveProperty('status', 404);
+
+    vi.setSystemTime(new Date('2026-10-04T12:01:00Z'));
+    for (let index = 0; index < 2; index++)
+      await expect(
+        resolvePublicShare(request('/missing'), environment),
+      ).resolves.toHaveProperty('status', 404);
+    vi.setSystemTime(new Date('2026-10-04T12:01:59.500Z'));
+    await expect(
+      resolvePublicShare(request('/missing'), environment),
+    ).resolves.toHaveProperty('status', 429);
+
+    vi.setSystemTime(new Date('2026-10-04T12:02:00Z'));
+    first.mockResolvedValue(row);
+    await expect(
+      resolvePublicShare(request(), environment),
+    ).resolves.toHaveProperty('status', 429);
+    expect(limit).toHaveBeenCalledTimes(5);
+
+    // After rollover, evicting the cooldown also exposes the fresh native budget.
+    entries.clear();
+    first.mockResolvedValue(null);
+    await expect(
+      resolvePublicShare(request('/missing'), environment),
+    ).resolves.toHaveProperty('status', 404);
+  });
+
   it('never spends failure quota on successful previews, HEADs or downloads', async () => {
     const { environment, limit } = fixture();
     for (let index = 0; index < 4; index++) {
