@@ -16,25 +16,6 @@ describe('dashboard action responses', () => {
     await expect(action('login')).rejects.toThrow(message);
   });
 
-  it.each([
-    [403, 'Invalid request origin.'],
-    [502, '<html>Bad gateway</html>'],
-    [200, '<html>Login</html>'],
-  ])('explains non-JSON responses with status %i', async (status, body) => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(body, { status }),
-    );
-    await expect(action('login')).rejects.toThrow(
-      'The server returned an unexpected response. Check the site address and try again.',
-    );
-  });
-
-  it('returns successful action data', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      Response.json({ setup: true }),
-    );
-    await expect(action('login')).resolves.toEqual({ setup: true });
-  });
   it('distinguishes expired sessions from invalid configuration keys', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       Response.json(

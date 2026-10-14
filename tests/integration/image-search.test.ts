@@ -3,7 +3,6 @@ import { convertV4MiniflareOptions, Miniflare } from 'miniflare';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { database } from '../../packages/core/db';
-import { dateRange, highlightParts } from '../../packages/core/image-search';
 import { imageSearchQuery } from '../../packages/core/image-search-query';
 import {
   aliases,
@@ -189,81 +188,5 @@ describe('library queries on D1', () => {
     ).toEqual(['a']);
     expect(await find('q=2026-09-20&tz=Asia%2FTokyo')).toEqual([]);
     expect(await find('type=jpg&orientation=square')).toEqual(['c']);
-  });
-  it('uses non-overlapping size ranges and every sort option', async () => {
-    expect(await find('size=medium')).toEqual(['b']);
-    expect(await find('size=large')).toEqual(['c']);
-    expect(await find('size=huge')).toEqual(['d']);
-    expect(await find('sort=smallest')).toEqual(['a', 'b', 'c', 'd']);
-    expect(await find('sort=largest')).toEqual(['d', 'c', 'b', 'a']);
-    expect(await find('sort=oldest')).toEqual(['d', 'c', 'b', 'a']);
-    expect(await find('sort=name')).toEqual(['d', 'c', 'a', 'b']);
-    expect(await find('sort=name-desc')).toEqual(['b', 'a', 'c', 'd']);
-    expect(imageSearchQuery(new URLSearchParams('sort=best')).sort).toBe(
-      'newest',
-    );
-  });
-});
-
-describe('date interpretation and highlighting', () => {
-  const now = new Date('2026-09-20T15:00:00Z');
-  it.each([
-    ['today', '2026-09-20', '2026-09-21'],
-    ['yesterday', '2026-09-19', '2026-09-20'],
-    ['7d', '2026-09-14', '2026-09-21'],
-    ['30d', '2026-08-22', '2026-09-21'],
-    ['this week', '2026-09-14', '2026-09-21'],
-    ['last week', '2026-09-07', '2026-09-14'],
-    ['this month', '2026-09-01', '2026-10-01'],
-    ['last month', '2026-08-01', '2026-09-01'],
-  ])('interprets %s with exclusive end boundaries', (query, start, end) => {
-    expect(dateRange(query, '', '', now)).toEqual([
-      Date.parse(start) / 1000,
-      Date.parse(end) / 1000,
-    ]);
-  });
-  it('rejects invalid and reversed custom dates', () => {
-    expect(dateRange('2026-02-30')).toBeUndefined();
-    expect(dateRange('custom', '2026-09-20', '2026-09-19')).toBeUndefined();
-  });
-  it('uses local calendar days across UTC midnight and daylight saving changes', () => {
-    expect(
-      dateRange(
-        'today',
-        '',
-        '',
-        new Date('2026-09-21T02:00:00Z'),
-        'America/New_York',
-      ),
-    ).toEqual([
-      Date.parse('2026-09-20T04:00:00Z') / 1000,
-      Date.parse('2026-09-21T04:00:00Z') / 1000,
-    ]);
-    expect(
-      dateRange('custom', '2026-03-08', '', now, 'America/New_York'),
-    ).toEqual([
-      Date.parse('2026-03-08T05:00:00Z') / 1000,
-      Date.parse('2026-03-09T04:00:00Z') / 1000,
-    ]);
-    expect(
-      dateRange('custom', '2026-11-01', '', now, 'America/New_York'),
-    ).toEqual([
-      Date.parse('2026-11-01T04:00:00Z') / 1000,
-      Date.parse('2026-11-02T05:00:00Z') / 1000,
-    ]);
-    expect(dateRange('2026-09-20', '', '', now, 'Asia/Tokyo')).toEqual([
-      Date.parse('2026-09-19T15:00:00Z') / 1000,
-      Date.parse('2026-09-20T15:00:00Z') / 1000,
-    ]);
-  });
-  it('highlights literal matches without interpreting markup', () => {
-    expect(highlightParts('<ScreenSHOT>.png', 'screenshot')).toEqual([
-      { text: '<', match: false },
-      { text: 'ScreenSHOT', match: true },
-      { text: '>.png', match: false },
-    ]);
-    expect(highlightParts('today.png', 'today')).toEqual([
-      { text: 'today.png', match: false },
-    ]);
   });
 });

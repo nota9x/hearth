@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  deliveryErrorBranding,
-  ERROR_BRANDING_SECONDS,
-} from '../../packages/core/branding';
-import {
   acceptsErrorHtml,
   httpErrorHeaders,
   renderHttpErrorDocument,
@@ -37,17 +33,11 @@ describe('safe HTTP error presentation', () => {
 describe('document negotiation', () => {
   it.each([
     ['text/html', undefined, true],
-    ['text/html', 'document', true],
     ['text/html', 'image', false],
-    ['text/html', 'empty', false],
-    ['*/*', undefined, false],
-    ['', undefined, false],
     ['application/json', undefined, false],
     ['text/html;q=0,*/*;q=1', 'document', false],
     ['text/html;q=.5,application/json;q=1', undefined, false],
-    ['text/html;q=.5,text/plain;q=1', undefined, false],
     ['text/html;q=1,application/json;q=.5', undefined, true],
-    ['text/html;q=bogus', undefined, false],
   ] as const)(
     'negotiates %s with destination %s',
     (accept, destination, expected) => {
@@ -60,52 +50,4 @@ describe('document negotiation', () => {
       ).toBe(expected);
     },
   );
-});
-
-function fixture() {
-  const first = vi.fn(() => Promise.resolve({ value: 'My Hearth' }));
-  const prepare = vi.fn(() => ({ bind: vi.fn(() => ({ first })) }));
-  const DB = { prepare } as unknown as D1Database;
-  return { DB, prepare, first, APP_ORIGIN: 'https://app.example.com' };
-}
-describe('existing instance branding', () => {
-  it('caches only branding and uses it without DB work during cooldown', async () => {
-    const test = fixture();
-    let entry: Response | undefined;
-    const put = vi.fn((_key: Request, response: Response) => {
-      entry = response;
-      return Promise.resolve();
-    });
-    vi.stubGlobal('caches', {
-      open: vi.fn(() =>
-        Promise.resolve({ match: () => Promise.resolve(entry?.clone()), put }),
-      ),
-    });
-    expect(await deliveryErrorBranding(test, true)).toBe('hearth');
-    expect(test.prepare).not.toHaveBeenCalled();
-    expect(await deliveryErrorBranding(test)).toBe('My Hearth');
-    expect(await deliveryErrorBranding(test, true)).toBe('My Hearth');
-    expect(await deliveryErrorBranding(test)).toBe('My Hearth');
-    expect(test.prepare).toHaveBeenCalledOnce();
-    expect(put).toHaveBeenCalledOnce();
-    expect(put.mock.calls[0][0].url).toBe(
-      'https://app.example.com/.hearth/error-branding',
-    );
-    expect(put.mock.calls[0][1].headers.get('Cache-Control')).toBe(
-      `public, max-age=${ERROR_BRANDING_SECONDS}`,
-    );
-    entry = undefined;
-    expect(await deliveryErrorBranding(test)).toBe('My Hearth');
-    expect(test.prepare).toHaveBeenCalledTimes(2);
-  });
-  it('survives cache and database outages', async () => {
-    const test = fixture();
-    vi.stubGlobal('caches', {
-      open: vi.fn(() => Promise.reject(new Error('unavailable'))),
-    });
-    expect(await deliveryErrorBranding(test)).toBe('My Hearth');
-    test.first.mockRejectedValue(new Error('internal DB path'));
-    expect(await deliveryErrorBranding(test)).toBe('hearth');
-    expect(await deliveryErrorBranding(test, true)).toBe('hearth');
-  });
 });

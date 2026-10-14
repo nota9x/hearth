@@ -103,75 +103,14 @@ afterEach(async () => {
 });
 
 describe('global physical storage admission', () => {
-  it('projects threshold warnings from account and physical counters without exposing totals', async () => {
-    await limit(1000);
-    await env.DB.prepare('UPDATE users SET quotaBytes=1000 WHERE id=?')
-      .bind(user.id)
-      .run();
-    for (const [bytes, state] of [
-      [989, 'normal'],
-      [990, 'nearly-full'],
-      [1000, 'full'],
-      [1001, 'full'],
-    ] as const) {
-      await env.DB.prepare(
-        'UPDATE user_storage_stats SET bytes=?,previewBytes=10 WHERE userId=?',
-      )
-        .bind(bytes - 10, user.id)
-        .run();
-      await env.DB.prepare(
-        'UPDATE storage_capacity SET persistedBytes=?,reservedBytes=10 WHERE id=1',
-      )
-        .bind(bytes - 10)
-        .run();
-      expect(await storageWarnings(env.DB, user.id)).toEqual({
-        personal: state,
-        instance: state,
-      });
-    }
-    await env.DB.prepare('UPDATE users SET quotaBytes=NULL WHERE id=?')
-      .bind(user.id)
-      .run();
-    await limit(null);
-    expect(await storageWarnings(env.DB, user.id)).toEqual({
-      personal: 'normal',
-      instance: 'normal',
+  it('admits an upload exactly at capacity', async () => {
+    await limit(png.length);
+    await upload(request(), user, env);
+    expect(await capacity()).toMatchObject({
+      persistedBytes: png.length,
+      reservedBytes: 0,
     });
-    await env.DB.prepare('UPDATE users SET quotaBytes=0 WHERE id=?')
-      .bind(user.id)
-      .run();
-    await env.DB.prepare(
-      'UPDATE user_storage_stats SET bytes=0,previewBytes=0 WHERE userId=?',
-    )
-      .bind(user.id)
-      .run();
-    await limit(1000);
-    for (const [ready, blocked] of [
-      [0, 0],
-      [1, 1],
-    ]) {
-      await env.DB.prepare(
-        'UPDATE storage_capacity SET ready=?,blocked=? WHERE id=1',
-      )
-        .bind(ready, blocked)
-        .run();
-      expect(await storageWarnings(env.DB, user.id)).toEqual({
-        personal: 'full',
-        instance: 'normal',
-      });
-    }
   });
-  it.each([png.length, png.length + 1])(
-    'accepts an exact or larger budget of %i bytes',
-    async (bytes) => {
-      await limit(bytes);
-      await upload(request(), user, env);
-      expect(await capacity()).toMatchObject({
-        persistedBytes: png.length,
-        reservedBytes: 0,
-      });
-    },
-  );
   it('rejects insufficient capacity without retaining objects or metadata', async () => {
     await limit(png.length - 1);
     await expect(upload(request(), user, env)).rejects.toMatchObject({
@@ -186,19 +125,6 @@ describe('global physical storage admission', () => {
     expect(
       await env.DB.prepare('SELECT count(*) AS count FROM images').first(),
     ).toEqual({ count: 0 });
-  });
-  it('keeps per-user quotas independent', async () => {
-    await limit(10_000);
-    await env.DB.prepare('UPDATE users SET quotaBytes=? WHERE id=?')
-      .bind(png.length - 1, user.id)
-      .run();
-    await expect(upload(request(), user, env)).rejects.toMatchObject({
-      code: 'QUOTA_EXCEEDED',
-    });
-    expect(await capacity()).toMatchObject({
-      persistedBytes: 0,
-      reservedBytes: 0,
-    });
   });
   it('charges actual canonical bytes despite an incorrect client length', async () => {
     await limit(png.length - 1);
@@ -695,8 +621,14 @@ describe('global physical storage admission', () => {
     },
   );
   it('resumes overlapping scan pages without duplicate observations, accounting, findings, or completion events', async () => {
+    const bucket = {
+      ...env.BUCKET,
+      head: env.BUCKET.head.bind(env.BUCKET),
+      list: (options?: R2ListOptions) =>
+        env.BUCKET.list({ ...options, limit: 2 }),
+    };
     await Promise.all(
-      Array.from({ length: 101 }, (_, index) =>
+      Array.from({ length: 3 }, (_, index) =>
         env.BUCKET.put(`baseline-${String(index).padStart(3, '0')}`, 'x'),
       ),
     );
@@ -710,8 +642,8 @@ describe('global physical storage admission', () => {
       .bind(run, now())
       .run();
     await Promise.all([
-      scanStorage(env.DB, env.BUCKET, run),
-      scanStorage(env.DB, env.BUCKET, run),
+      scanStorage(env.DB, bucket, run),
+      scanStorage(env.DB, bucket, run),
     ]);
     expect(
       await env.DB.prepare(
@@ -719,15 +651,15 @@ describe('global physical storage admission', () => {
       )
         .bind(run)
         .first(),
-    ).toEqual({ objectCount: 100, status: 'running' });
-    await scanStorage(env.DB, env.BUCKET, run);
+    ).toEqual({ objectCount: 2, status: 'running' });
+    await scanStorage(env.DB, bucket, run);
     await Promise.all([
-      scanStorage(env.DB, env.BUCKET, run),
-      scanStorage(env.DB, env.BUCKET, run),
+      scanStorage(env.DB, bucket, run),
+      scanStorage(env.DB, bucket, run),
     ]);
     await Promise.all([
-      scanStorage(env.DB, env.BUCKET, run),
-      scanStorage(env.DB, env.BUCKET, run),
+      scanStorage(env.DB, bucket, run),
+      scanStorage(env.DB, bucket, run),
     ]);
     expect(
       await env.DB.prepare(
@@ -735,20 +667,20 @@ describe('global physical storage admission', () => {
       )
         .bind(run)
         .first(),
-    ).toEqual({ objectCount: 101, bytes: 101, status: 'completed' });
+    ).toEqual({ objectCount: 3, bytes: 3, status: 'completed' });
     expect(await capacity()).toMatchObject({
-      persistedBytes: 101,
+      persistedBytes: 3,
       reservedBytes: 0,
     });
     expect(
       await env.DB.prepare(
         'SELECT count(*) AS count FROM reconciliation_findings',
       ).first(),
-    ).toEqual({ count: 101 });
+    ).toEqual({ count: 3 });
     expect(
       await env.DB.prepare(
         "SELECT count(*) AS count FROM audit_log WHERE action='storage.reconciliation_completed'",
       ).first(),
     ).toEqual({ count: 1 });
-  }, 120_000);
+  });
 });

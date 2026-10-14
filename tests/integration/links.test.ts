@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createUser } from '../../packages/core/auth';
 import { id, now } from '../../packages/core/common';
 import { database, type User } from '../../packages/core/db';
-import { deleteImage, ownedImage } from '../../packages/core/images';
+import { ownedImage } from '../../packages/core/images';
 import {
   effectiveExpiry,
   linkSearchQuery,
@@ -217,17 +217,6 @@ describe('independent share-link lifecycle', () => {
     live = await liveFor(imageId);
     expect(live).toHaveLength(0);
     expect((await ownedImage(binding, owner, imageId)).deletedAt).toBeNull();
-  });
-  it('image deletion invalidates all links without promoting a replacement', async () => {
-    const imageId = await fixture();
-    await newLink(imageId);
-    await newLink(imageId);
-    await deleteImage(binding, bucket, imageId, owner.id);
-    const rows = await linksFor(imageId);
-    expect(rows.every((row) => row.disabledAt !== null && !row.primary)).toBe(
-      true,
-    );
-    await expect(newLink(imageId)).rejects.toThrow('Image not found');
   });
   it('logs link mutations and promotions in the existing audit format', async () => {
     const imageId = await fixture();

@@ -72,8 +72,10 @@ it('pauses admission, aborts only untracked multipart uploads, verifies absence,
   });
   await import('../../scripts/storage-initialize');
   expect(aborted).toEqual(['untracked']);
-  expect(sql[0]).toContain('ready=0,multipartVerified=0,blocked=1');
-  expect(sql.at(-1)).toContain('multipartVerified=1');
+  expect(sql[0]).toMatch(/\bready\s*=\s*0\b/i);
+  expect(sql[0]).toMatch(/\bmultipartVerified\s*=\s*0\b/i);
+  expect(sql[0]).toMatch(/\bblocked\s*=\s*1\b/i);
+  expect(sql.at(-1)).toMatch(/\bmultipartVerified\s*=\s*1\b/i);
   expect(sql.at(-1)).toContain('reconciliation_runs');
   expect(
     sql.some((statement) => statement.includes('DELETE FROM images')),

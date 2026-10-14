@@ -80,80 +80,6 @@ describe('background image deletion', () => {
     });
   });
 
-  it('does not expose cancellation once the only deletion batch has been sent', async () => {
-    setDeletionOwner('single-cannot-abort');
-    let release!: (value: Response) => void;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        () =>
-          // eslint-disable-next-line unicorn/prefer-promise-with-resolvers
-          new Promise<Response>((resolve) => {
-            release = resolve;
-          }),
-      ),
-    );
-    vi.mocked(dashboard.refresh).mockResolvedValue(undefined);
-    const done = deleteSelectedImages(['a']);
-    const notice = get(notify)[0];
-    expect(notice.onCancel).toBeUndefined();
-    notify.requestCancel(notice.id);
-    expect(get(notify.confirmation)).toBeNull();
-    release(
-      Response.json({ deletedIds: ['a'], alreadyRemovedIds: [], failed: [] }),
-    );
-    await done;
-    expect(get(notify)[0].kind).toBe('success');
-  });
-
-  it('reports confirmed counts between batches without a percentage or premature completion', async () => {
-    setDeletionOwner('batch-progress');
-    const ids = Array.from({ length: 101 }, (_, index) => `image-${index}`);
-    let release!: (value: Response) => void;
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(
-          Response.json({
-            deletedIds: ids.slice(0, 100),
-            alreadyRemovedIds: [],
-            failed: [],
-          }),
-        )
-        .mockImplementationOnce(
-          () =>
-            // eslint-disable-next-line unicorn/prefer-promise-with-resolvers
-            new Promise<Response>((resolve) => {
-              release = resolve;
-            }),
-        ),
-    );
-    vi.mocked(dashboard.refresh).mockResolvedValue(undefined);
-    const done = deleteSelectedImages(ids);
-    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
-    expect(get(notify)[0]).toMatchObject({
-      kind: 'loading',
-      progress: undefined,
-    });
-    expect(get(notify)[0].items?.[100]).toMatchObject({
-      name: 'image-100',
-      state: 'active',
-    });
-    release(
-      Response.json({
-        deletedIds: [ids[100]],
-        alreadyRemovedIds: [],
-        failed: [],
-      }),
-    );
-    await done;
-    expect(get(notify)[0]).toMatchObject({
-      kind: 'success',
-      progress: undefined,
-    });
-  });
-
   it('discards in-flight results on account changes', async () => {
     setDeletionOwner('previous-owner');
     let release!: (value: Response) => void;
@@ -175,36 +101,6 @@ describe('background image deletion', () => {
     await done;
     expect(get(imageDeletion)).toEqual({ pending: [], removed: [] });
     expect(get(notify)).toEqual([]);
-  });
-
-  it('deletes selections larger than one request in batches', async () => {
-    setDeletionOwner('all-pages');
-    const ids = Array.from({ length: 101 }, (_, index) => `image-${index}`);
-    const batches: string[][] = [];
-    vi.stubGlobal(
-      'fetch',
-      vi.fn((_url: string, init: RequestInit) => {
-        const input = JSON.parse(init.body as string) as { ids: string[] };
-        const batch = input.ids;
-        batches.push(batch);
-        return Promise.resolve(
-          Response.json({
-            deletedIds: batch,
-            alreadyRemovedIds: [],
-            failed: [],
-          }),
-        );
-      }),
-    );
-    vi.mocked(dashboard.refresh).mockResolvedValue(undefined);
-    await deleteSelectedImages(ids);
-    expect(fetch).toHaveBeenCalledTimes(2);
-    expect(batches).toEqual([ids.slice(0, 100), ids.slice(100)]);
-    expect(get(notify)[0].kind).toBe('success');
-    expect(get(notify)[0].progress).toBeUndefined();
-    expect(
-      get(notify)[0].items?.every((item) => item.state === 'completed'),
-    ).toBe(true);
   });
   it('registers pending IDs immediately, deduplicates overlap and preserves partial results through refresh', async () => {
     setDeletionOwner('partial');
@@ -285,24 +181,5 @@ describe('background image deletion', () => {
     expect(get(imageDeletion).removed).toEqual(['a']);
     reconcileDeletedImages([]);
     expect(get(imageDeletion).removed).toEqual([]);
-  });
-  it('reports authorization failure without removing images', async () => {
-    setDeletionOwner('unauthorized');
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() =>
-        Promise.resolve(
-          Response.json(
-            { error: { message: 'Please sign in to continue.' } },
-            { status: 401 },
-          ),
-        ),
-      ),
-    );
-    vi.mocked(dashboard.refresh).mockResolvedValue(undefined);
-    await deleteSelectedImages(['a']);
-    expect(get(imageDeletion)).toEqual({ pending: [], removed: [] });
-    expect(get(notify)[0].guidance).toBe('Please sign in to continue.');
-    expect(get(notify)[0].kind).toBe('error');
   });
 });

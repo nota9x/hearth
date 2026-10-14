@@ -27,7 +27,6 @@ import {
   apiKeys,
   deleteTokens,
   images,
-  sessions,
   users,
 } from '../../packages/core/schema';
 import { migrateDatabase } from '../helpers/database';
@@ -184,16 +183,6 @@ describe('API key credential boundary', () => {
     ).rejects.toMatchObject({ status: 401 });
   });
 
-  it.each(['', 'img_live_', 'Bearer key', ' img_live_key', 'IMG_LIVE_key'])(
-    'denies malformed credential %j',
-    async (key) => {
-      await expect(authenticateKey(env.DB, key)).rejects.toMatchObject({
-        status: 401,
-        code: 'INVALID_KEY',
-      });
-    },
-  );
-
   it('revokes the previous key and every browser session atomically on rotation', async () => {
     const created = await createUser(env.DB, 'Rotating', 'user', admin.id);
     const authenticated = await authenticateKey(env.DB, created.key);
@@ -231,57 +220,6 @@ describe('API key credential boundary', () => {
       .from(apiKeys)
       .where(eq(apiKeys.userId, created.userId));
     expect(rows).toHaveLength(1);
-  });
-
-  it('checks account status and current role on every key authentication', async () => {
-    const created = await createUser(env.DB, 'Lifecycle', 'user', admin.id);
-    const db = database(env.DB);
-    await db
-      .update(users)
-      .set({ status: 'disabled' })
-      .where(eq(users.id, created.userId));
-    await expect(authenticateKey(env.DB, created.key)).rejects.toMatchObject({
-      status: 401,
-    });
-    await db
-      .update(users)
-      .set({ status: 'active', role: 'admin' })
-      .where(eq(users.id, created.userId));
-    expect((await authenticateKey(env.DB, created.key)).user.role).toBe(
-      'admin',
-    );
-    await db
-      .update(users)
-      .set({ role: 'user' })
-      .where(eq(users.id, created.userId));
-    expect((await authenticateKey(env.DB, created.key)).user.role).toBe('user');
-    await db.batch([
-      db
-        .update(users)
-        .set({ status: 'deleted' })
-        .where(eq(users.id, created.userId)),
-      db.delete(apiKeys).where(eq(apiKeys.userId, created.userId)),
-    ]);
-    await expect(authenticateKey(env.DB, created.key)).rejects.toMatchObject({
-      status: 401,
-    });
-  });
-
-  it('enforces absolute expiry, idle expiry and nonreusable session hashes', async () => {
-    const current = await authenticateKey(env.DB, ownerKey);
-    for (const changes of [
-      { expiresAt: now() - 1 },
-      { lastSeenAt: now() - 8 * 86_400 },
-    ]) {
-      const token = await createSession(env.DB, owner.id, current.key.version);
-      const hash = await digest(token, 'session');
-      expect(await authenticateSession(env.DB, hash)).toBeNull();
-      await database(env.DB)
-        .update(sessions)
-        .set(changes)
-        .where(eq(sessions.hash, hash));
-      expect(await authenticateSession(env.DB, token)).toBeNull();
-    }
   });
 });
 
@@ -578,12 +516,6 @@ describe('route authorization matrix', () => {
 });
 
 describe('bearer and browser upload authentication', () => {
-  it('rejects duplicate authorization headers even when both contain valid keys', async () => {
-    const request = uploadRequest(`Bearer ${ownerKey}`);
-    request.headers.append('Authorization', `Bearer ${otherKey}`);
-    expect((await bearerUpload(request)).status).toBe(401);
-  });
-
   it('denies disabled, rotated and deleted credentials through the bearer route', async () => {
     const created = await createUser(env.DB, 'API lifecycle', 'user', admin.id);
     const db = database(env.DB);

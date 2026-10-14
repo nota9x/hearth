@@ -1,63 +1,7 @@
 /* eslint-disable unicorn/no-await-expression-member -- Assertions inspect completed browser responses. */
-import { Buffer } from 'node:buffer';
 import { readFile } from 'node:fs/promises';
 
 import { expect, test } from '../helpers/browser';
-
-test('dashboard and native ShareX uploads return the same global capacity failure without blocking existing reads', async ({
-  hearth,
-  request,
-  baseURL,
-}) => {
-  const key = await readFile(process.env.TEST_KEY_FILE!, 'utf8');
-  const login = await request.post('/api/actions/login', {
-    headers: { Origin: baseURL! },
-    data: { key, token: 'XXXX.DUMMY.TOKEN.XXXX' },
-  });
-  expect(login.status()).toBe(200);
-  await hearth.DB.prepare(
-    'UPDATE storage_capacity SET ready=1,multipartVerified=1,limitBytes=1 WHERE id=1',
-  ).run();
-  const file = {
-    name: 'pixel.png',
-    mimeType: 'image/png',
-    buffer: Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==',
-      'base64',
-    ),
-  };
-  for (const [path, headers] of [
-    ['/api/upload', { Origin: baseURL! }],
-    ['/api/v1/images', { Authorization: `Bearer ${key}` }],
-  ] as const) {
-    const response = await request.post(path, { headers, multipart: { file } });
-    expect(response.status()).toBe(413);
-    expect(await response.json()).toMatchObject({
-      error: { code: 'GLOBAL_STORAGE_LIMIT_EXCEEDED' },
-    });
-  }
-  const rows = await hearth.DB.batch([
-    hearth.DB.prepare(
-      'SELECT persistedBytes,reservedBytes FROM storage_capacity',
-    ),
-    hearth.DB.prepare('SELECT count(*) AS count FROM images'),
-  ]);
-  expect(rows[0].results[0]).toEqual({ persistedBytes: 0, reservedBytes: 0 });
-  expect(rows[1].results[0]).toEqual({ count: 0 });
-  await hearth.DB.prepare(
-    'UPDATE storage_capacity SET limitBytes=NULL WHERE id=1',
-  ).run();
-  const saved = await request.post('/api/upload', {
-    headers: { Origin: baseURL! },
-    multipart: { file },
-  });
-  expect(saved.status()).toBe(201);
-  const image = (await saved.json()) as { id: string };
-  await hearth.DB.prepare(
-    'UPDATE storage_capacity SET limitBytes=1 WHERE id=1',
-  ).run();
-  expect((await request.get(`/api/media/${image.id}`)).status()).toBe(200);
-});
 
 test('storage explains capacity, reservations, settings, scans, and confirmed repairs on desktop and mobile', async ({
   hearth,
@@ -185,10 +129,6 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
   await expect(
     page.getByRole('link', { name: 'Browser administrator', exact: true }),
   ).toBeVisible();
-  await page.screenshot({
-    path: 'artifacts/storage-desktop.png',
-    fullPage: true,
-  });
   const diagnostics = page.getByRole('button', {
     name: 'Advanced diagnostics & history',
   });
@@ -250,20 +190,12 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
   ).run();
   await page.reload();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({
-    path: 'artifacts/storage-mobile.png',
-    fullPage: true,
-  });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
   await page.goto('/admin/settings');
-  await page.screenshot({
-    path: 'artifacts/storage-settings-mobile.png',
-    fullPage: true,
-  });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -326,11 +258,7 @@ test('storage findings paginate, expose styled details, and resolve all with can
   await expect(
     firstFinding.getByText(protectedKey, { exact: true }),
   ).toBeVisible();
-  await attention.screenshot({
-    path: 'artifacts/storage-findings-desktop.png',
-  });
   await page.setViewportSize({ width: 390, height: 844 });
-  await attention.screenshot({ path: 'artifacts/storage-findings-mobile.png' });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

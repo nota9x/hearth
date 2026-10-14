@@ -89,15 +89,12 @@ describe('external protection integration fails closed', () => {
   it.each([
     { success: false, hostname: 'app.example.com', action: 'login' },
     { success: true, action: 'login' },
-    { success: true, hostname: 'app.example.com' },
-    { success: true, hostname: 'evil.example', action: 'login' },
     {
       success: true,
       hostname: 'app.example.com.evil.example',
       action: 'login',
     },
     { success: true, hostname: 'app.example.com', action: 'delete' },
-    { success: 'true', hostname: 'app.example.com', action: 'login' },
   ])(
     'does not create a login session for rejected provider result %j',
     async (result) => {

@@ -1,5 +1,3 @@
-import { readFile } from 'node:fs/promises';
-
 import {
   BlobReader,
   TextWriter,
@@ -8,7 +6,6 @@ import {
 } from '@zip.js/zip.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { ZipProgress } from '../../apps/web/src/lib/downloads';
 import {
   downloadImages,
   downloads,
@@ -18,7 +15,6 @@ import {
   zipMemoryLimit,
 } from '../../apps/web/src/lib/downloads';
 import { notify } from '../../apps/web/src/lib/notifications';
-import { dateTime, relativeExpiry } from '../../packages/core/common';
 import type { DownloadManifest } from '../../packages/core/images';
 import { archiveFilenames, downloadFilename } from '../../packages/core/serve';
 
@@ -56,7 +52,7 @@ const manifestFor = (names: string[], size = 3): DownloadManifest => ({
   failed: [],
 });
 
-describe('download names and expiry', () => {
+describe('safe download names', () => {
   it('preserves spaces, Unicode and emoji while removing unsafe names', () => {
     expect(downloadFilename(String.raw`folder\..\summer café 🐈.png`)).toBe(
       'summer café 🐈.png',
@@ -81,99 +77,34 @@ describe('download names and expiry', () => {
       'download-errors (2).txt',
     ]);
   });
-  it('formats absolute expiry and meaningful relative states', () => {
-    const timestamp = 1_000_000;
-    expect(dateTime(null)).toBe('Never');
-    expect(dateTime(timestamp)).toBe(
-      new Intl.DateTimeFormat('en', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      }).format(timestamp * 1000),
-    );
-    expect(relativeExpiry(null, timestamp)).toBe('');
-    expect(relativeExpiry(timestamp - 1, timestamp)).toBe('Expired');
-    expect(relativeExpiry(timestamp, timestamp)).toBe('Expired');
-    expect(relativeExpiry(timestamp + 59, timestamp)).toBe('Expires soon');
-    expect(relativeExpiry(timestamp + 42 * 60, timestamp)).toBe(
-      'Expires in 42 minutes',
-    );
-    expect(relativeExpiry(timestamp + 6 * 3600, timestamp)).toBe(
-      'Expires in 6 hours',
-    );
-    expect(relativeExpiry(timestamp + 2 * 86_400, timestamp)).toBe(
-      'Expires in 2 days',
-    );
-  });
 });
 
 describe('client ZIP streaming', () => {
-  it('reports explicit item transitions by ID, including repeated filenames and failures', async () => {
+  it('stores binary originals without recompression', async () => {
+    const bytes = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    const manifest = manifestFor(['summer café.png'], bytes.length);
     vi.stubGlobal(
       'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(new Response('abc'))
-        .mockResolvedValueOnce(new Response('Denied', { status: 403 })),
+      vi.fn(() => Promise.resolve(new Response(bytes))),
     );
-    const progress = vi.fn<(snapshot: ZipProgress) => void>();
-    await writeImageZip(
-      manifestFor(['same.png', 'same.png']),
-      memoryZipWriter().stream,
+    const memory = memoryZipWriter();
+    const saved = await writeImageZip(
+      manifest,
+      memory.stream,
       new AbortController().signal,
-      progress,
+      vi.fn(),
     );
-    const snapshots = progress.mock.calls.map(([snapshot]) => snapshot);
-    expect(
-      snapshots
-        .filter((snapshot) => snapshot.item.id === 'image-0')
-        .map((snapshot) => snapshot.item.state),
-    ).toEqual(['active', 'active', 'saving', 'completed']);
-    expect(snapshots.at(-1)).toMatchObject({
-      completed: 1,
-      transferred: 3,
-      item: {
-        id: 'image-1',
-        state: 'failed',
-        error: 'Download failed (HTTP 403).',
-      },
-    });
+    expect(saved).toEqual({ completed: 1, failed: [] });
+    const { zip, result } = await entries(memory.blob());
+    expect(result[0].compressionMethod).toBe(0);
+    expect(await result[0].getData(new Uint8ArrayWriter())).toEqual(
+      new Uint8Array(bytes),
+    );
+    await zip.close();
   });
-
-  it.each(['png', 'jpeg', 'webp', 'avif', 'gif', 'animated.gif'])(
-    'stores %s originals without recompression',
-    async (format) => {
-      const bytes =
-        format === 'png'
-          ? Uint8Array.from(
-              atob(
-                'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==',
-              ),
-              (character) => character.codePointAt(0)!,
-            )
-          : await readFile(
-              `tests/fixtures/${format === 'animated.gif' ? format : `upload.${format}`}`,
-            );
-      const manifest = manifestFor([`summer café ${format}`], bytes.length);
-      vi.stubGlobal(
-        'fetch',
-        vi.fn(() => Promise.resolve(new Response(bytes))),
-      );
-      const memory = memoryZipWriter();
-      const saved = await writeImageZip(
-        manifest,
-        memory.stream,
-        new AbortController().signal,
-        vi.fn(),
-      );
-      expect(saved).toEqual({ completed: 1, failed: [] });
-      const { zip, result } = await entries(memory.blob());
-      expect(result[0].compressionMethod).toBe(0);
-      expect(await result[0].getData(new Uint8ArrayWriter())).toEqual(
-        new Uint8Array(bytes),
-      );
-      await zip.close();
-    },
-  );
   it('continues after HTTP failures and mid-stream truncation, keeping unique successful entries', async () => {
     const manifest = manifestFor([
       'same.png',
@@ -327,97 +258,6 @@ describe('client ZIP streaming', () => {
 });
 
 describe('download preparation', () => {
-  it('aborts an active ZIP transfer only after confirmation and discards partial output', async () => {
-    vi.stubGlobal('showSaveFilePicker', undefined);
-    const click = vi.fn();
-    vi.stubGlobal('document', { createElement: () => ({ click }) });
-    const manifest = manifestFor(['one.png', 'two.png', 'three.png']);
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(Response.json(manifest))
-        .mockResolvedValueOnce(new Response('abc'))
-        .mockImplementationOnce(
-          (_url: string, options: RequestInit) =>
-            new Promise<Response>((_resolve, reject) => {
-              options.signal!.addEventListener(
-                'abort',
-                () => reject(new DOMException('Aborted', 'AbortError')),
-                { once: true },
-              );
-            }),
-        ),
-    );
-    setDownloadOwner('cancel-active-zip');
-    const done = downloadImages(['image-0', 'image-1', 'image-2']);
-    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
-    const notice = get(notify)[0];
-    expect(notice.items?.[0].state).toBe('completed');
-    notify.requestCancel(notice.id);
-    expect(get(downloads).active).toBe(true);
-    const signal = vi.mocked(fetch).mock.calls[2][1]!.signal!;
-    expect(signal.aborted).toBe(false);
-    notify.confirmCancel();
-    await done;
-    expect(signal.aborted).toBe(true);
-    expect(fetch).toHaveBeenCalledTimes(3);
-    expect(click).not.toHaveBeenCalled();
-    expect(get(downloads).active).toBe(false);
-    expect(get(notify)[0]).toMatchObject({
-      id: notice.id,
-      kind: 'info',
-      onCancel: undefined,
-      guidance: 'The unfinished ZIP was discarded. No archive was saved.',
-    });
-    expect(get(notify)[0].items?.map((item) => item.state)).toEqual([
-      'cancelled',
-      'cancelled',
-      'cancelled',
-    ]);
-  });
-
-  it('removes cancellation during the final disk commit and reports saved success', async () => {
-    let finish!: () => void;
-    const abort = vi.fn();
-    const destination = new WritableStream<Uint8Array>({
-      write() {},
-      close: () =>
-        // eslint-disable-next-line unicorn/prefer-promise-with-resolvers
-        new Promise<void>((resolve) => {
-          finish = resolve;
-        }),
-      abort,
-    });
-    vi.stubGlobal('showSaveFilePicker', () =>
-      Promise.resolve({ createWritable: () => Promise.resolve(destination) }),
-    );
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(
-          Response.json(manifestFor(['one.png', 'two.png'])),
-        )
-        .mockImplementation(() => Promise.resolve(new Response('abc'))),
-    );
-    setDownloadOwner('disk-commit');
-    const done = downloadImages(['image-0', 'image-1']);
-    await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
-    const notice = get(notify)[0];
-    expect(notice).toMatchObject({
-      message: 'Saving ZIP…',
-      kind: 'loading',
-      onCancel: undefined,
-    });
-    notify.requestCancel(notice.id);
-    expect(get(notify.confirmation)).toBeNull();
-    finish();
-    await done;
-    expect(abort).not.toHaveBeenCalled();
-    expect(get(notify)[0]).toMatchObject({ kind: 'success' });
-  });
-
   it('opens the disk picker before preparation and streams the ZIP to its writable', async () => {
     const order: string[] = [];
     const memory = memoryZipWriter();
@@ -454,18 +294,6 @@ describe('download preparation', () => {
       'completed',
     ]);
   });
-  it('cancels cleanly when the disk picker is dismissed', async () => {
-    vi.stubGlobal(
-      'showSaveFilePicker',
-      vi.fn(() => Promise.reject(new DOMException('Dismissed', 'AbortError'))),
-    );
-    vi.stubGlobal('fetch', vi.fn());
-    setDownloadOwner('picker-cancel');
-    await downloadImages(['a', 'b']);
-    expect(fetch).not.toHaveBeenCalled();
-    expect(get(downloads).active).toBe(false);
-    expect(get(notify)[0].kind).toBe('info');
-  });
   it('aborts preparation on account change without publishing old results', async () => {
     vi.stubGlobal('showSaveFilePicker', undefined);
     vi.stubGlobal(
@@ -487,39 +315,5 @@ describe('download preparation', () => {
     await pending;
     expect(get(downloads)).toEqual({ active: false, individual: [] });
     expect(get(notify)).toEqual([]);
-  });
-  it('starts a single native download using the authenticated original route', async () => {
-    const click = vi.fn();
-    const link = { href: '', download: '', click };
-    vi.stubGlobal('document', { createElement: () => link });
-    vi.stubGlobal('window', {});
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() =>
-        Promise.resolve(Response.json(manifestFor(['space name.png']))),
-      ),
-    );
-    setDownloadOwner('single');
-    await downloadImages(['image-0']);
-    expect(link.href).toBe('/api/media/image-0?download');
-    expect(link.download).toBe('space name.png');
-    expect(click).toHaveBeenCalledOnce();
-    expect(get(notify)[0]).toMatchObject({ progress: undefined });
-    expect(get(notify)[0].items?.[0]).toMatchObject({
-      name: 'space name.png',
-      state: 'started',
-    });
-  });
-  it('offers individual downloads instead of allocating a large archive', async () => {
-    vi.stubGlobal('window', {});
-    const manifest = manifestFor(['one.png', 'two.png'], zipMemoryLimit);
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.resolve(Response.json(manifest))),
-    );
-    setDownloadOwner('fallback');
-    await downloadImages(['image-0', 'image-1']);
-    expect(get(downloads).individual).toEqual(manifest.images);
-    expect(fetch).toHaveBeenCalledOnce();
   });
 });

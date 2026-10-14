@@ -4,6 +4,7 @@ Hearth is one pnpm workspace and release stream. Use Node 24 and the pnpm versio
 Start with [local setup](local-setup.md), then read
 [architecture and invariants](architecture.md) before changing persistence or security.
 See [releases and Git hooks](releasing.md) for contributor and maintainer workflows.
+See [testing](testing.md) for choosing regression coverage and measuring the suite.
 Self-hosting instructions begin at the [documentation index](../README.md).
 
 ## Required checks
@@ -28,7 +29,7 @@ integration/browser suite for mutations, authentication, and routes.
 
 ```sh
 pnpm exec vitest run tests/unit/core.test.ts
-pnpm exec vitest run tests/unit/core.test.ts -t "generates multipart bearer request"
+pnpm exec vitest run tests/unit/core.test.ts -t "normalizes custom addresses"
 pnpm exec playwright install chromium
 pnpm build
 pnpm exec playwright test tests/browser/domains.spec.ts
@@ -53,7 +54,7 @@ For representative mutation checks in disposable copies:
 
 ```sh
 node scripts/security-mutations.mjs
-node scripts/security-mutations.mjs session-account-status --verify-gaps
+node scripts/security-mutations.mjs session-account-status
 node scripts/security-mutations.mjs --refactors
 ```
 

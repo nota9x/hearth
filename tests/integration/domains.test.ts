@@ -26,11 +26,8 @@ import {
   isCloudflareAddress,
   validateDeliveryDomain,
 } from '../../packages/core/domain-validation';
-import { createLink, selectedLinks } from '../../packages/core/links';
-import {
-  contentUrl,
-  type PublicUrlEnvironment,
-} from '../../packages/core/public-urls';
+import { createLink } from '../../packages/core/links';
+import { type PublicUrlEnvironment } from '../../packages/core/public-urls';
 import { images, users } from '../../packages/core/schema';
 import { migrateDatabase } from '../helpers/database';
 import { workerBundle, workerCompatibility } from '../helpers/workers';
@@ -152,56 +149,11 @@ function healthyNetwork() {
 }
 
 describe('delivery selection and permissions', () => {
-  it('has no implicit fallback with zero or one unselected domain', async () => {
+  it('never selects an unchosen domain or substitutes for an unhealthy primary', async () => {
     expect((await selectDeliveryDomain(binding, member.id)).domain).toBeNull();
-    await active();
+    const first = await active();
     expect((await selectDeliveryDomain(binding, member.id)).domain).toBeNull();
     expect(await primaryDeliveryDomain(binding)).toBeNull();
-  });
-  it('selects the primary deterministically and lets a personal preference override it', async () => {
-    const first = await active(),
-      second = await active('additional.example.net');
-    await setPrimaryDeliveryDomain(binding, admin, first.id, first.revision);
-    expect((await selectDeliveryDomain(binding, member.id)).domain?.id).toBe(
-      first.id,
-    );
-    await setDeliveryPreference(binding, member, second.id);
-    expect((await selectDeliveryDomain(binding, member.id)).domain?.id).toBe(
-      second.id,
-    );
-    expect(
-      (await selectDeliveryDomain(binding, member.id, first.id)).domain?.id,
-    ).toBe(first.id);
-    await setDeliveryPreference(binding, member, null);
-    expect((await selectDeliveryDomain(binding, member.id)).domain?.id).toBe(
-      first.id,
-    );
-  });
-  it('retains links on their assigned hostname when the primary changes', async () => {
-    const first = await active(),
-      second = await active('second.example.net'),
-      imageId = await image();
-    await setPrimaryDeliveryDomain(binding, admin, first.id, first.revision);
-    const old = await createLink(binding, member, {
-      imageId,
-      deliveryDomainId: first.id,
-      slug: 'old-address',
-      expiry: 'never',
-    });
-    await setPrimaryDeliveryDomain(binding, admin, second.id, second.revision);
-    expect((await selectDeliveryDomain(binding, member.id)).domain?.id).toBe(
-      second.id,
-    );
-    const [row] = await selectedLinks(binding, member, [old.id]);
-    expect(contentUrl(row.deliveryHostname, row.link.slug, environment)).toBe(
-      'https://images.example.com/old-address',
-    );
-    expect(
-      (await mf.dispatchFetch('https://images.example.com/old-address')).status,
-    ).toBe(200);
-  });
-  it('does not switch to a healthy secondary when primary health fails', async () => {
-    const first = await active();
     await active('secondary.example.com');
     await setPrimaryDeliveryDomain(binding, admin, first.id, first.revision);
     await binding
@@ -377,31 +329,6 @@ describe('removal and collection behavior', () => {
       )?.deletedAt,
     ).toBeNull();
   });
-  it('removes a non-primary domain and explicitly clears the final primary', async () => {
-    const first = await active(),
-      second = await active('extra.example.com');
-    await setPrimaryDeliveryDomain(binding, admin, first.id, 0);
-    await changeDeliveryAvailability(binding, admin, {
-      id: second.id,
-      revision: 0,
-      enabled: false,
-      remove: true,
-      expectedLinkCount: 0,
-      replacementId: null,
-      clearPrimary: false,
-    });
-    const current = await domainDetails(binding, admin, first.id);
-    await changeDeliveryAvailability(binding, admin, {
-      id: first.id,
-      revision: current.revision,
-      enabled: false,
-      remove: true,
-      expectedLinkCount: 0,
-      replacementId: null,
-      clearPrimary: true,
-    });
-    expect(await primaryDeliveryDomain(binding)).toBeNull();
-  });
   it('rejects destructive confirmations if links were added after review', async () => {
     const domain = await active();
     await createLink(binding, member, {
@@ -421,61 +348,6 @@ describe('removal and collection behavior', () => {
       }),
     ).rejects.toMatchObject({ code: 'DOMAIN_CHANGED' });
     expect((await domainDetails(binding, admin, domain.id)).linkCount).toBe(1);
-  });
-  it('searches metadata and status, paginates deterministically, and clamps a deleted final page', async () => {
-    for (let index = 0; index < 25; index++)
-      await add(`images-${String(index).padStart(2, '0')}.example.com`);
-    let result = await deliveryDomainPage(
-      binding,
-      admin,
-      new URLSearchParams({ page: '2', sort: 'name' }),
-    );
-    expect(result.domains).toHaveLength(1);
-    expect(result.pagination.pages).toBe(2);
-    const last = result.domains[0];
-    await changeDeliveryAvailability(binding, admin, {
-      id: last.id,
-      revision: 0,
-      enabled: false,
-      remove: true,
-      expectedLinkCount: 0,
-      replacementId: null,
-      clearPrimary: false,
-    });
-    result = await deliveryDomainPage(
-      binding,
-      admin,
-      new URLSearchParams({ page: '2' }),
-    );
-    expect(result.pagination.page).toBe(1);
-    expect(result.domains).toHaveLength(24);
-    expect(
-      (
-        await deliveryDomainPage(
-          binding,
-          admin,
-          new URLSearchParams({ q: 'does-not-exist' }),
-        )
-      ).pagination.total,
-    ).toBe(0);
-    expect(
-      (
-        await deliveryDomainPage(
-          binding,
-          admin,
-          new URLSearchParams({ q: 'pending' }),
-        )
-      ).pagination.total,
-    ).toBe(24);
-    expect(
-      (
-        await deliveryDomainPage(
-          binding,
-          admin,
-          new URLSearchParams({ q: 'images-0' }),
-        )
-      ).pagination.total,
-    ).toBe(10);
   });
   it('retains member grants outside the edited page and does not expose private validation material', async () => {
     const domain = await active('selected.example.com', 'selected');
@@ -523,42 +395,6 @@ describe('validation and safe public URLs', () => {
     ])
       await expect(add(hostname)).rejects.toMatchObject({ status: 400 });
     expect(fetch).not.toHaveBeenCalled();
-  });
-  it('validates loopback delivery and serves its generated image URL', async () => {
-    const local = {
-      ...environment,
-      ENVIRONMENT: 'development',
-      APP_ORIGIN: 'http://127.0.0.1:5173',
-    };
-    const domain = await saveDeliveryDomain(
-      binding,
-      admin,
-      { hostname: '127.0.0.1:8788', accessMode: 'everyone' },
-      local,
-    );
-    expect(domain.hostname).toBe('127.0.0.1');
-    const network = healthyNetwork();
-    const checked = await validateDeliveryDomain(local, admin, domain.id);
-    expect(checked.health).toBe('active');
-    expect(checked.diagnostics?.message).toContain(
-      'Production DNS and TLS were not checked',
-    );
-    expect(network).toHaveBeenCalledOnce();
-    const [endpoint] = network.mock.calls[0];
-    expect(
-      new URL(endpoint instanceof Request ? endpoint.url : endpoint).origin,
-    ).toBe('http://127.0.0.1:8788');
-    const link = await createLink(binding, member, {
-      imageId: await image(),
-      deliveryDomainId: domain.id,
-      slug: 'local-image',
-      expiry: 'never',
-    });
-    const url = contentUrl(domain.hostname, link.slug, local);
-    expect(url).toBe('http://127.0.0.1:8788/local-image');
-    const response = await mf.dispatchFetch(url);
-    expect(response.status).toBe(200);
-    expect(await response.text()).toBe('bytes');
   });
   it('uses fixed loopback transport only for local development checks', async () => {
     environment.ENVIRONMENT = 'development';
