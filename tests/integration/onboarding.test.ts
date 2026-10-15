@@ -15,7 +15,7 @@ import {
   hasBootstrapSetup,
 } from '../../packages/core/onboarding';
 import { auditLog, users } from '../../packages/core/schema';
-import { applyMigration, migrateDatabase } from '../helpers/database';
+import { migrateDatabase } from '../helpers/database';
 
 let runtime: Miniflare, env: Env, user: User;
 beforeEach(async () => {
@@ -196,64 +196,4 @@ describe('shared settings and credentials', () => {
     });
     expect((await current()).preferredDeliveryDomainId).toBeNull();
   });
-});
-
-it('adds onboarding without rebuilding users or losing database invariants', async () => {
-  const old = new Miniflare(
-    convertV4MiniflareOptions({
-      cf: false,
-      modules: true,
-      script: 'export default {fetch(){return new Response("ok")}}',
-      d1Databases: ['DB'],
-    }),
-  );
-  try {
-    const DB = await old.getD1Database('DB');
-    await migrateDatabase(DB, '0012_user_management.sql');
-    await DB.batch([
-      DB.prepare(
-        "INSERT INTO users(id,displayName,role,defaultExpiry,createdAt,updatedAt) VALUES('initial','Initial','admin','7d',1,1)",
-      ),
-      DB.prepare(
-        "INSERT INTO audit_log(id,action,targetId,metadata,createdAt) VALUES('bootstrap','admin.bootstrapped','initial','{}',1)",
-      ),
-    ]);
-    const invariants = await DB.prepare(
-      "SELECT name,sql FROM sqlite_master WHERE type='trigger' ORDER BY name",
-    ).all();
-    await applyMigration(DB, '0013_onboarding.sql');
-    await applyMigration(DB, '0014_opposite_eddie_brock.sql');
-    expect(
-      await DB.prepare(
-        "SELECT onboardingStatus,onboardingStep,bootstrapAdministrator,defaultExpiry FROM users WHERE id='initial'",
-      ).first(),
-    ).toEqual({
-      onboardingStatus: 'exempt',
-      onboardingStep: 0,
-      bootstrapAdministrator: 1,
-      defaultExpiry: '7d',
-    });
-    expect(
-      await DB.prepare(
-        "SELECT onboardingUploadBaseline,onboardingUploadStatus,onboardingUploadImageId FROM users WHERE id='initial'",
-      ).first(),
-    ).toEqual({
-      onboardingUploadBaseline: null,
-      onboardingUploadStatus: null,
-      onboardingUploadImageId: null,
-    });
-    expect(
-      await DB.prepare(
-        "SELECT name,sql FROM sqlite_master WHERE type='trigger' ORDER BY name",
-      ).all(),
-    ).toMatchObject({ results: invariants.results });
-    await expect(
-      DB.prepare("UPDATE users SET status='disabled' WHERE id='initial'").run(),
-    ).rejects.toThrow('last_admin');
-    expect(
-      (await DB.prepare('PRAGMA foreign_key_check').all()).results,
-    ).toEqual([]);
-  } finally {
-    await old.dispose();
-  }
 });

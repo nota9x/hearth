@@ -11,7 +11,7 @@ import {
   images,
   users,
 } from '../../packages/core/schema';
-import { applyMigration, migrateDatabase } from '../helpers/database';
+import { migrateDatabase } from '../helpers/database';
 
 let mf: Miniflare,
   searchBinding: D1Database,
@@ -231,23 +231,15 @@ describe('database-backed audit search', () => {
 });
 
 describe('SQL audit retention', () => {
-  it('trims existing history and enforces the cap for bulk inserts, ties, old timestamps, and rollback', async () => {
+  it('enforces the cap for bulk inserts, ties, old timestamps, and rollback', async () => {
     retentionBinding = await mf.getD1Database('RETENTION');
-    await migrateDatabase(retentionBinding, '0003_image_notifications.sql');
-    await applyMigration(retentionBinding, '0005_image_expiry.sql');
-    await applyMigration(retentionBinding, '0007_expiry_policy.sql');
-    await applyMigration(retentionBinding, '0008_image_metadata.sql');
-    await applyMigration(retentionBinding, '0006_upload_receipts.sql');
-    await applyMigration(retentionBinding, '0009_share_slug_configuration.sql');
-    await applyMigration(retentionBinding, '0010_link_management.sql');
-    await applyMigration(retentionBinding, '0011_delivery_domains.sql');
+    await migrateDatabase(retentionBinding);
 
     await retentionBinding
       .prepare(
         "WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<10005) INSERT INTO audit_log(id,action,createdAt) SELECT 'seed-'||x,'test.seed',x FROM n",
       )
       .run();
-    await applyMigration(retentionBinding, '0004_audit_retention.sql');
     const db = database(retentionBinding);
     const initial = await retentionBinding
       .prepare(

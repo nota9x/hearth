@@ -1,3 +1,0 @@
-ALTER TABLE users ADD COLUMN uploadCount INTEGER NOT NULL DEFAULT 0;
---> statement-breakpoint
-ALTER TABLE users ADD COLUMN seenUploadCount INTEGER NOT NULL DEFAULT 0;

@@ -119,8 +119,7 @@ pnpm exec wrangler d1 migrations apply DB --remote --config apps/web/production.
 pnpm bootstrap "Your administrator name" --remote --config apps/web/production.local.jsonc
 ```
 
-Confirm the prompt targets the new database. Apply the entire ordered `drizzle/`
-chain, currently through `0015_vengeful_fixer.sql`, not just its latest file.
+Confirm the prompt targets the new database. Apply all ordered migrations in `drizzle/`, starting with `0000_initial.sql`.
 `pnpm db:migrate` operates **locally**, not on your production database.
 
 Bootstrap prints your initial administrator API key once. Save it in a password
