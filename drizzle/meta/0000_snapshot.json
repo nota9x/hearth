@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "dd0c3d78-76af-4997-8d60-3c633d48ff00",
+  "id": "628ab54f-3755-42f8-8f6f-49d7545e7fbb",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "aliases": {
@@ -21,8 +21,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "hostId": {
-          "name": "hostId",
+        "deliveryDomainId": {
+          "name": "deliveryDomainId",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -69,7 +69,7 @@
         "alias_address": {
           "name": "alias_address",
           "columns": [
-            "hostId",
+            "deliveryDomainId",
             "slug"
           ],
           "isUnique": true
@@ -80,6 +80,34 @@
             "imageId"
           ],
           "isUnique": false
+        },
+        "aliases_live_date": {
+          "name": "aliases_live_date",
+          "columns": [
+            "createdAt",
+            "id"
+          ],
+          "isUnique": false,
+          "where": "\"aliases\".\"disabledAt\" IS NULL"
+        },
+        "aliases_live_domain_date": {
+          "name": "aliases_live_domain_date",
+          "columns": [
+            "deliveryDomainId",
+            "createdAt",
+            "id"
+          ],
+          "isUnique": false,
+          "where": "\"aliases\".\"disabledAt\" IS NULL"
+        },
+        "aliases_live_expiry": {
+          "name": "aliases_live_expiry",
+          "columns": [
+            "expiresAt",
+            "id"
+          ],
+          "isUnique": false,
+          "where": "\"aliases\".\"disabledAt\" IS NULL"
         },
         "alias_primary": {
           "name": "alias_primary",
@@ -104,12 +132,12 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "aliases_hostId_hosts_id_fk": {
-          "name": "aliases_hostId_hosts_id_fk",
+        "aliases_deliveryDomainId_delivery_domains_id_fk": {
+          "name": "aliases_deliveryDomainId_delivery_domains_id_fk",
           "tableFrom": "aliases",
-          "tableTo": "hosts",
+          "tableTo": "delivery_domains",
           "columnsFrom": [
-            "hostId"
+            "deliveryDomainId"
           ],
           "columnsTo": [
             "id"
@@ -258,6 +286,14 @@
             "createdAt"
           ],
           "isUnique": false
+        },
+        "audit_actor_date": {
+          "name": "audit_actor_date",
+          "columns": [
+            "actorId",
+            "createdAt"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {},
@@ -309,6 +345,235 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
+    },
+    "delivery_domain_access": {
+      "name": "delivery_domain_access",
+      "columns": {
+        "deliveryDomainId": {
+          "name": "deliveryDomainId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "delivery_access_user": {
+          "name": "delivery_access_user",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "delivery_domain_access_deliveryDomainId_delivery_domains_id_fk": {
+          "name": "delivery_domain_access_deliveryDomainId_delivery_domains_id_fk",
+          "tableFrom": "delivery_domain_access",
+          "tableTo": "delivery_domains",
+          "columnsFrom": [
+            "deliveryDomainId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "delivery_domain_access_userId_users_id_fk": {
+          "name": "delivery_domain_access_userId_users_id_fk",
+          "tableFrom": "delivery_domain_access",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "delivery_domain_access_deliveryDomainId_userId_pk": {
+          "columns": [
+            "deliveryDomainId",
+            "userId"
+          ],
+          "name": "delivery_domain_access_deliveryDomainId_userId_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "delivery_domains": {
+      "name": "delivery_domains",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "hostname": {
+          "name": "hostname",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "accessMode": {
+          "name": "accessMode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'everyone'"
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "isPrimary": {
+          "name": "isPrimary",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "health": {
+          "name": "health",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "lastCheckedAt": {
+          "name": "lastCheckedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "lastHealthyAt": {
+          "name": "lastHealthyAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "diagnostics": {
+          "name": "diagnostics",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "validationKey": {
+          "name": "validationKey",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(lower(hex(randomblob(32))))"
+        },
+        "checkId": {
+          "name": "checkId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "mutationId": {
+          "name": "mutationId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "delivery_domains_hostname_unique": {
+          "name": "delivery_domains_hostname_unique",
+          "columns": [
+            "hostname"
+          ],
+          "isUnique": true
+        },
+        "delivery_one_primary": {
+          "name": "delivery_one_primary",
+          "columns": [
+            "isPrimary"
+          ],
+          "isUnique": true,
+          "where": "\"delivery_domains\".\"isPrimary\"=1"
+        },
+        "delivery_domain_date": {
+          "name": "delivery_domain_date",
+          "columns": [
+            "createdAt",
+            "id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "delivery_access_mode": {
+          "name": "delivery_access_mode",
+          "value": "\"delivery_domains\".\"accessMode\" IN ('everyone','administrators','selected')"
+        },
+        "delivery_health": {
+          "name": "delivery_health",
+          "value": "\"delivery_domains\".\"health\" IN ('pending','active','misconfigured','unhealthy')"
+        }
+      }
     },
     "reconciliation_findings": {
       "name": "reconciliation_findings",
@@ -370,7 +635,17 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "findings_unresolved_object": {
+          "name": "findings_unresolved_object",
+          "columns": [
+            "kind",
+            "objectKey"
+          ],
+          "isUnique": true,
+          "where": "\"reconciliation_findings\".\"resolvedAt\" IS NULL AND \"reconciliation_findings\".\"objectKey\" IS NOT NULL"
+        }
+      },
       "foreignKeys": {
         "reconciliation_findings_runId_reconciliation_runs_id_fk": {
           "name": "reconciliation_findings_runId_reconciliation_runs_id_fk",
@@ -386,120 +661,6 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "host_access": {
-      "name": "host_access",
-      "columns": {
-        "hostId": {
-          "name": "hostId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "userId": {
-          "name": "userId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "host_access_hostId_hosts_id_fk": {
-          "name": "host_access_hostId_hosts_id_fk",
-          "tableFrom": "host_access",
-          "tableTo": "hosts",
-          "columnsFrom": [
-            "hostId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "host_access_userId_users_id_fk": {
-          "name": "host_access_userId_users_id_fk",
-          "tableFrom": "host_access",
-          "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "host_access_hostId_userId_pk": {
-          "columns": [
-            "hostId",
-            "userId"
-          ],
-          "name": "host_access_hostId_userId_pk"
-        }
-      },
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "hosts": {
-      "name": "hosts",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "label": {
-          "name": "label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "restricted": {
-          "name": "restricted",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "enabled": {
-          "name": "enabled",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": true
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "hosts_label_unique": {
-          "name": "hosts_label_unique",
-          "columns": [
-            "label"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -651,6 +812,14 @@
             "purgedAt"
           ],
           "isUnique": false
+        },
+        "images_preview": {
+          "name": "images_preview",
+          "columns": [
+            "previewKey"
+          ],
+          "isUnique": false,
+          "where": "\"images\".\"previewKey\" IS NOT NULL"
         }
       },
       "foreignKeys": {
@@ -676,6 +845,37 @@
           "value": "\"images\".\"size\" > 0"
         }
       }
+    },
+    "maintenance_lock": {
+      "name": "maintenance_lock",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "holder": {
+          "name": "holder",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expiresAt": {
+          "name": "expiresAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
     },
     "reconciliation_runs": {
       "name": "reconciliation_runs",
@@ -745,33 +945,32 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "reserved_names": {
-      "name": "reserved_names",
-      "columns": {
-        "label": {
-          "name": "label",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
         },
-        "createdAt": {
-          "name": "createdAt",
+        "updatedAt": {
+          "name": "updatedAt",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "reconciliation_one_running": {
+          "name": "reconciliation_one_running",
+          "columns": [
+            "status"
+          ],
+          "isUnique": true,
+          "where": "\"reconciliation_runs\".\"status\" = 'running'"
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -913,6 +1112,189 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "storage_capacity": {
+      "name": "storage_capacity",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "limitBytes": {
+          "name": "limitBytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "persistedBytes": {
+          "name": "persistedBytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "reservedBytes": {
+          "name": "reservedBytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "ready": {
+          "name": "ready",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "multipartVerified": {
+          "name": "multipartVerified",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "blocked": {
+          "name": "blocked",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "storage_objects": {
+      "name": "storage_objects",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "imageId": {
+          "name": "imageId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "receiptKey": {
+          "name": "receiptKey",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'uploading'"
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "uploadId": {
+          "name": "uploadId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "reservedBytes": {
+          "name": "reservedBytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "stagedBytes": {
+          "name": "stagedBytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "storedBytes": {
+          "name": "storedBytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "storage_recovery": {
+          "name": "storage_recovery",
+          "columns": [
+            "state",
+            "updatedAt"
+          ],
+          "isUnique": false
+        },
+        "storage_image": {
+          "name": "storage_image",
+          "columns": [
+            "imageId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "storage_object_bytes": {
+          "name": "storage_object_bytes",
+          "value": "\"storage_objects\".\"reservedBytes\" >= 0 AND \"storage_objects\".\"stagedBytes\" >= 0 AND \"storage_objects\".\"stagedBytes\" <= \"storage_objects\".\"reservedBytes\" AND \"storage_objects\".\"storedBytes\" >= 0"
+        }
+      }
+    },
     "user_storage_stats": {
       "name": "user_storage_stats",
       "columns": {
@@ -973,6 +1355,51 @@
         }
       }
     },
+    "upload_receipts": {
+      "name": "upload_receipts",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "response": {
+          "name": "response",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "upload_receipts_userId_users_id_fk": {
+          "name": "upload_receipts_userId_users_id_fk",
+          "tableFrom": "upload_receipts",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "users": {
       "name": "users",
       "columns": {
@@ -1006,20 +1433,80 @@
           "autoincrement": false,
           "default": "'active'"
         },
-        "defaultHostId": {
-          "name": "defaultHostId",
+        "preferredDeliveryDomainId": {
+          "name": "preferredDeliveryDomainId",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "defaultRetention": {
-          "name": "defaultRetention",
+        "defaultExpiry": {
+          "name": "defaultExpiry",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
           "default": "'never'"
+        },
+        "stripImageMetadata": {
+          "name": "stripImageMetadata",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "onboardingStatus": {
+          "name": "onboardingStatus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "onboardingStep": {
+          "name": "onboardingStep",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "onboardingUploadBaseline": {
+          "name": "onboardingUploadBaseline",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "onboardingUploadStatus": {
+          "name": "onboardingUploadStatus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "onboardingUploadImageId": {
+          "name": "onboardingUploadImageId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "bootstrapAdministrator": {
+          "name": "bootstrapAdministrator",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "expiryPolicy": {
+          "name": "expiryPolicy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "quotaBytes": {
           "name": "quotaBytes",
@@ -1027,6 +1514,22 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "uploadCount": {
+          "name": "uploadCount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "seenUploadCount": {
+          "name": "seenUploadCount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
         },
         "createdAt": {
           "name": "createdAt",
@@ -1043,14 +1546,23 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "users_date": {
+          "name": "users_date",
+          "columns": [
+            "createdAt",
+            "id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
-        "users_defaultHostId_hosts_id_fk": {
-          "name": "users_defaultHostId_hosts_id_fk",
+        "users_preferredDeliveryDomainId_delivery_domains_id_fk": {
+          "name": "users_preferredDeliveryDomainId_delivery_domains_id_fk",
           "tableFrom": "users",
-          "tableTo": "hosts",
+          "tableTo": "delivery_domains",
           "columnsFrom": [
-            "defaultHostId"
+            "preferredDeliveryDomainId"
           ],
           "columnsTo": [
             "id"
@@ -1065,6 +1577,14 @@
         "valid_role": {
           "name": "valid_role",
           "value": "\"users\".\"role\" in ('user','admin')"
+        },
+        "valid_onboarding_status": {
+          "name": "valid_onboarding_status",
+          "value": "\"users\".\"onboardingStatus\" in ('pending','completed','skipped','exempt')"
+        },
+        "valid_onboarding_step": {
+          "name": "valid_onboarding_step",
+          "value": "\"users\".\"onboardingStep\" between 0 and 6"
         },
         "valid_status": {
           "name": "valid_status",

@@ -30,8 +30,8 @@ See [user management](user-management.md) for the session revocation on saving.
 
 ## Initialize before enabling a global limit
 
-The global limit defaults to unlimited. Before enabling it, apply all migrations
-through `0015_vengeful_fixer.sql` and deploy the current three Workers together.
+The global limit defaults to unlimited. Before enabling it, apply the current migrations
+and deploy the current three Workers together.
 Older runtimes must no longer write to the bucket. This also applies to new
 installations: initial capacity readiness requires verification and a baseline scan.
 

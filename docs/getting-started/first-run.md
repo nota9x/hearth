@@ -1,8 +1,7 @@
 # Complete first-run setup
 
 After [installation](installation.md), sign in at your configured application
-hostname with the API key printed by bootstrap. New accounts enter onboarding;
-accounts present before the onboarding migration are exempt.
+hostname with the API key printed by bootstrap. New accounts enter onboarding.
 
 ## Connect delivery
 

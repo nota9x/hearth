@@ -41,20 +41,11 @@ without replacing resource IDs or losing delivery hostnames.
 Keep local development files separate. Never run `pnpm db:generate` or a schema
 push as part of updating an instance; apply the repository's ordered SQL.
 
-## Consequential migrations
+## Migration baseline
 
-If these are still pending on your database:
-
-| Migration                       | Operational consequence                                                                                                                                                                                                    |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `0004_audit_retention.sql`      | Prunes history to the latest 10,000 audit events and enforces that cap.                                                                                                                                                    |
-| `0011_delivery_domains.sql`     | Resets legacy delivery configuration, member grants/preferences, share links, and upload receipts. Images/accounts survive; previous public URLs stop working. Reconfigure domains and create replacement links afterward. |
-| `0014_opposite_eddie_brock.sql` | Adds first-upload onboarding fields used by the current runtime.                                                                                                                                                           |
-| `0015_vengeful_fixer.sql`       | Adds physical storage accounting. Upgrade all writers together and complete [storage initialization](../guides/storage-management.md#initialize-before-enabling-a-global-limit) before enabling a cap.                     |
-
-Apply earlier migrations in order too. This table highlights impact; it is not a
-replacement for reviewing the complete pending chain. An already applied migration
-does not rerun during an ordinary update.
+`0000_initial.sql` creates the current schema on an empty database. The previous
+migration history has been removed; databases using that history require a fresh
+installation rather than applying this baseline over existing tables.
 
 ## 3. Migrate and deploy together
 
@@ -91,8 +82,6 @@ actually requires it. A `secret put` command itself deploys a version.
 
 Sign in, upload a small image through ShareX, open its returned URL, and find it in
 Images. Check delivery validation, storage health, and the next scheduled invocation.
-If `0011` was newly applied, add/validate domains and set the instance default before expecting
-new public links. Old links are not automatically migrated.
 
 Inspect all three Workers' [logs](maintenance.md#read-worker-logs). Confirm no pending
 migrations remain and retain the backup until the update is stable.

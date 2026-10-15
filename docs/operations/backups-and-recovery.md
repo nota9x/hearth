@@ -156,7 +156,7 @@ must be rehearsed on isolated resources with your actual export before productio
 use. Hearth has no portable restore helper that reconciles its triggers, migration
 history, and R2 ledger automatically.
 
-A disposable local rehearsal with Wrangler 4.149.0 applied all 16 migrations and
+A disposable local rehearsal with Wrangler 4.149.0 applied migrations and
 bootstrapped an account successfully, but importing its unmodified SQL export into
 an empty local database failed: a trigger referenced `users` before that table
 existed. This does not establish remote export behavior. Review the actual dump's
@@ -178,8 +178,8 @@ ingress closed. Do not import into a populated production database or run bootst
 
 Compare imported triggers/indexes to the saved inventory, migration rows to the
 backup, and stored counters/references to the recovered objects. Do not blindly
-rerun the full migration chain: triggers can double-count data, and migration `0011`
-can remove restored links. Repair any incomplete export/import under review before
+apply the initial migration over restored tables. Repair any incomplete
+export/import under review before
 cutover. Preserve the original instance until recovery validation passes.
 
 This guide provides procedures and constraints, not a claim of a live account
