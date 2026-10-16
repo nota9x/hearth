@@ -241,9 +241,8 @@ async function start(accountMode: AccountMode) {
       const result = spawnSync(
         process.execPath,
         [
-          '--import',
-          'tsx',
-          'scripts/bootstrap.ts',
+          'scripts/cli.mjs',
+          'bootstrap',
           'Bootstrap administrator',
           '--config',
           config,

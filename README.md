@@ -57,15 +57,16 @@ with Workers, D1, R2, and Turnstile. You need an active Cloudflare domain with
 separate hostnames for the dashboard/API and image delivery. Cloudflare Images is
 optional for dashboard previews.
 
-1. **[Install on Cloudflare](docs/getting-started/installation.md).** Create the
-   resources, generate production configuration, migrate the database, bootstrap
-   the first administrator, and deploy the three Workers.
+1. **[Install on Cloudflare](docs/getting-started/installation.md).** After cloning
+   and installing dependencies, run `pnpm run setup`. The guided installer connects
+   your Cloudflare account, provisions resources, initializes Hearth, deploys all
+   three Workers, and checks image delivery. It preserves progress when you retry.
 2. **[Complete first-run setup](docs/getting-started/first-run.md).** Sign in,
-   validate a delivery domain, and choose your upload defaults.
+   review delivery and choose your upload defaults.
 3. **[Connect ShareX](docs/getting-started/sharex-setup.md).** Import your generated
    uploader and verify your first screenshot and public URL.
 
-Production setup uses `pnpm configure` and ignored `production.local.jsonc` files;
+Guided setup and manual `pnpm configure` use ignored `production.local.jsonc` files;
 the checked-in Wrangler configurations are for local development. Follow the
 installation guide before deploying. Review Cloudflare service limits and billing
 for your workload; Hearth's capacity limit is not a billing cap.

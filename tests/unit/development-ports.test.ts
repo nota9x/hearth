@@ -4,12 +4,12 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { root } from '../../scripts/development-config';
+import { root } from '../../cli/development/config';
 import {
   findDevelopmentServer,
   portAvailable,
   stopDevelopmentServer,
-} from '../../scripts/development-ports';
+} from '../../cli/development/ports';
 
 // Exercise native Windows discovery and termination against an owned, disposable
 // process tree. These processes listen only; they never start Vite or touch D1/R2.
@@ -31,14 +31,23 @@ describe('development port handling', () => {
   it.runIf(process.platform === 'win32').each(['development', 'preview'])(
     'identifies only Hearth %s servers and terminates the selected process tree',
     async (mode) => {
-      const servicePath = path.join(root, 'scripts/development-service.ts');
-      const launcherPath = path.join(root, `scripts/${mode}.ts`);
+      const servicePath = path.join(root, 'cli/development/tool-process.mjs');
+      const launcherPath =
+        mode === 'development'
+          ? 'scripts/cli.mjs'
+          : path.join(root, 'scripts/cli.mjs');
       const listener =
         "import { createServer } from 'node:net'; const server = createServer(); server.listen(0, '127.0.0.1', () => console.log(String(server.address().port)));";
       const parent = `import { spawn } from 'node:child_process'; const child = spawn(process.execPath, ['--input-type=module', '-e', ${JSON.stringify(listener)}, ${JSON.stringify(servicePath)}], { stdio: ['ignore', 'pipe', 'inherit'], windowsHide: true }); child.stdout.pipe(process.stdout); setInterval(() => {}, 1000);`;
       const child = spawn(
         process.execPath,
-        ['--input-type=module', '-e', parent, launcherPath],
+        [
+          '--input-type=module',
+          '-e',
+          parent,
+          launcherPath,
+          mode === 'preview' ? 'preview' : 'dev',
+        ],
         { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true },
       );
       try {

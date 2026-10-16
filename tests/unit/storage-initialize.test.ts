@@ -1,5 +1,3 @@
-import type * as NodeUtil from 'node:util';
-
 import { beforeEach, expect, it, vi } from 'vitest';
 
 const fixture = vi.hoisted(() => ({
@@ -10,11 +8,7 @@ const fixture = vi.hoisted(() => ({
     profile: 'test',
   },
 }));
-vi.mock('node:child_process', () => ({ spawnSync: fixture.spawn }));
-vi.mock('node:util', async (original) => ({
-  ...(await original<typeof NodeUtil>()),
-  parseArgs: () => ({ values: fixture.values }),
-}));
+vi.mock('execa', () => ({ execa: fixture.spawn }));
 
 beforeEach(() => {
   vi.resetModules();
@@ -31,7 +25,7 @@ it('pauses admission, aborts only untracked multipart uploads, verifies absence,
       const statement = arguments_[arguments_.indexOf('--command') + 1];
       sql.push(statement);
       return {
-        status: 0,
+        exitCode: 0,
         stdout: JSON.stringify([
           {
             results: statement.includes("key='tracked'")
@@ -44,7 +38,7 @@ it('pauses admission, aborts only untracked multipart uploads, verifies absence,
     }
     if (arguments_.includes('list-multipart-uploads'))
       return {
-        status: 0,
+        exitCode: 0,
         stdout: JSON.stringify(
           inventory++ === 0
             ? {}
@@ -60,17 +54,19 @@ it('pauses admission, aborts only untracked multipart uploads, verifies absence,
       };
     if (arguments_.includes('abort-multipart-upload')) {
       aborted.push(arguments_[arguments_.indexOf('--key') + 1]);
-      return { status: 0, stdout: '', stderr: '' };
+      return { exitCode: 0, stdout: '', stderr: '' };
     }
     if (arguments_.includes('list-parts'))
       return {
-        status: 1,
+        exitCode: 1,
         stdout: '',
         stderr: 'An error occurred (NoSuchUpload)',
       };
     throw new Error('Unexpected command');
   });
-  await import('../../scripts/storage-initialize');
+  const { initializeStorage } =
+    await import('../../cli/commands/storage-initialize');
+  await initializeStorage(fixture.values);
   expect(aborted).toEqual(['untracked']);
   expect(sql[0]).toMatch(/\bready\s*=\s*0\b/i);
   expect(sql[0]).toMatch(/\bmultipartVerified\s*=\s*0\b/i);
@@ -88,10 +84,10 @@ it('keeps admission paused when multipart deletion cannot be verified', async ()
   fixture.spawn.mockImplementation((command: string, arguments_: string[]) => {
     if (command !== 'aws') {
       sql.push(arguments_[arguments_.indexOf('--command') + 1]);
-      return { status: 0, stdout: '[{"results":[]}]', stderr: '' };
+      return { exitCode: 0, stdout: '[{"results":[]}]', stderr: '' };
     }
     return {
-      status: 0,
+      exitCode: 0,
       stderr: '',
       stdout: arguments_.includes('list-multipart-uploads')
         ? JSON.stringify(
@@ -104,7 +100,9 @@ it('keeps admission paused when multipart deletion cannot be verified', async ()
           : '',
     };
   });
-  await expect(import('../../scripts/storage-initialize')).rejects.toThrow(
+  const { initializeStorage } =
+    await import('../../cli/commands/storage-initialize');
+  await expect(initializeStorage(fixture.values)).rejects.toThrow(
     'still present',
   );
   expect(

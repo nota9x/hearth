@@ -6,7 +6,7 @@
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
-    "dev": "node --import tsx ../../scripts/development.ts web",
+    "dev": "node ../../scripts/cli.mjs dev web",
     "build": "vite build",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "deploy": "wrangler deploy"

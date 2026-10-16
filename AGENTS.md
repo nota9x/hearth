@@ -8,6 +8,12 @@ manifests. Use Node 24 (CI) and the pnpm version pinned in `package.json`; depen
 ## Commands (repository root)
 
 - Install: `pnpm install --frozen-lockfile`.
+- Guided Cloudflare installation/resume: `pnpm run setup` (`--advanced` exposes
+  resource choices). `pnpm run setup --uninstall` (alias `--remove`) discovers,
+  reviews, and removes a selected Hearth instance; never test it on live accounts.
+  Always include `run`: `pnpm setup` configures pnpm itself.
+  Installer progress/diagnostics are ignored under `artifacts/setup`; credentials
+  stay in memory. Do not use live accounts for ordinary automated tests.
 - Local setup: `pnpm db:migrate`, then `pnpm bootstrap "Your name"` **once** on an
   empty database; save the printed administrator key privately.
 - Develop: `pnpm dev` starts web :5173, delivery :8788, and scheduled maintenance
@@ -48,7 +54,7 @@ manifests. Use Node 24 (CI) and the pnpm version pinned in `package.json`; depen
 - `workers/delivery/src/index.ts` delegates to `packages/core/public-share.ts`;
   `serve.ts` implements object/range/conditional responses.
 - `workers/maintenance/src/index.ts`: cron, expiry/purge, optional Images previews,
-  snapshots, reconciliation. `scripts/development*.ts` launch/schedule local
+  snapshots, reconciliation. `cli/development` launches/schedules local
   services; production maintenance logic stays in the Worker.
 - `drizzle/*.sql`: ordered migrations **and handwritten database invariants**.
   `tests/helpers/database.ts` applies migrations to isolated D1 fixtures.

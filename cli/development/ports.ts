@@ -1,12 +1,11 @@
-import { execFile } from 'node:child_process';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { promisify } from 'node:util';
+import { pathToFileURL } from 'node:url';
 
-import { projects, root } from './development-config';
+import { execa } from 'execa';
 
-const run = promisify(execFile);
+import { root } from '../project';
 
 export async function portAvailable(port: number) {
   return new Promise<boolean>((resolve) => {
@@ -16,23 +15,21 @@ export async function portAvailable(port: number) {
   });
 }
 
-type ProcessInfo = { pid: number; parent: number; command: string };
-function isService(command: string) {
-  return command
-    .replaceAll('\\', '/')
-    .includes(
-      path.join(root, 'scripts/development-service.ts').replaceAll('\\', '/'),
-    );
-}
-
-function isWrangler(command: string) {
-  const normalized = command.replaceAll('\\', '/');
+type ProcessInfo = { pid: number; parent: number; command: string | null };
+function isService(command: string | null) {
+  const file = path.join(root, 'cli/development/tool-process.mjs');
   return (
-    normalized.includes(`${root.replaceAll('\\', '/')}/node_modules/`) &&
-    /\sdev(?:\s|$)/.test(normalized) &&
-    Object.values(projects).some((directory) =>
-      normalized.includes(`${directory}/wrangler.jsonc`),
-    )
+    command?.includes(pathToFileURL(file).href) ||
+    command?.replaceAll('\\', '/').includes(file.replaceAll('\\', '/'))
+  );
+}
+function isLauncher(command: string | null, owned: boolean) {
+  const normalized = (command ?? '').replaceAll('\\', '/');
+  return (
+    (normalized.includes(`${root.replaceAll('\\', '/')}/scripts/cli.mjs`) ||
+      (owned &&
+        /(?:^|[\s"])(?:\.\.\/)*scripts\/cli\.mjs[\s"]/.test(normalized))) &&
+    /\s(?:dev|preview)(?:\s|$)/.test(normalized)
   );
 }
 
@@ -41,8 +38,8 @@ export async function findDevelopmentServer(
 ): Promise<number | undefined> {
   if (process.platform === 'win32') {
     const [{ stdout: sockets }, { stdout: processes }] = await Promise.all([
-      run('netstat', ['-ano', '-p', 'tcp'], { windowsHide: true }),
-      run(
+      execa('netstat', ['-ano', '-p', 'tcp'], { windowsHide: true }),
+      execa(
         'powershell.exe',
         [
           '-NoProfile',
@@ -69,25 +66,19 @@ export async function findDevelopmentServer(
     const list = Array.isArray(parsed) ? parsed : [parsed];
     for (const listener of listeners) {
       let entry = list.find((candidate) => candidate.pid === listener);
+      let owned = false;
       while (entry) {
-        if (isWrangler(entry.command)) return entry.pid;
+        owned ||= Boolean(isService(entry.command));
+        if (isLauncher(entry.command, owned)) return entry.pid;
         const parent = list.find(
           (candidate) => candidate.pid === entry?.parent,
         );
-        if (
-          parent &&
-          isService(entry.command) &&
-          /scripts[\\/](?:development|preview)\.ts(?:[\s"]|$)/.test(
-            parent.command,
-          )
-        )
-          return parent.pid;
         entry = parent;
       }
     }
     return;
   }
-  const { stdout: sockets } = await run('lsof', [
+  const { stdout: sockets } = await execa('lsof', [
     '-nP',
     `-iTCP:${port}`,
     '-sTCP:LISTEN',
@@ -95,8 +86,9 @@ export async function findDevelopmentServer(
   ]);
   for (const listener of sockets.trim().split(/\s+/)) {
     let pid = Number(listener);
+    let owned = false;
     while (pid > 1) {
-      const { stdout } = await run('ps', [
+      const { stdout } = await execa('ps', [
         '-p',
         String(pid),
         '-o',
@@ -107,18 +99,9 @@ export async function findDevelopmentServer(
         pid = 0;
         continue;
       }
-      if (isWrangler(match[2])) return pid;
+      owned ||= Boolean(isService(match[2]));
+      if (isLauncher(match[2], owned)) return pid;
       const parent = Number(match[1]);
-      if (isService(match[2])) {
-        const { stdout: command } = await run('ps', [
-          '-p',
-          String(parent),
-          '-o',
-          'args=',
-        ]);
-        if (/scripts\/(?:development|preview)\.ts(?:\s|$)/.test(command))
-          return parent;
-      }
       pid = parent;
     }
   }
@@ -131,7 +114,7 @@ export async function stopDevelopmentServer(pid: number, port: number) {
       `The owner of port ${port} changed. Restart the local server.`,
     );
   if (process.platform === 'win32')
-    await run('taskkill', ['/PID', String(pid), '/T', '/F'], {
+    await execa('taskkill', ['/PID', String(pid), '/T', '/F'], {
       windowsHide: true,
     });
   else process.kill(pid, 'SIGTERM');

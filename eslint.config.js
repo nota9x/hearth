@@ -102,20 +102,25 @@ export default defineConfig(
       '**/*.{js,mjs,cjs}',
       '*config.ts',
       'scripts/**/*.ts',
+      'cli/**/*.ts',
       'tests/**/*.ts',
       'apps/web/*config.ts',
     ],
     languageOptions: { globals: globals.node },
   },
   {
-    files: ['*config.{js,ts}', 'apps/web/*config.ts'],
+    files: ['*config.{js,ts}', 'apps/web/*config.ts', 'cli/commands/*.ts'],
     rules: {
       // Tool configuration is constructed by each tool's configuration factory.
       'unicorn/no-top-level-side-effects': 'off',
     },
   },
   {
-    files: ['scripts/server.ts', 'scripts/development-service.ts'],
+    files: [
+      'cli/development/**/*.ts',
+      'cli/index.ts',
+      'cli/development/tool-process.mjs',
+    ],
     rules: {
       // These CLI entry points own process shutdown and its shared state.
       'unicorn/no-process-exit': 'off',

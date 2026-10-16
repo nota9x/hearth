@@ -3,10 +3,7 @@ import { stripVTControlCharacters } from 'node:util';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  DevelopmentConsole,
-  safeLogText,
-} from '../../scripts/development-console';
+import { DevelopmentConsole, safeLogText } from '../../cli/development/console';
 
 function stream(tty = true) {
   const chunks: string[] = [];

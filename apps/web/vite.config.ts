@@ -9,6 +9,9 @@ export default defineConfig({
     sveltekit({
       adapter: adapter({
         platformProxy: {
+          ...(process.env.HEARTH_LOCAL_CONFIG && {
+            configPath: process.env.HEARTH_LOCAL_CONFIG,
+          }),
           persist: {
             path: fileURLToPath(new URL('.wrangler/state/v3', import.meta.url)),
           },
