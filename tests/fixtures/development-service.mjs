@@ -33,7 +33,11 @@ setTimeout(
       process.stderr.write('startup failure detail', () => process.exit(7));
       return;
     }
-    if (scenario === 'timeout' && component === 'web') return;
+    if (scenario === 'timeout' && component === 'web') {
+      // Stay alive without a listening server until the launcher cancels startup.
+      process.channel.ref();
+      return;
+    }
     server.listen(port, '127.0.0.1', () =>
       process.send?.(JSON.stringify({ event: 'DEV_SERVER_READY', port })),
     );
