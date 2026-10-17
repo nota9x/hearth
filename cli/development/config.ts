@@ -18,6 +18,8 @@ const schema = z.looseObject({
   dev: z.looseObject({
     ip: z.string().default('127.0.0.1'),
     port: z.number().int().min(1).max(65_535),
+    // Let the OS assign inspector ports when starting Workers concurrently.
+    inspector_port: z.number().int().min(0).max(65_535).default(0),
   }),
   d1_databases: z
     .array(

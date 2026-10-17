@@ -107,30 +107,39 @@ describe('CLI arguments', () => {
     ).toThrow('reserved');
   });
 
-  it('propagates override precedence into temporary configs and cleans them up', async () => {
-    const session = await prepareSession(
-      'development',
-      ['web', 'delivery'],
-      { 'web-port': '4321', 'delivery-port': '9321', host: '0.0.0.0' },
-      { ...empty(), web: ['--port', '4322'] },
-    );
-    try {
-      const web = JSON.parse(await readFile(session.files.web, 'utf8')) as {
-        vars: Record<string, string>;
-        dev: { port: number };
-      };
-      const delivery = JSON.parse(
-        await readFile(session.files.delivery, 'utf8'),
-      ) as { vars: Record<string, string> };
-      expect(web.dev.port).toBe(4322);
-      expect(web.vars.APP_ORIGIN).toBe('http://127.0.0.1:4322');
-      expect(delivery.vars.APP_ORIGIN).toBe(web.vars.APP_ORIGIN);
-      expect(web.vars.LOCAL_DELIVERY_PORT).toBe('9321');
-    } finally {
-      await session.cleanup();
-    }
-    await expect(access(session.files.web)).rejects.toThrow();
-  });
+  it.each(['development', 'preview'] as const)(
+    'propagates %s addresses and assigns inspector ports in temporary configs',
+    async (mode) => {
+      const session = await prepareSession(
+        mode,
+        ['web', 'delivery'],
+        { 'web-port': '4321', 'delivery-port': '9321', host: '0.0.0.0' },
+        { ...empty(), web: ['--port', '4322'] },
+      );
+      try {
+        const web = JSON.parse(await readFile(session.files.web, 'utf8')) as {
+          vars: Record<string, string>;
+          dev: { port: number; inspector_port: number };
+        };
+        const delivery = JSON.parse(
+          await readFile(session.files.delivery, 'utf8'),
+        ) as { vars: Record<string, string>; dev: { inspector_port: number } };
+        expect(web.dev.port).toBe(4322);
+        expect(web.vars.APP_ORIGIN).toBe('http://127.0.0.1:4322');
+        expect(delivery.vars.APP_ORIGIN).toBe(web.vars.APP_ORIGIN);
+        expect(web.vars.LOCAL_DELIVERY_PORT).toBe('9321');
+        expect(web.dev.inspector_port).toBe(0);
+        expect(delivery.dev.inspector_port).toBe(0);
+        const maintenance = JSON.parse(
+          await readFile(session.files.maintenance, 'utf8'),
+        ) as { dev: { inspector_port: number } };
+        expect(maintenance.dev.inspector_port).toBe(0);
+      } finally {
+        await session.cleanup();
+      }
+      await expect(access(session.files.web)).rejects.toThrow();
+    },
+  );
 
   it('rejects ambiguous ports, unsupported controls, and incompatible origins', async () => {
     await expect(
