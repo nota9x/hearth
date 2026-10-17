@@ -16,7 +16,7 @@
     "@hearth/core": "workspace:*",
     "@lucide/svelte": "^1.47.0",
     "@thesvg/svelte": "^3.3.13",
-    "@zip.js/zip.js": "2.23.0",
+    "@zip.js/zip.js": "2.24.0",
     "svelte": "^5.57.1",
     "zod": "^4.6.5"
   },
