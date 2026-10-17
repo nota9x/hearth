@@ -94,6 +94,9 @@ still receives fresh isolated D1/R2 and synthetic credentials. Each browser job
 builds web locally, then its global setup bundles web and delivery with Wrangler.
 Integration global setup also bundles delivery and its upload fixture. These
 cover the delivery dry run; maintenance has a separate dry run in the quality job.
+Each integration runner runs `svelte-kit sync` before Vitest: tests import web
+routes whose TypeScript configuration extends the generated `$app/tsconfig`.
+Generated configuration is local to each runner; it cannot come from another job.
 `pnpm verify` remains the complete local baseline.
 
 The required `validate` job waits for all five jobs and accepts only successful

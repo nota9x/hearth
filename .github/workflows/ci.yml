@@ -70,6 +70,8 @@ jobs:
             pnpm-workspace.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Generate SvelteKit configuration
+        run: pnpm --filter @hearth/web exec svelte-kit sync
       # Global setup bundles delivery and the upload fixture with Wrangler.
       - name: Integration tests
         run: pnpm test:integration --shard=${{ matrix.shard }}/2
