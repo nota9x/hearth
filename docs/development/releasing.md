@@ -77,6 +77,74 @@ metadata rules may add enforcement where available. Workflows do not set up a me
 See [Release Please authentication](https://github.com/googleapis/release-please-action#other-actions-on-release-please-prs)
 and [GitHub immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases).
 
+## Continuous integration
+
+`Validate` runs on every pull request and push to `main`, without path exclusions.
+Five work jobs start independently:
+
+| Job                    | Validation                                                                   |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| Quality and unit tests | Formatting, lint, web/root types, all unit tests, maintenance Worker dry run |
+| Integration (1/2, 2/2) | All integration tests, divided by Vitest's native file sharding              |
+| Browser (1/2, 2/2)     | Web build and all browser tests, divided by Playwright's native sharding     |
+
+Vitest retains two workers per runner; Playwright retains one. Browser jobs use
+`--fully-parallel` to distribute individual tests across shards, while each test
+still receives fresh isolated D1/R2 and synthetic credentials. Each browser job
+builds web locally, then its global setup bundles web and delivery with Wrangler.
+Integration global setup also bundles delivery and its upload fixture. These
+cover the delivery dry run; maintenance has a separate dry run in the quality job.
+Each integration runner runs `svelte-kit sync` before Vitest: tests import web
+routes whose TypeScript configuration extends the generated `$app/tsconfig`.
+Generated configuration is local to each runner; it cannot come from another job.
+`pnpm verify` remains the complete local baseline.
+
+The required `validate` job waits for all five jobs and accepts only successful
+results. Failures, cancellations, and skipped dependencies cannot produce a passing
+gate. Matrices do not cancel sibling shards on failure. Quality checks continue
+after other check failures, provided installation succeeded. New commits cancel
+obsolete validation runs; title edits and new commits cancel obsolete `pr-title`
+runs. Release Please remains independently serialized.
+
+Every work job installs dependencies with `--frozen-lockfile` and the manifest's
+exact pnpm version on Node 24. The pnpm store cache hashes `pnpm-lock.yaml`,
+`package.json`, and `pnpm-workspace.yaml`, in addition to setup-node's OS and
+architecture identity. Restoring the cache never skips installation or dependency
+security policies. Cache misses use a normal install. GitHub scopes PR caches to
+their merge refs, so they cannot replace caches consumed by `main` or other PRs.
+Generated builds, test state, and browser binaries are not cached. Headless
+Chromium uses `playwright install --with-deps --only-shell chromium`.
+
+CI browser runs reject focused tests and stop after ten minutes, leaving time for
+reporting within the fifteen-minute job timeout. Failed browser jobs upload HTML
+reports, failure traces, and screenshots from only `playwright-report/` and
+`test-results/`, retained for seven days under shard/attempt-specific names. Do
+not broaden those paths to fixture state or `artifacts/`: they may contain keys
+and local configuration. Reports contain only the synthetic test environment.
+
+### Performance baseline and verification
+
+The three successful pre-refactor runs below used a single sequential job:
+
+| Run                                                                      | Elapsed | Install | `pnpm verify` | Browser install | Browser tests |
+| ------------------------------------------------------------------------ | ------- | ------- | ------------- | --------------- | ------------- |
+| [38985607520](https://github.com/nota9x/hearth/actions/runs/38985607520) | 8m34s   | 7s      | 4m20s         | 20s             | 3m21s         |
+| [38985583362](https://github.com/nota9x/hearth/actions/runs/38985583362) | 8m34s   | 8s      | 4m23s         | 19s             | 3m24s         |
+| [38984834301](https://github.com/nota9x/hearth/actions/runs/38984834301) | 9m12s   | 8s      | 4m36s         | 28s             | 3m28s         |
+
+Elapsed time includes queue/runner startup and post-job work. In run 38985607520,
+formatting took about 7s, lint 55s, types 19s, Vitest 172s, and the web build 7s.
+Moving the independent work into parallel jobs targets roughly 2.5–3.5 minutes;
+this is a projection, not a measured result of the new workflow. The tradeoff is
+four additional dependency setups, two web builds instead of one, and the small
+aggregate job, so elapsed-time savings do not imply runner-minute savings.
+
+After a hosted run, compare run creation/start/completion times, each job's setup,
+cache restore/save, install and test steps, and the sum of job durations. Include
+both cache hits and misses and account for billing rounding per job. Local tests
+and actionlint do not verify GitHub cache service behavior, scheduling, artifact
+uploads, permissions, or hosted execution of the new graph.
+
 ## Release lifecycle and versions
 
 Pushes to `main` run Release Please. It reads Conventional Commits and updates a
