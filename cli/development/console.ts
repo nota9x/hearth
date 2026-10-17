@@ -4,7 +4,7 @@ import { stripVTControlCharacters, styleText } from 'node:util';
 import { createLogUpdate } from 'log-update';
 import wrapAnsi from 'wrap-ansi';
 
-import type { Component, ServerMode } from './development-config';
+import type { Component, ServerMode } from './config';
 
 type Service = Component | 'dev' | 'preview';
 type Status = 'START' | 'READY' | 'INFO' | 'WARN' | 'ERROR' | 'STOP' | 'DONE';

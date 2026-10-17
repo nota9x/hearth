@@ -14,7 +14,12 @@ export function createCron(expression: string) {
   });
 }
 
-export function startScheduler(crons: string[], endpoint: string) {
+export function startScheduler(
+  crons: string[],
+  endpoint: string,
+  log: (status: 'INFO' | 'WARN' | 'ERROR', message: string) => void,
+  signal?: AbortSignal,
+) {
   let running: Promise<void> | undefined;
   const jobs = [...new Set(crons)].map((expression) => ({
     expression,
@@ -24,7 +29,8 @@ export function startScheduler(crons: string[], endpoint: string) {
   function dispatch(expression: string, time: number, manual = false) {
     if (stopped) return;
     if (running) {
-      console.warn(
+      log(
+        'WARN',
         `Skipped overlapping ${manual ? 'manual' : 'scheduled'} event (${expression})`,
       );
       return;
@@ -36,19 +42,20 @@ export function startScheduler(crons: string[], endpoint: string) {
       format: 'json',
     }).toString();
     running = (async () => {
-      console.log(
+      log(
+        'INFO',
         `${manual ? 'Manual maintenance' : `Scheduled ${expression}`} at ${new Date(time).toISOString()}`,
       );
       try {
-        const response = await fetch(url);
+        const response = await fetch(url, { signal });
         const result = scheduledResult.parse(await response.json());
         if (!response.ok || result.outcome !== 'ok')
           throw new Error(
             `Scheduled event failed (${response.status}): ${result.outcome}`,
           );
-        console.log(`${manual ? 'Manual' : 'Scheduled'} maintenance completed`);
+        log('INFO', `${manual ? 'Manual' : 'Scheduled'} maintenance completed`);
       } catch (error) {
-        console.error(error);
+        log('ERROR', error instanceof Error ? error.message : String(error));
       } finally {
         running = undefined;
       }
@@ -60,7 +67,8 @@ export function startScheduler(crons: string[], endpoint: string) {
       void dispatch(expression, Math.floor(Date.now() / 60_000) * 60_000);
     });
     job.resume();
-    console.log(
+    log(
+      'INFO',
       `Cron ${expression} (UTC); next run ${job.nextRun()?.toISOString()}`,
     );
   }

@@ -8,7 +8,7 @@
     "esModuleInterop": true,
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "types": ["node"],
     "noEmit": true,
     "paths": {
@@ -19,6 +19,7 @@
     "packages/**/*.ts",
     "workers/**/*.ts",
     "scripts/**/*.ts",
+    "cli/**/*.ts",
     "tests/**/*.ts",
     "*.config.ts",
     "apps/web/src/app.d.ts"

@@ -5,11 +5,11 @@ import path from 'node:path';
 import { expect, it } from 'vitest';
 import { getPlatformProxy, unstable_DevEnv } from 'wrangler';
 
+import { readDevelopmentConfig } from '../../cli/development/config';
 import { database } from '../../packages/core/db';
 import { saveDeliveryDomain } from '../../packages/core/delivery-domains';
 import { validateDeliveryDomain } from '../../packages/core/domain-validation';
 import { users } from '../../packages/core/schema';
-import { readDevelopmentConfig } from '../../scripts/development-config';
 import { migrateDatabase } from '../helpers/database';
 
 it('dispatches the real scheduled handler against shared persistent D1 and R2, respects its lease, and survives restart', async () => {

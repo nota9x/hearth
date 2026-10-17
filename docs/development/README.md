@@ -5,6 +5,7 @@ Start with [local setup](local-setup.md), then read
 [architecture and invariants](architecture.md) before changing persistence or security.
 See [releases and Git hooks](releasing.md) for contributor and maintainer workflows.
 See [testing](testing.md) for choosing regression coverage and measuring the suite.
+See [installer verification](setup-installer.md) for CLI tests and disposable-account acceptance checks.
 Self-hosting instructions begin at the [documentation index](../README.md).
 
 ## Required checks

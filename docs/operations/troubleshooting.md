@@ -1,213 +1,276 @@
 # Troubleshoot Hearth
 
-Identify which layer failed: ShareX, Hearth web, delivery, scheduled maintenance,
-or Cloudflare before the Worker runs. Use the browser/API status and message plus
-[Worker logs](maintenance.md#read-worker-logs). Redact credentials and private media
-before sharing diagnostics.
+Find your symptom below, or search this page for the exact error code, such as
+`INVALID_KEY` or `IMAGE_SAVED_WITHOUT_LINK`. If you only see an HTTP status like
+403 or 503, use the section for the task you were trying to complete.
+
+## Find your problem
+
+| What went wrong?                                                              | Start here                                                                              |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Setup stopped, dependencies will not install, or deployment failed            | [Installation and deployment](#installation-or-deployment-fails)                        |
+| Cloudflare denies access or cannot find a resource                            | [Cloudflare login and permissions](#wrangler-authentication-or-resources-fail)          |
+| Missing database tables, failed migrations, or administrator creation refused | [Database and administrator setup](#d1-migrations-or-administrator-initialization-fail) |
+| Cannot sign in, verification fails, or your key is rejected                   | [Sign-in and keys](#sign-in-or-key-verification-fails)                                  |
+| The dashboard shows a server or Cloudflare error                              | [Dashboard errors](#dashboard-shows-a-worker-error)                                     |
+| An image address is Pending, Misconfigured, or Unhealthy                      | [Domain validation](#delivery-domain-validation-fails)                                  |
+| A shared image link does not open                                             | [Public image links](#a-public-image-will-not-open)                                     |
+| An upload returns an error code or unexpected response                        | [Upload errors](#uploads-fail)                                                          |
+| ShareX does not upload or copy the link                                       | [ShareX troubleshooting](../getting-started/sharex-setup.md#troubleshooting-sharex)     |
+| Deleted or expired images still use space; a storage scan is stuck            | [Cleanup and storage scans](#expiry-cleanup-or-storage-scans-stall)                     |
+| Your error is not listed, or the fix did not help                             | [Collect useful diagnostics](#collect-useful-diagnostics)                               |
 
 ## Installation or deployment fails
 
-**Symptom:** Dependency installation, web build, `configure`, or deployment fails.
+### Guided setup messages
 
-**Likely causes:** Unsupported Node/pnpm, a release-age/build policy refusal, existing
-generated files, invalid placeholders, missing build output, or resource permissions.
+| Message or symptom                                      | What to do                                                                                                                                                                                            |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Setup stopped or was interrupted                        | Run `pnpm run setup` again. Keep the production configuration files and `artifacts/setup/`; setup uses them to resume.                                                                                |
+| A step failed and offers **Retry**                      | Fix the reported issue, then choose **Retry**. Choose **Save progress and exit** if you need to return later.                                                                                         |
+| The wrong Cloudflare account is selected                | Choose **Change account**, then select the account that owns your domain and installation.                                                                                                            |
+| The configured D1 database is “missing or inaccessible” | Check the account, database name, and UUID shown in the message. Restore access or recover the intended database from backup. **Retry** keeps the same database ID; it does not create a replacement. |
+| The configured bucket is “missing or inaccessible”      | Restore access to the intended bucket, or follow [recovery](backups-and-recovery.md). Setup will not replace existing image storage with an empty bucket.                                             |
+| The Turnstile widget is “missing or inaccessible”       | Restore access to the widget, or select a replacement through advanced setup.                                                                                                                         |
+| “This live instance requires pending migrations”        | Follow [updating](updating.md), then rerun setup.                                                                                                                                                     |
+| R2 checkout, billing approval, or a quota blocks setup  | Open the Cloudflare link shown by setup. Complete the requested action or ask the account owner, then retry.                                                                                          |
+| An image or application address is not ready            | Allow time for the address and HTTPS certificate to become ready, then retry validation. Do not recreate the installation.                                                                            |
+| “An uninstall is pending”                               | Run `pnpm run setup --uninstall` to finish removal before installing again.                                                                                                                           |
+| Uninstall failed or was interrupted                     | Resolve its reported issue and rerun `pnpm run setup --uninstall`. Keep `artifacts/setup/uninstall.json` so removal can resume.                                                                       |
+| The verification upload is pending or uncertain         | Let scheduled maintenance reconcile the upload, then retry setup. Keep the saved progress and original administrator key; do not force another upload.                                                |
 
-**Diagnosis:** Check `node --version` and `pnpm --version` against the manifest.
-Read the first failing command, not just the final exit status. Confirm generated
-production files exist, actual UUID/site-key values replaced placeholders, and
-`pnpm build` produced the web bundle. Run a deployment dry run before remote changes.
+For more detail about a failed step, read `artifacts/setup/diagnostics.log`.
 
-**Resolution:** Use Node 24/the pnpm version pinned in `package.json` and frozen installation. Preserve policy
-settings; do not force installs or approve arbitrary build scripts. Inspect existing
-`production.local.jsonc` files rather than deleting them blindly or rerunning
-`configure` over edits. Build before deploying web. Check resource ownership with
-the next section.
+### You want a fresh installation instead of resuming
 
-**Verification:** Installation/build and the three dry runs succeed; perform the
-[deployed acceptance checks](../getting-started/installation.md#7-verify-the-instance).
+- **Only a setup checkpoint exists:** choose **Show advanced resource choices**
+  and change **D1 database name** to a new, unused name. Review the Worker prefix
+  and bucket too, then confirm the installation review.
+- **Production configuration files already exist:** use a separate clean checkout
+  with distinct Worker, database, and bucket names. Review any existing hostname
+  assignments before moving them.
+
+Do not delete migration history or remove `state.json` to force a restart. Use the
+setup choices above; deleting progress loses information needed for recovery.
+
+### Dependency, build, and manual deployment errors
+
+| Failing step                                                      | Check and fix                                                                                                                                                    |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm install` rejects Node or pnpm                               | Run `node --version` and `pnpm --version`. Use Node 24 and the pnpm version in `package.json` under `packageManager`, then run `pnpm install --frozen-lockfile`. |
+| Installation reports a release-age or build-script policy refusal | Read the named package and policy in the error. Keep the repository's policy settings; do not force installation or approve arbitrary build scripts.             |
+| `pnpm configure` refuses to overwrite files                       | Inspect and back up the existing `production.local.jsonc` files before deciding how to proceed. They may describe an existing installation.                      |
+| Configuration still contains `YOUR_...` placeholders              | Replace them with the actual database UUID, bucket name, and Turnstile site key from installation.                                                               |
+| Deployment cannot find the web build                              | Run `pnpm build` before deploying the web application.                                                                                                           |
+| Deployment reports access denied or a missing resource            | Follow [Cloudflare login and permissions](#wrangler-authentication-or-resources-fail).                                                                           |
+
+After fixing a manual deployment, repeat the failed build or deployment check,
+then follow [installation verification](../getting-started/installation.md#7-verify-the-instance).
 
 ## Wrangler authentication or resources fail
 
-**Symptom:** Wrangler rejects access or cannot find D1, R2, or a zone.
+Use this section for Cloudflare permission errors or resources that cannot be found.
 
-**Likely causes:** Wrong account/authentication, insufficient permission, R2 not
-activated, or resource IDs/names pointing at another instance.
+1. From the Hearth directory, run:
 
-**Diagnosis:** Run `pnpm exec wrangler whoami`. Compare the selected account with
-your zone, D1, and R2 ownership in Cloudflare. Inspect all three production `DB`
-UUIDs and `BUCKET` names. Confirm R2 activation and exact hostname zone ownership.
-For S3 commands, distinguish R2 access credentials/profile/endpoint from Wrangler
-credentials; they are not interchangeable.
+   ```sh
+   pnpm exec wrangler whoami
+   ```
 
-**Resolution:** Reauthenticate with `pnpm exec wrangler login` or have the account
-owner grant the required service permissions. Correct production bindings together.
-Activate R2 if missing. For backup/initialization, use bucket-scoped credentials and
-the correct account/jurisdiction endpoint.
+2. Confirm that the account owns your domain, database, and image bucket.
+3. Use the matching fix below.
 
-**Verification:** Resource inspection and migration listing succeed for the intended
-database; domain validation and a small upload succeed after deployment.
+| What you find                                                   | What to do                                                                                                                                         |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wrong account or expired login                                  | In guided setup, choose **Change account** or **Add account**. For manual commands, run `pnpm exec wrangler login` and check `whoami` again.       |
+| Browser login works, but setup still denies access              | Ask the account owner to check permissions for Workers, domains, D1, R2, and Turnstile. Being signed in does not grant access to every service.    |
+| An environment API token is overriding browser login            | Use guided setup's browser-login option. It switches authentication within setup without changing your shell.                                      |
+| R2 is not enabled                                               | Complete R2 checkout in the intended Cloudflare account, then retry.                                                                               |
+| Manual deployment points at the wrong database or bucket        | Compare the `DB` IDs and `BUCKET` names in all three production configuration files. Correct them together to reference the intended installation. |
+| Backup or storage initialization reports an S3 credential error | Check the R2 credentials, profile, and account/jurisdiction endpoint used by that command. A Wrangler login does not supply S3 credentials.        |
+
+**Check the fix:** retry the failed operation against the intended account.
 
 ## D1 migrations or administrator initialization fail
 
-**Symptom:** Missing-table/column errors, migration failure, or bootstrap refusal.
+| Error or symptom                                       | What to do                                                                                                                                                                                                              |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Missing table or column                                | Check that the production database has all required migrations. Local migrations do not update production.                                                                                                              |
+| A migration fails                                      | Read the first failed SQL statement. Confirm the intended database is selected. For an existing installation, back up and follow [updating](updating.md). Do not drop tables or edit migration history to make it pass. |
+| Bootstrap refuses to create an administrator           | An administrator may already exist. Sign in with its saved key or ask another administrator to reset it. Bootstrap is not a recovery tool.                                                                              |
+| Local setup works, but production has no administrator | Check that bootstrap used `--remote --config apps/web/production.local.jsonc`. Plain bootstrap uses local development data.                                                                                             |
 
-**Likely causes:** Local migrations were applied instead of remote ones, the wrong
-database was selected, the ordered chain is incomplete, or an administrator exists.
+### Check pending production migrations
 
-**Diagnosis:** Inspect production `DB` and run:
+Run from the Hearth directory:
 
 ```sh
 pnpm exec wrangler d1 migrations list DB --remote --config apps/web/production.local.jsonc
-pnpm exec wrangler d1 execute DB --remote --config apps/web/production.local.jsonc --command "SELECT name FROM sqlite_schema WHERE type='table' ORDER BY name"
-pnpm exec wrangler d1 execute DB --remote --config apps/web/production.local.jsonc --command "SELECT role,status,COUNT(*) AS count FROM users GROUP BY role,status"
 ```
 
-The last query needs the users table and reveals no keys. `pnpm db:migrate` and
-plain bootstrap target local state. Read the migration error for the actual failed
-statement; do not edit history or drop tables to make it pass.
+For a **new installation**, confirm the production configuration targets your new
+database, then finish initialization:
 
-**Resolution:** On a new instance, apply all remote migrations using the production
-configuration, then bootstrap once with `--remote --config`. On an existing instance,
-take a backup and use [updating](updating.md). If an administrator exists, use its
-saved key or another administrator's reset. Bootstrap is not account recovery.
+```sh
+pnpm exec wrangler d1 migrations apply DB --remote --config apps/web/production.local.jsonc
+pnpm bootstrap "Your administrator name" --remote --config apps/web/production.local.jsonc
+```
 
-**Verification:** No pending migrations remain, and the saved administrator key
-signs in to the intended application origin.
+Save the printed administrator key privately. For an **existing installation**,
+use [updating](updating.md) or [recovery](backups-and-recovery.md) instead.
+
+**Check the fix:** no pending migrations remain, and your saved key signs in to
+the intended Hearth address.
 
 ## Sign-in or key verification fails
 
-**Symptom:** Login fails, sessions end, Turnstile rejects verification, or API uploads
-return HTTP 401.
+| Error or symptom                                              | What to do                                                                                                                                                         |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 401 / `INVALID_KEY` / “The API key is invalid”                | Use your current key. Ask an administrator to check account status or reset a lost key. After a reset or rotation, download and import a new ShareX configuration. |
+| 401 / `UNAUTHENTICATED` / “Please sign in to continue”        | Sign in again. Your session may have expired or been revoked.                                                                                                      |
+| 403 / `ACCOUNT_DISABLED`                                      | Ask an administrator to check and, if appropriate, re-enable your account.                                                                                         |
+| 403 / `FORBIDDEN` / “Administrator access is required”        | Sign in with an administrator account for this action.                                                                                                             |
+| 403 / `INVALID_ORIGIN` or HTTP 421                            | Open the exact application address chosen during installation, using HTTPS. For a manual deployment, check `APP_ORIGIN` in the web production configuration.       |
+| 400 / `INVALID_TURNSTILE` / “Verification expired or failed”  | Refresh the page and complete verification again. If it keeps failing, check the widget's allowed hostname and keys as described below.                            |
+| 503 / `TURNSTILE_UNAVAILABLE` / “Verification is unavailable” | Wait and try again. If it persists, inspect the web logs for verification failures.                                                                                |
+| 503 / `CONFIGURATION` / “Authentication is unavailable”       | Check the production Turnstile secret. It must be present and must not be a local test key.                                                                        |
+| 429 / `RATE_LIMITED` / “Too many attempts”                    | Wait for the stated delay before trying again.                                                                                                                     |
+| The dashboard works but ShareX rejects your key               | Replace the old ShareX profile with a configuration generated using your current key.                                                                              |
+| You were signed out after an account change                   | Sign in again; account configuration changes can revoke sessions.                                                                                                  |
 
-**Likely causes:** Wrong/rotated key, disabled account, expired/revoked session,
-incorrect origin, or mismatched Turnstile widget/secret/allowed hostname.
+### Check Turnstile settings
 
-**Diagnosis:** Sign in at the exact HTTPS `APP_ORIGIN`; HTTP 421 indicates a different
-application hostname. Ask an active administrator to check account status. Compare
-the site's public Turnstile key, allowed application hostname, and configured secret.
-Check web logs without recording the submitted key. If the dashboard works but
-ShareX fails, inspect whether its profile still contains the old key.
+1. In Cloudflare, open the Turnstile widget for Hearth.
+2. Confirm that its allowed hostname matches your application address, such as
+   `app.example.com`.
+3. Check that the web configuration uses that widget's site key.
+4. If its secret needs correcting, run:
 
-**Resolution:** Re-enable an intended suspended account or reset its active key
-through an administrator. Regenerate ShareX profiles after rotation/reset. Correct
-Turnstile through the secret prompt and deploy reviewed origin/site-key settings.
-Account configuration saves revoke sessions; sign in again. Do not disable origin
-or Turnstile validation to get around failures.
+   ```sh
+   pnpm exec wrangler secret put TURNSTILE_SECRET_KEY --config apps/web/production.local.jsonc
+   ```
 
-**Verification:** Fresh browser login succeeds; current-key ShareX upload succeeds
-and any revoked key fails.
+5. Enter the widget's secret at the prompt. Deploy any reviewed changes to the
+   web configuration, then try signing in again.
+
+**Check the fix:** a fresh browser login and an upload using the current ShareX
+configuration both succeed.
 
 ## Dashboard shows a Worker error
 
-**Symptom:** An application page shows HTTP 500/503 or a Cloudflare error page.
+For HTTP 500/503 or a Cloudflare error page:
 
-**Likely causes:** Wrong bindings, missing migrations/assets, D1 failure, or an
-upstream Cloudflare/platform error.
+1. Open the [web Worker logs](maintenance.md#read-worker-logs).
+2. Reload the failing page once and find the corresponding error.
+3. Use the matching fix below.
 
-**Diagnosis:** Tail web while requesting the page. Compare deployed version/config
-with the successful build, database migration state, and shared resources. A page
-generated before Worker execution may have no application log; check Cloudflare's
-request/invocation diagnostics and service status.
+| Log or symptom                                         | What to do                                                                                                                                        |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Missing table or column                                | Follow [database troubleshooting](#d1-migrations-or-administrator-initialization-fail).                                                           |
+| Database or bucket access failure                      | Follow [Cloudflare login and permissions](#wrangler-authentication-or-resources-fail).                                                            |
+| Missing assets or incomplete web deployment            | Run `pnpm build`, then redeploy using `apps/web/production.local.jsonc`. Check that the generated assets configuration is present.                |
+| Cloudflare error page with no matching application log | Check Cloudflare's request/invocation diagnostics and service status. A request may fail before reaching Hearth. Stored logs may also be sampled. |
 
-**Resolution:** Apply the compatible schema and deploy the web build with its
-`ASSETS` binding/directory. Correct shared bindings; follow the platform diagnostic
-for account/outage failures. Keep normal error/security headers intact.
-
-**Verification:** Login and dashboard pages load and a real authenticated action
-works; a static page alone is insufficient.
+**Check the fix:** sign in, load the dashboard, and try the action that failed.
 
 ## Delivery domain validation fails
 
-**Symptom:** A domain is Pending, Misconfigured, Unhealthy, or has an inconclusive check.
+Open **Administration → Domains**, select the affected image address, and read
+**Details & diagnostics**.
 
-**Likely causes:** Wrong Worker attachment, inactive zone, conflicting DNS, TLS not
-ready, redirects, mismatched D1/R2, storage capacity blocking a validation write,
-or transient resolver/storage failure.
+| Status or diagnostic                       | What to do                                                                                                                                                                                       |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Pending**                                | Finish connecting the address, then choose **Validate domain**.                                                                                                                                  |
+| **Misconfigured**                          | The address has not passed validation. Follow its displayed diagnostic and the checks below.                                                                                                     |
+| **Unhealthy**                              | A previously working address failed a later check. Fix the reported issue, then validate again.                                                                                                  |
+| **Disabled**                               | An administrator must enable delivery for the address before it can be used.                                                                                                                     |
+| DNS, hostname assignment, or HTTPS failure | Follow the [domain connection steps](../guides/custom-domains.md#connect-a-delivery-hostname). Check the exact hostname, resolve actual DNS conflicts, and allow time for HTTPS to become ready. |
+| The address redirects elsewhere            | Check that it is attached to Hearth's delivery Worker and has no redirect rule sending it elsewhere.                                                                                             |
+| Database or storage mismatch               | Check that the web and delivery production configurations use the same database and bucket. Redeploy corrected configurations.                                                                   |
+| Storage is full or paused                  | Open **Administration → Storage** and resolve the capacity or accounting issue. Validation needs to write a temporary test image, even when existing images still open.                          |
+| The check is inconclusive                  | Read the diagnostic, resolve any temporary DNS or storage issue, then retry. An older **Active** status does not prove this check passed.                                                        |
 
-**Diagnosis:** Read **Details & diagnostics**. In Cloudflare, confirm the exact
-hostname is a production Custom Domain of the delivery Worker and its zone is in
-the same account. Check all returned A/AAAA addresses use Cloudflare's edge and
-HTTPS does not redirect. Compare web/delivery bindings and inspect web/delivery logs.
-If global storage is full or paused, inspect Storage: validation creates temporary
-objects and can fail even when existing reads work.
-
-**Resolution:** Follow [domain connection](../guides/custom-domains.md#connect-a-delivery-hostname),
-remove actual conflicting records, wait for DNS/TLS, correct shared bindings/capacity,
-then revalidate. Do not mark health active through SQL. An inconclusive check can
-retain old health; retry once the underlying service recovers.
-
-**Verification:** Validation conclusively passes, primary/preference can be selected,
-and a newly created public URL opens.
+**Check the fix:** validation succeeds. Choose **Set as instance default** if
+needed, upload a new image, and open its link. Do not change health status through
+SQL to bypass a failed check.
 
 ## A public image will not open
 
-**Symptom:** Upload succeeded but delivery returns 404, 429, 503, or a network error.
+First, find the image in Hearth and open its saved link. Use the exact address,
+including capitalization in the path.
 
-**Likely causes:** No link was created, deleted/expired link or image, suspended
-account/domain, wrong hostname/path/case, missing object, binding outage, or cooldown.
+| Error or symptom             | What to do                                                                                                                                                                                                        |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The image has no link        | Fix the selected address in **Domains**, then create a link for the saved image. You do not need to upload it again.                                                                                              |
+| 404 / not found              | Check that the image and link still exist and have not expired. Ask an administrator to check that the owner's account and the domain's delivery are enabled. Public 404s do not identify which condition failed. |
+| 429 / too many requests      | Wait for the stated retry delay. Repeated requests for unavailable links can temporarily affect valid links too.                                                                                                  |
+| 503 / storage unavailable    | Inspect the delivery Worker logs and check access to the intended bucket and database. If an image object is missing, recover it from a matching backup.                                                          |
+| DNS, HTTPS, or network error | Check the exact image address using [domain validation](#delivery-domain-validation-fails).                                                                                                                       |
 
-**Diagnosis:** Inspect the saved image and its link in Hearth. Check the full assigned
-hostname, account status, delivery enabled flag, and both expiry deadlines. Public
-404s intentionally do not reveal which inaccessible state applies. Tail delivery
-for 503/storage failures. Repeated unavailable-link requests can trigger a temporary
-cooldown that also affects valid links from that identity.
-
-**Resolution:** Create a link for a privately saved image after fixing selection.
-Restore intentionally suspended account/delivery state. Use the exact case-sensitive
-URL. Restore missing media from a matching backup before retiring records. Wait for
-429 cooldown instead of repeatedly guessing paths. Do not make R2 public or disable
-authoritative delivery checks.
-
-**Verification:** Open the assigned URL in a fresh request and confirm image bytes;
-expired/deleted links should remain unavailable.
+**Check the fix:** open the saved link in a new request and confirm the image
+appears. Keep R2 private; making the bucket public is not a fix for link failures.
 
 ## Uploads fail
 
-**Symptom:** Dashboard or ShareX reports an upload error or unexpected response.
+Find the exact code in the upload error or ShareX response. After a timeout or
+lost response, check **Images** before uploading again; the image may already
+have been saved.
 
-**Diagnosis and resolution:** Read the actual JSON code/message or inline error:
+| Status / error code                                                   | What to do                                                                                                                                                                                                      |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 401 / `INVALID_KEY`                                                   | Use the current key for an active account. Download and import a replacement ShareX configuration.                                                                                                              |
+| 403 / `ACCOUNT_DISABLED`                                              | Ask an administrator to check your account status.                                                                                                                                                              |
+| 400 / `EXPIRY_REQUIRED`                                               | Open **Settings → Personal preferences**, choose an allowed **Default image expiry**, and save.                                                                                                                 |
+| 400 / `EXPIRY_TOO_LONG`                                               | Choose a shorter lifetime within your account's limit and save. Check any expiry override in your uploader too.                                                                                                 |
+| 400 / `INVALID_EXPIRATION`                                            | Choose a valid duration or a future expiration date. Correct any expiry override in your uploader.                                                                                                              |
+| 400 / `INVALID_FILE_TYPE`                                             | Export the image in a supported format. Renaming the extension does not convert it.                                                                                                                             |
+| 400 / `MISSING_FILE`                                                  | Select an image. For ShareX, import Hearth's generated configuration instead of constructing the request manually.                                                                                              |
+| 400 / `UPLOAD_FAILED`                                                 | Check the file and connection, then try a small supported image. If the response was uncertain, check Images first.                                                                                             |
+| 422 / `METADATA_STRIPPING_UNSUPPORTED`                                | Re-export the image in a supported layout or format, then upload that copy.                                                                                                                                     |
+| 422 / `METADATA_STRIPPING_FAILED`                                     | Re-export the image and try again. Hearth does not upload the original as a fallback when metadata removal fails.                                                                                               |
+| 413 / `UPLOAD_TOO_LARGE`                                              | Reduce the image size. An administrator can review the configured upload limit and platform limits.                                                                                                             |
+| 413 / `QUOTA_EXCEEDED`                                                | Delete images you no longer need, or ask an administrator to adjust your account quota. Deleting only a link does not free image storage.                                                                       |
+| 413 / `GLOBAL_STORAGE_LIMIT_EXCEEDED`                                 | An administrator must free storage or raise the global limit. Space awaiting physical cleanup still counts.                                                                                                     |
+| 503 / `STORAGE_ACCOUNTING_UNAVAILABLE`                                | Open **Administration → Storage** and inspect initialization status and unresolved issues. See [storage management](../guides/storage-management.md).                                                           |
+| 409 / `IMAGE_SAVED_WITHOUT_LINK`                                      | The image is already saved. Fix your address selection in **Domains**, then open the saved image and create its link. Do not upload it again.                                                                   |
+| 429 / `RATE_LIMITED`                                                  | Wait for the stated delay or `Retry-After` value. Avoid repeated simultaneous retries.                                                                                                                          |
+| 503 / `SHARE_LINK_UNAVAILABLE` or another storage/persistence failure | Check Images before retrying. An administrator should inspect web logs and database/bucket access.                                                                                                              |
+| HTML or a challenge page instead of an upload response                | Use the generated ShareX configuration. Its upload address must be the application address ending in `/api/v1/images`, without an extra trailing slash. Check proxy or challenge rules affecting that endpoint. |
 
-| Status/code                                                         | Action                                                                                                                     |
-| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| 401 / `INVALID_KEY`                                                 | Check active account/current key and regenerate the uploader.                                                              |
-| 400 / `EXPIRY_REQUIRED`, `EXPIRY_TOO_LONG`, `INVALID_EXPIRATION`    | Save a compliant default in Settings or supply valid explicit expiry; policy changes do not repair defaults automatically. |
-| 400 / `INVALID_FILE_TYPE`                                           | Export a valid supported image; changing the extension/MIME does not change its bytes.                                     |
-| 422 / `METADATA_STRIPPING_UNSUPPORTED`, `METADATA_STRIPPING_FAILED` | Use a supported layout/export; Hearth will not fall back to unsanitized bytes.                                             |
-| 413 / `UPLOAD_TOO_LARGE`                                            | Reduce input size or review the configured upload limit and platform limits.                                               |
-| 413 / `QUOTA_EXCEEDED`                                              | Check account usage/quota; delete images or adjust quota.                                                                  |
-| 413 / `GLOBAL_STORAGE_LIMIT_EXCEEDED`                               | Free physical capacity or raise the cap; pending purge/reservations still count.                                           |
-| 503 / `STORAGE_ACCOUNTING_UNAVAILABLE`                              | Inspect initialization and unresolved ledger issues in Storage.                                                            |
-| 409 / `IMAGE_SAVED_WITHOUT_LINK`                                    | Find the saved image, fix delivery selection, then create its link.                                                        |
-| 429                                                                 | Observe `Retry-After`; avoid repeated concurrent retries.                                                                  |
-| 503 / storage or persistence failure                                | Inspect web logs and D1/R2 access; verify state before retrying an uncertain upload.                                       |
-
-An HTML/challenge response instead of JSON usually needs endpoint/proxy diagnosis.
-Use Hearth's exact generated `/api/v1/images` URL, not a delivery hostname or a
-manually appended slash. See [ShareX task/destination checks](../getting-started/sharex-setup.md#troubleshooting-sharex).
-
-**Verification:** Upload a small supported image using a compliant default, find
-it in Images, and open its resulting URL. After a lost response, check for an
-already-saved image first; native ShareX has no default idempotency key.
+**Check the fix:** upload a small supported image, find it in **Images**, and open
+its public link. For capture tasks, uploader selection, and clipboard problems,
+use [ShareX troubleshooting](../getting-started/sharex-setup.md#troubleshooting-sharex).
 
 ## Expiry cleanup or storage scans stall
 
-**Symptom:** Expired images remain physically charged, reservations persist, or a
-scan fails/stops advancing.
+| Symptom                                                     | What to do                                                                                                                                                                                            |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Expired or deleted images still count toward global storage | Allow scheduled cleanup to run. Capacity is released after physical cleanup is verified; a backlog can take several runs.                                                                             |
+| Maintenance has no recent scheduled runs                    | Follow [maintenance verification](maintenance.md#verify-scheduled-maintenance). Check the deployed cron and database/bucket settings. After a trigger change, allow up to 15 minutes for it to start. |
+| `maintenance.purge_failed` appears in logs                  | Check bucket access and the logged failure, fix it, then let maintenance retry.                                                                                                                       |
+| A storage scan is stuck or failed                           | Open **Administration → Storage**, read the scan error and **Needs attention** items, and check maintenance logs. Fix the reported issue, then retry the scan when appropriate.                       |
+| Storage has no initialized baseline                         | Follow [storage initialization](../guides/storage-management.md#initialize-before-enabling-a-global-limit). A normal scan alone cannot verify untracked multipart uploads.                            |
+| Reservations or warnings remain after several runs          | Review the reported storage issues before repairing them. Do not clear reservations, delete leases, or reset counters just to remove a warning.                                                       |
 
-**Likely causes:** Maintenance missing/still paused, cron propagation delay, wrong
-bindings, a batch backlog, failed purge/recovery, active lease, or accounting issues.
+**Check the fix:** scheduled runs complete, scan progress advances, and storage
+usage drops after cleanup. Expired image links should remain unavailable while
+cleanup catches up.
 
-**Diagnosis:** Verify the deployed maintenance cron and resources, then inspect
-scheduled invocations and `maintenance.purge_failed` events. Compare Storage's scan
-progress/error and Needs attention before and after several runs. If capacity is
-not initialized, normal scans alone cannot verify untracked multipart uploads.
+## Collect useful diagnostics
 
-**Resolution:** Restore the recorded cron after a maintenance window, deploy the
-compatible Worker, and allow propagation. Fix storage access and let retries run.
-Retry a failed scan from Storage when appropriate. Use the
-[initialization command](../guides/storage-management.md#initialize-before-enabling-a-global-limit)
-for a missing baseline, and review issues before repairs. Do not clear reservations,
-delete leases, reset counters, or mass-delete orphans merely to hide a warning.
+If the problem continues:
 
-**Verification:** Scheduled runs complete, progress advances, and verified physical
-cleanup releases capacity. Expired image delivery must remain blocked throughout.
+1. Note the exact error message/code, the time it happened, and the action you
+   were trying to complete.
+2. For guided setup, check `artifacts/setup/diagnostics.log`. For a running
+   installation, open the matching [Worker logs](maintenance.md#read-worker-logs):
+
+   | Problem                                          | Logs to check |
+   | ------------------------------------------------ | ------------- |
+   | Sign-in, dashboard, upload, or domain validation | Web           |
+   | Public image link                                | Delivery      |
+   | Scheduled cleanup or storage scan                | Maintenance   |
+
+3. Reproduce the problem once while viewing the logs and save the relevant error.
+4. Before sharing diagnostics, remove API keys, secrets, cookies, private images,
+   and credentials from configuration files or ShareX profiles.

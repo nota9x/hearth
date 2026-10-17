@@ -1,47 +1,45 @@
 import childProcess from 'node:child_process';
-import { EventEmitter } from 'node:events';
+import fs from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
-import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 
 if (
-  ['development.ts', 'preview.ts'].some((entry) =>
-    process.argv[1]?.endsWith(entry),
-  )
+  process.argv[1]?.endsWith('scripts/cli.mjs') ||
+  process.argv[1]?.endsWith(String.raw`scripts\cli.mjs`)
 ) {
-  const fork = childProcess.fork;
-  const services = [];
-  let booted = 0;
-  childProcess.fork = (_module, arguments_, options) => {
-    const child = fork(
-      fileURLToPath(new URL('development-service.mjs', import.meta.url)),
-      arguments_,
-      options,
+  const access = fs.access;
+  fs.access = (file, ...options) =>
+    String(file)
+      .replaceAll('\\', '/')
+      .endsWith('.svelte-kit/cloudflare/_worker.js')
+      ? Promise.resolve()
+      : access(file, ...options);
+  const spawn = childProcess.spawn;
+  childProcess.spawn = (command, arguments_, options) => {
+    const index = arguments_.findIndex((argument) =>
+      /(?:vite[\\/]bin[\\/]vite|wrangler-dist[\\/]cli)\.js$/.test(argument),
     );
-    services.push(child);
-    child.on('message', (message) => {
-      if (message === 'booted' && ++booted === 3)
-        for (const service of services) service.send('begin');
-    });
-    return child;
+    if (index !== -1) {
+      const component = arguments_.includes('dev')
+        ? options.cwd.replaceAll('\\', '/').split('/').at(-1)
+        : 'web';
+      arguments_ = [
+        ...arguments_.slice(0, index),
+        fileURLToPath(new URL('development-service.mjs', import.meta.url)),
+        component,
+        ...arguments_.slice(index + 1),
+      ];
+    }
+    return spawn(command, arguments_, options);
   };
-  net.createServer = () => {
-    // eslint-disable-next-line unicorn/prefer-event-target -- Model Node's port probe API without reserving development ports.
-    const probe = new EventEmitter();
-    probe.listen = (_port, _host, callback) => queueMicrotask(callback);
-    probe.close = (callback) => callback();
-    return probe;
-  };
-  const timeout = setTimeout;
-  // eslint-disable-next-line unicorn/no-global-object-property-assignment -- Exercise the launcher's 60-second deadline with a short fixture clock.
-  globalThis.setTimeout = (callback, delay, ...arguments_) =>
+  const timeout = AbortSignal.timeout;
+  AbortSignal.timeout = (duration) =>
     timeout(
-      callback,
-      delay === 60_000 && process.env.HEARTH_DEV_TEST_SCENARIO === 'timeout'
+      duration === 60_000 && process.env.HEARTH_DEV_TEST_SCENARIO === 'timeout'
         ? 1500
-        : delay,
-      ...arguments_,
+        : duration,
     );
   syncBuiltinESMExports();
   process.on('message', () => process.emit('SIGTERM'));
+  process.channel?.unref();
 }

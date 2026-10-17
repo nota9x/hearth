@@ -46,6 +46,42 @@ may offer to stop a recognized existing Hearth server; the default is No. Other
 applications and non-interactive runs are not terminated. Do not start standalone
 services on ports already owned by dev/preview.
 
+## CLI options and native tool arguments
+
+All operational commands share the Citty CLI under `cli/`; `scripts/cli.mjs` is
+its dependency-aware entry point. Run `pnpm run cli --help` for commands and
+`pnpm dev --help` or `pnpm preview --help` for local server options. Existing
+`dev:*`, setup, configure, bootstrap, and storage initialization scripts remain available.
+
+Use `--web-port`, `--delivery-port`, and `--maintenance-port` to coordinate
+alternative ports. `--port` also works when selecting a single service. Web
+`--host` changes its listen address; `--app-origin` selects the canonical HTTP
+browser origin when needed (for example, when listening on `0.0.0.0`). Hearth
+propagates the origin and delivery port into temporary ignored configurations;
+checked-in settings and the shared persistent state are preserved.
+
+`--log-level` controls native tool logging. `--open` and `--force` apply to Vite
+web development. Preview runs the built web Worker through Wrangler.
+
+Arguments after `--` go directly to the selected native Vite or Wrangler CLI.
+For multiple services, name each target and separate groups with another `--`:
+
+```sh
+node scripts/cli.mjs dev web -- --debug hmr
+node scripts/cli.mjs dev -- web --debug hmr -- delivery --inspector-port 9230
+pnpm dev:web -- -- --debug hmr
+pnpm dev -- -- web --debug hmr -- delivery --inspector-port 9230
+```
+
+pnpm 12 consumes the first separator after a script name, so its examples include
+an extra `--`. Native `--help` and `--version` use the same forwarding syntax.
+Other native arguments retain their exact tokens; no shell quoting parser is used.
+Hearth rejects alternate configuration, persistence, remote execution, HTTPS, and
+reserved binding overrides that would invalidate the managed local session.
+Worker listeners retain IPv4 loopback access for local domain validation.
+Native Wrangler interactive controls require a single selected service and take
+over the terminal from Hearth's dashboard.
+
 ## Persistence and hostnames
 
 All services share `apps/web/.wrangler/state/v3`, with matching local database IDs
