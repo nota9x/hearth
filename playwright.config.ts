@@ -5,11 +5,13 @@ export default defineConfig({
   testMatch: '**/*.spec.ts',
   globalSetup: 'tests/helpers/build-browser.ts',
   workers: 1,
+  forbidOnly: !!process.env.CI,
+  globalTimeout: process.env.CI ? 10 * 60 * 1000 : undefined,
   use: {
     viewport: { width: 1440, height: 1000 },
     headless: true,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  reporter: 'list',
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
 });

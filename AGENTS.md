@@ -32,8 +32,10 @@ manifests. Use Node 24 (CI) and the pnpm version pinned in `package.json`; depen
   per case, controls Turnstile and blocks external traffic; no bootstrap or local
   migrations are needed. Avoid concurrent rebuilds of the generated web output.
 - CI baseline: `pnpm verify` = formatting, lint, types, unit/integration tests,
-  web build. Browser tests and delivery/maintenance deploy dry runs are additional
-  CI steps in `.github/workflows/ci.yml`.
+  web build. `.github/workflows/ci.yml` distributes these across quality/unit,
+  two integration shards, and two browser shards; `validate` requires all to pass.
+  Browser shards build web; both test harnesses bundle delivery. Quality also
+  checks the maintenance bundle. See `docs/development/releasing.md#continuous-integration`.
 - Schema generation: `pnpm db:generate`; apply local SQL: `pnpm db:migrate`.
 - Worker bundle checks: `pnpm exec wrangler deploy --dry-run --config workers/delivery/wrangler.jsonc`
   and `pnpm exec wrangler deploy --dry-run --config workers/maintenance/wrangler.jsonc`.
