@@ -11,6 +11,7 @@ import { defineCommand } from 'citty';
 import { execa } from 'execa';
 import { z } from 'zod';
 
+import manifest from '../../package.json' with { type: 'json' };
 import { id, now } from '../../packages/core/common';
 import { prepareBootstrap } from '../bootstrap-data';
 import { validateOptions } from '../options';
@@ -612,9 +613,19 @@ async function runSetup(advanced: boolean, remove = false) {
 
   try {
     const manager = cloudflare.environment.npm_config_user_agent;
-    if (!manager?.startsWith('pnpm/12.11.2 '))
+    const version = manifest.packageManager.split('@', 2)[1].split('+', 1)[0];
+    if (manager?.split(' ', 1)[0] !== `pnpm/${version}`)
       throw new SetupFailure(
-        'Run setup through pnpm 12.11.2: pnpm run setup. Use the packageManager version declared in package.json.',
+        [
+          `Run setup through pnpm ${version}, as declared in package.json (detected: ${manager?.split(' ', 1)[0] ?? 'unknown'}).`,
+          `Direct pnpm installation: from outside this repository, run pnpm self-update ${version}.`,
+          `If installed with npm, run npm install --global pnpm@${version}.`,
+          'To switch to Corepack, first uninstall your existing global pnpm with its original installer (npm uninstall --global pnpm for npm installs; remove standalone pnpm/pnpx binaries from PATH). Then run:',
+          '  npm install --global corepack@latest',
+          '  corepack enable pnpm',
+          '  corepack install',
+          'Run corepack install from this repository to use package.json, then retry pnpm run setup.',
+        ].join('\n'),
       );
     const installed: unknown = JSON.parse(
       await readFile(

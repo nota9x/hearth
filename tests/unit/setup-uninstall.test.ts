@@ -13,6 +13,7 @@ import { withBindings } from '../../cli/setup/initialize';
 import * as stateFiles from '../../cli/setup/state';
 import { stateSchema } from '../../cli/setup/state';
 import { emptyBucket, uninstall } from '../../cli/setup/uninstall';
+import manifest from '../../package.json' with { type: 'json' };
 
 vi.mock('@clack/prompts', () => ({
   select: vi.fn(),
@@ -763,7 +764,10 @@ describe('Hearth uninstall', () => {
         configurable: true,
         value: true,
       });
-      vi.stubEnv('npm_config_user_agent', 'pnpm/12.11.2 node/v24.19.0');
+      vi.stubEnv(
+        'npm_config_user_agent',
+        `pnpm/${manifest.packageManager.split('@', 2)[1].split('+', 1)[0]} node/v24.19.0`,
+      );
       vi.spyOn(stateFiles, 'loadState').mockResolvedValue(
         stateSchema.parse({}),
       );

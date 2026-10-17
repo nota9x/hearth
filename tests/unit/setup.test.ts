@@ -40,6 +40,7 @@ import {
   sourceFingerprint,
   stateSchema,
 } from '../../cli/setup/state';
+import manifest from '../../package.json' with { type: 'json' };
 
 const directories: string[] = [];
 afterEach(async () => {
@@ -80,7 +81,7 @@ function mockSetupTerminal() {
   });
   vi.stubEnv(
     'npm_config_user_agent',
-    'pnpm/12.11.2 npm/? node/v24.19.0 win32 x64',
+    `pnpm/${manifest.packageManager.split('@', 2)[1].split('+', 1)[0]} npm/? node/v24.19.0 win32 x64`,
   );
   vi.mocked(prompts.spinner).mockReturnValue({
     start: vi.fn(),
