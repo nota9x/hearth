@@ -580,18 +580,19 @@ export class Cloudflare {
     return record.data.version_id;
   }
   async build() {
-    const manager = this.environment.npm_execpath;
-    const command = manager ? process.execPath : 'pnpm';
-    const arguments_ = manager ? [manager, 'run', 'build'] : ['run', 'build'];
-    const result = await execa(command, arguments_, {
-      cwd: root,
-      env: this.env,
-      extendEnv: false,
-      shell: false,
-      reject: false,
-      cancelSignal: this.controller.signal,
-      killDescendants: true,
-    });
+    const result = await execa(
+      this.environment.npm_execpath ?? 'pnpm',
+      ['run', 'build'],
+      {
+        cwd: root,
+        env: this.env,
+        extendEnv: false,
+        shell: false,
+        reject: false,
+        cancelSignal: this.controller.signal,
+        killDescendants: true,
+      },
+    );
     await this.diagnostic('build', `${result.stdout}\n${result.stderr}`);
     if (result.exitCode !== 0)
       throw new SetupFailure(

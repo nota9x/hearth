@@ -67,18 +67,18 @@ if (major !== 24 && major < 26) {
     let status;
     try {
       const { execa } = await import('execa');
-      const result = await execa(
-        process.execPath,
-        [manager, 'install', '--frozen-lockfile'],
-        { stdio: 'inherit', reject: false },
-      );
+      const result = await execa(manager, ['install', '--frozen-lockfile'], {
+        stdio: 'inherit',
+        reject: false,
+      });
       status = result.exitCode;
     } catch (error) {
       if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error;
       status = await new Promise((resolve, reject) => {
+        const script = /\.[cm]?js$/i.test(manager);
         const child = spawn(
-          process.execPath,
-          [manager, 'install', '--frozen-lockfile'],
+          script ? process.execPath : manager,
+          [...(script ? [manager] : []), 'install', '--frozen-lockfile'],
           { stdio: 'inherit', shell: false },
         );
         child.once('error', reject);

@@ -1,9 +1,17 @@
 /* eslint-disable unicorn/no-await-expression-member -- Assertions inspect completed operation results. */
 /* eslint-disable unicorn/prefer-await -- Attach rejection handlers before advancing timers or cancelling child processes. */
-import { copyFile, mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import {
+  copyFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout } from 'node:timers/promises';
+import { pathToFileURL } from 'node:url';
 
 import * as prompts from '@clack/prompts';
 import { runCommand } from 'citty';
@@ -317,6 +325,31 @@ it('cancels a subprocess and its descendant without leaving a helper running', a
   expect(await result).toBeInstanceOf(SetupFailure);
   expect(() => process.kill(child, 0)).toThrow();
 });
+it.each(['native', 'script'])(
+  'builds with a %s package-manager executable',
+  async (kind) => {
+    const script = path.join(await temporary(), 'package manager.mjs');
+    const native = kind === 'native';
+    await writeFile(
+      script,
+      `#!/usr/bin/env node\nprocess.stdout.write(JSON.stringify(process.argv.slice(${native ? 1 : 2})));\nprocess.exit(0);\n`,
+      { mode: 0o700 },
+    );
+    const cloudflare = new Cloudflare({
+      ...process.env,
+      npm_execpath: native ? process.execPath : script,
+      NODE_OPTIONS: native
+        ? `--import=${pathToFileURL(script).href}`
+        : undefined,
+    });
+    const diagnostic = vi.spyOn(cloudflare, 'diagnostic').mockResolvedValue();
+    await cloudflare.build();
+    expect(diagnostic).toHaveBeenCalledExactlyOnceWith(
+      'build',
+      `${JSON.stringify([native ? path.join(root, 'run') : 'run', 'build'])}\n`,
+    );
+  },
+);
 it('paginates R2 inventories using cursors rather than parsing bucket tables', async () => {
   const cloudflare = new Cloudflare({});
   cloudflare.token = 'token';
