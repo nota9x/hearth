@@ -589,8 +589,12 @@ nav a.active {
   gap: 20px;
   background: linear-gradient(110deg, #30201650, #1d1915);
 }
-.upload-callout > svg {
-  color: var(--accent);
+.upload-callout-brand {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.upload-callout-brand > img {
   flex-shrink: 0;
 }
 .upload-callout p {
@@ -1261,16 +1265,18 @@ code {
     gap: 5px;
   }
   .upload-callout {
-    align-items: flex-start;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
     padding: 20px;
+  }
+  .upload-callout-brand {
+    gap: 16px;
   }
   .upload-callout-actions {
     margin-left: 0;
-  }
-  .upload-callout > div:not(.upload-callout-actions) {
-    flex: 1;
-    min-width: 180px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
   }
   .toolbar {
     gap: 9px;
