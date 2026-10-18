@@ -52,7 +52,7 @@
     "@playwright/test": "^1.64.1",
     "@types/node": "^24.19.2",
     "@vitest/eslint-plugin": "^1.6.27",
-    "@zip.js/zip.js": "2.23.0",
+    "@zip.js/zip.js": "2.24.0",
     "citty": "0.2.2",
     "croner": "^10.0.1",
     "drizzle-kit": "^0.31.11",
