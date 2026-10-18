@@ -278,6 +278,10 @@ test('unsaved navigation can be canceled or discarded without losing history dir
   await page.evaluate(() => history.back());
   await confirmation.getByRole('button', { name: 'Discard changes' }).click();
   await expect(page).toHaveURL(/\/images$/);
+  // Popstate changes the URL before SvelteKit finishes leaving the settings page.
+  await expect(
+    page.getByRole('heading', { name: 'Images', exact: true }),
+  ).toBeVisible();
   await page.evaluate(() => history.forward());
   await expect(page).toHaveURL(/\/settings$/);
   await expect(
