@@ -58,6 +58,9 @@ export const users = sqliteTable(
   {
     id: text().primaryKey(),
     displayName: text().notNull(),
+    displayNamePolicy: text({ enum: ['inherit', 'allow', 'restrict'] })
+      .notNull()
+      .default('inherit'),
     role: text({ enum: ['user', 'admin'] })
       .notNull()
       .default('user'),
@@ -90,6 +93,10 @@ export const users = sqliteTable(
   },
   (t) => [
     check('valid_role', sql`${t.role} in ('user','admin')`),
+    check(
+      'valid_display_name_policy',
+      sql`${t.displayNamePolicy} in ('inherit','allow','restrict')`,
+    ),
     check(
       'valid_onboarding_status',
       sql`${t.onboardingStatus} in ('pending','completed','skipped','exempt')`,

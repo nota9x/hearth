@@ -9,6 +9,7 @@ import { USER_PAGE_SIZE, userSortOptions, userStatuses } from './user-search';
 const fields = {
   id: users.id,
   displayName: users.displayName,
+  displayNamePolicy: users.displayNamePolicy,
   role: users.role,
   status: users.status,
   quotaBytes: users.quotaBytes,

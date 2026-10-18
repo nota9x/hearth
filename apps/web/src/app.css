@@ -931,13 +931,44 @@ nav a.active {
   flex-shrink: 0;
 }
 .badge {
-  font-size: 0.64rem;
-  display: inline-block;
-  padding: 3px 8px;
-  border: 1px solid #c4714a30;
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: 999px;
   color: #dfac87;
-  background: #c4714a0c;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  font-size: 0.7rem;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.badge svg {
+  flex-shrink: 0;
+}
+.badge[data-status]::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: currentColor;
+}
+.badge[data-status='active'] {
+  color: #add1af;
+}
+.badge[data-status='disabled'],
+.badge[data-status='deleted'],
+.badge[data-status='expired'],
+.badge[data-status='unavailable'] {
+  color: #efbba8;
+}
+.badge[data-status='misconfigured'],
+.badge[data-status='unhealthy'] {
+  color: var(--danger);
+}
+.badge[data-status='pending'] {
+  color: var(--muted);
 }
 .detail-preview {
   background: #211d18;

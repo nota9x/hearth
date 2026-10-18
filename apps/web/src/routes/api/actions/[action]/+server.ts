@@ -19,6 +19,10 @@ import {
   setPrimaryDeliveryDomain,
 } from '@hearth/core/delivery-domains';
 import { digest } from '@hearth/core/digest';
+import {
+  displayNamePolicySchema,
+  getDisplayNameRestriction,
+} from '@hearth/core/display-name-policy';
 import { validateDeliveryDomain } from '@hearth/core/domain-validation';
 import {
   expiryOverridesSchema,
@@ -453,6 +457,67 @@ export const POST: RequestHandler<{ action: string }> = async ({
         requireAdmin(user);
         await rateLimit(environment.SENSITIVE_LIMIT, `admin:${user.id}`);
         switch (params.action) {
+          case 'display-name-settings': {
+            const restrictDisplayNameChanges = z
+              .boolean()
+              .parse(input.restrictDisplayNameChanges);
+            const previous = await getDisplayNameRestriction(environment.DB);
+            if (previous === restrictDisplayNameChanges) break;
+            await database_.batch([
+              database_
+                .insert(settings)
+                .values({
+                  key: 'restrictDisplayNameChanges',
+                  value: String(restrictDisplayNameChanges),
+                })
+                .onConflictDoUpdate({
+                  target: settings.key,
+                  set: { value: String(restrictDisplayNameChanges) },
+                }),
+              database_.insert(auditLog).values(
+                await audit(
+                  'settings.display_name_policy',
+                  'restrictDisplayNameChanges',
+                  {
+                    name: 'Display name policy',
+                    before: { restrictDisplayNameChanges: previous },
+                    after: { restrictDisplayNameChanges },
+                  },
+                ),
+              ),
+            ]);
+            break;
+          }
+          case 'user-display-name-policy': {
+            const userId = idSchema.parse(input.userId);
+            const displayNamePolicy = displayNamePolicySchema.parse(
+              input.displayNamePolicy,
+            );
+            const [target] = await database_
+              .select()
+              .from(users)
+              .where(
+                and(eq(users.id, userId), sql`${users.status} != 'deleted'`),
+              );
+            if (!target)
+              throw new AppError(404, 'NOT_FOUND', 'User not found.');
+            if (target.displayNamePolicy === displayNamePolicy) break;
+            await database_.batch([
+              database_
+                .update(users)
+                .set({ displayNamePolicy, updatedAt: timestamp })
+                .where(
+                  and(eq(users.id, userId), sql`${users.status} != 'deleted'`),
+                ),
+              database_.insert(auditLog).values(
+                await audit('user.display_name_policy', userId, {
+                  before: { displayNamePolicy: target.displayNamePolicy },
+                  after: { displayNamePolicy },
+                }),
+              ),
+            ]);
+            break;
+          }
           case 'share-slug-settings': {
             await setShareSlugDefault(
               environment.DB,

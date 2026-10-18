@@ -265,23 +265,6 @@
     flex-wrap: wrap;
     flex-shrink: 0;
   }
-  .domain-state .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    white-space: nowrap;
-  }
-  [data-status='active'] {
-    color: var(--success, #74b892);
-  }
-  [data-status='misconfigured'],
-  [data-status='unhealthy'] {
-    color: var(--danger);
-  }
-  [data-status='pending'],
-  [data-status='disabled'] {
-    color: var(--muted);
-  }
   .diagnostic-summary {
     overflow-wrap: anywhere;
   }

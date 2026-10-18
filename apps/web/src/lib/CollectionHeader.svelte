@@ -12,17 +12,22 @@
     title,
     refresh,
     busy = false,
+    subtitle,
     children,
   }: {
     title: string;
     refresh: () => Promise<void>;
     busy?: boolean;
+    subtitle?: Snippet;
     children?: Snippet;
   } = $props();
 </script>
 
 <div class="page-top">
-  <div><h1>{title}</h1></div>
+  <div class="page-title">
+    <h1>{title}</h1>
+    {@render subtitle?.()}
+  </div>
   <div class="page-actions">
     <button
       onclick={refresh}
@@ -41,3 +46,9 @@
     {@render children?.()}
   </div>
 </div>
+
+<style>
+  .page-title {
+    min-width: 0;
+  }
+</style>

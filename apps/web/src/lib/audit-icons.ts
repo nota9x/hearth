@@ -45,6 +45,8 @@ const auditIcons = {
   'onboarding.upload_skipped': SkipForward,
   'user.created': UserRoundPlus,
   'user.updated': UserRoundPen,
+  'user.display_name_policy': UserRoundPen,
+  'settings.display_name_policy': Settings,
   'user.active': UserRoundCheck,
   'user.disabled': UserRoundX,
   'user.deleted': UserRoundMinus,
