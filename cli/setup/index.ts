@@ -634,7 +634,9 @@ async function runSetup(advanced: boolean, remove = false) {
       ),
     );
     if (
-      !z.object({ version: z.literal('4.151.0') }).safeParse(installed).success
+      !z
+        .object({ version: z.literal(manifest.devDependencies.wrangler) })
+        .safeParse(installed).success
     ) {
       if (
         !(await confirmed(
@@ -649,8 +651,8 @@ async function runSetup(advanced: boolean, remove = false) {
           'Run pnpm install --frozen-lockfile, then retry setup.',
         );
       const result = await execa(
-        process.execPath,
-        [managerPath, 'install', '--frozen-lockfile'],
+        managerPath,
+        ['install', '--frozen-lockfile'],
         {
           stdio: 'inherit',
           reject: false,
