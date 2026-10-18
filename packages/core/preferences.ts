@@ -3,8 +3,12 @@ import { z } from 'zod';
 
 import { auditEvent } from './audit';
 import { requireUser } from './auth';
-import { expiry, expirySchema, now } from './common';
+import { AppError, expiry, expirySchema, now } from './common';
 import { database, type User } from './db';
+import {
+  displayNameChangesRestricted,
+  getDisplayNameRestriction,
+} from './display-name-policy';
 import { validateImageExpiry } from './expiry-policy';
 import { getEffectiveExpiryPolicy } from './expiry-policy-store';
 import { auditLog, users } from './schema';
@@ -25,6 +29,30 @@ export async function savePreferences(
 ) {
   requireUser(actor);
   const value = preferencesSchema.parse(input);
+  const db = database(binding);
+  if (value.displayName !== undefined) {
+    const [current] = await db
+      .select({
+        displayName: users.displayName,
+        role: users.role,
+        displayNamePolicy: users.displayNamePolicy,
+      })
+      .from(users)
+      .where(eq(users.id, actor.id));
+    if (!current) throw new AppError(404, 'NOT_FOUND', 'User not found.');
+    if (
+      value.displayName !== current.displayName &&
+      displayNameChangesRestricted(
+        await getDisplayNameRestriction(binding),
+        current,
+      )
+    )
+      throw new AppError(
+        403,
+        'FORBIDDEN',
+        'Display name changes are disabled by your administrator.',
+      );
+  }
   const timestamp = now();
   if (value.expiry !== undefined)
     validateImageExpiry(
@@ -41,7 +69,6 @@ export async function savePreferences(
     }),
   };
   if (Object.keys(changes).length === 0) return;
-  const db = database(binding);
   const event = await auditEvent(db, actor.id, 'user.preferences', actor.id, {
     after: changes,
     actorIp,

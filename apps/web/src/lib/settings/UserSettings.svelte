@@ -49,13 +49,17 @@
     return form.expiry === 'duration' ? `${form.seconds}s` : form.expiry;
   }
   const dirty = $derived(
-    draft.displayName !== baseline.displayName ||
+    (!data.displayNameRestricted &&
+      draft.displayName !== baseline.displayName) ||
       draft.stripImageMetadata !== baseline.stripImageMetadata ||
       expiryValue(draft) !== expiryValue(baseline),
   );
   $effect(() => {
     const next = defaults();
+    const restricted = data.displayNameRestricted;
     untrack(() => {
+      if (restricted)
+        draft.displayName = baseline.displayName = next.displayName;
       if (dirty) {
         return;
       }
@@ -80,9 +84,10 @@
     return saveSettings(
       'preferences',
       {
-        ...(draft.displayName !== baseline.displayName && {
-          displayName: draft.displayName,
-        }),
+        ...(!data.displayNameRestricted &&
+          draft.displayName !== baseline.displayName && {
+            displayName: draft.displayName,
+          }),
         ...(draft.stripImageMetadata !== baseline.stripImageMetadata && {
           stripImageMetadata: draft.stripImageMetadata,
         }),
@@ -156,12 +161,15 @@
       <SettingsRow
         id="display-name"
         label="Display name"
-        description="How your account appears in Hearth."
+        description={data.displayNameRestricted
+          ? 'Display name changes are disabled by your administrator.'
+          : 'How your account appears in Hearth.'}
         info="Your name is shown in the workspace and to administrators. Changing it does not change your API key, uploaded images, or share links."
       >
         <input
           id="display-name"
           name="displayName"
+          disabled={data.displayNameRestricted}
           bind:value={draft.displayName}
           required
           maxlength="80"

@@ -15,6 +15,9 @@
   const { data }: { data: PageData } = $props();
   let name = $state(untrack(() => data.siteName));
   let savedName = $state(untrack(() => name));
+  let restrictNames = $state(untrack(() => data.restrictDisplayNameChanges));
+  let savedRestrictNames = $state(untrack(() => restrictNames));
+  let lastRestrictionSave: PageData | undefined;
   let length = $state<number | undefined>(
     untrack(() => data.shareSlugConfiguration!.defaultLength),
   );
@@ -33,10 +36,13 @@
   );
   $effect(() => {
     const nextName = data.siteName;
+    const nextRestriction = data.restrictDisplayNameChanges;
     const nextLength = data.shareSlugConfiguration!.defaultLength;
     const nextPolicy = data.instanceExpiryPolicy;
     untrack(() => {
       if (name === savedName) name = savedName = nextName;
+      if (restrictNames === savedRestrictNames)
+        restrictNames = savedRestrictNames = nextRestriction;
       if (length === savedLength) length = savedLength = nextLength;
       if (policyDirty) {
         return;
@@ -86,6 +92,43 @@
       info="This name appears in the navigation and page titles for everyone. It does not change your domains, account names, or existing share links."
     >
       <input id="workspace-name" bind:value={name} required maxlength="60" />
+    </SettingsRow>
+  </SettingsForm>
+</SettingsSection>
+
+<SettingsSection
+  title="Display name policy"
+  description="Control whether members can change their names."
+>
+  <SettingsForm
+    dirty={restrictNames !== savedRestrictNames}
+    saveLabel="Save display name policy"
+    reset={() =>
+      (restrictNames = savedRestrictNames =
+        lastRestrictionSave === data
+          ? savedRestrictNames
+          : data.restrictDisplayNameChanges)}
+    save={() =>
+      saveSettings(
+        'display-name-settings',
+        { restrictDisplayNameChanges: restrictNames },
+        () => {
+          savedRestrictNames = restrictNames;
+          lastRestrictionSave = data;
+        },
+      )}
+  >
+    <SettingsRow
+      id="restrict-display-name-changes"
+      label="Restrict display name changes"
+      toggle
+      description="Keep member names consistent for administration and auditing."
+      info="When enabled, members cannot change their display names in Settings or onboarding. An account override can allow or restrict changes regardless of this setting. Administrators are exempt and can still rename accounts. Changes apply without signing users out."
+    >
+      <SettingsToggle
+        id="restrict-display-name-changes"
+        bind:checked={restrictNames}
+      />
     </SettingsRow>
   </SettingsForm>
 </SettingsSection>

@@ -14,7 +14,7 @@ import {
   finishOnboarding,
   hasBootstrapSetup,
 } from '../../packages/core/onboarding';
-import { auditLog, users } from '../../packages/core/schema';
+import { auditLog, settings, users } from '../../packages/core/schema';
 import { migrateDatabase } from '../helpers/database';
 
 let runtime: Miniflare, env: Env, user: User;
@@ -99,6 +99,12 @@ describe('onboarding lifecycle', () => {
     });
   });
   it('makes terminal transitions idempotent and preserves them during revisits', async () => {
+    await database(env.DB)
+      .insert(settings)
+      .values({ key: 'restrictDisplayNameChanges', value: 'true' });
+    expect(
+      (await rpc('preferences', { displayName: 'Onboarding bypass' })).status,
+    ).toBe(403);
     await Promise.all([
       finishOnboarding(env.DB, user, 'completed'),
       finishOnboarding(env.DB, user, 'skipped'),
@@ -108,6 +114,7 @@ describe('onboarding lifecycle', () => {
     await advanceOnboarding(env.DB, terminal, 2);
     await finishOnboarding(env.DB, terminal, 'skipped');
     expect((await current()).onboardingStatus).toBe(terminal.onboardingStatus);
+    expect((await current()).displayName).toBe(user.displayName);
     const events = await database(env.DB).select().from(auditLog);
     expect(
       events.filter((event) => event.action.startsWith('onboarding.')),
@@ -158,6 +165,79 @@ describe('shared settings and credentials', () => {
       defaultExpiry: '7d',
       stripImageMetadata: false,
     });
+    const db = database(env.DB);
+    for (const scenario of [
+      { global: true, override: 'inherit', allowed: false },
+      { global: true, override: 'allow', allowed: true },
+      { global: false, override: 'restrict', allowed: false },
+      { global: false, override: 'inherit', allowed: true },
+    ] as const) {
+      await db
+        .insert(settings)
+        .values({
+          key: 'restrictDisplayNameChanges',
+          value: String(scenario.global),
+        })
+        .onConflictDoUpdate({
+          target: settings.key,
+          set: { value: String(scenario.global) },
+        });
+      await db
+        .update(users)
+        .set({ displayNamePolicy: scenario.override })
+        .where(eq(users.id, user.id));
+      const before = await current();
+      const response = await rpc('preferences', {
+        displayName: `${before.displayName} renamed`,
+        stripImageMetadata: !before.stripImageMetadata,
+        displayNamePolicy: 'allow',
+        restrictDisplayNameChanges: false,
+      });
+      expect(response.status).toBe(scenario.allowed ? 200 : 403);
+      expect(await response.json()).toEqual(
+        scenario.allowed
+          ? { ok: true }
+          : {
+              error: {
+                code: 'FORBIDDEN',
+                message:
+                  'Display name changes are disabled by your administrator.',
+              },
+            },
+      );
+      const after = await current();
+      expect(after).toMatchObject(
+        scenario.allowed
+          ? {
+              displayName: `${before.displayName} renamed`,
+              stripImageMetadata: !before.stripImageMetadata,
+            }
+          : before,
+      );
+      expect(
+        (
+          await rpc('preferences', {
+            displayName: `  ${after.displayName}  `,
+            stripImageMetadata: true,
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (await rpc('preferences', { stripImageMetadata: false })).status,
+      ).toBe(200);
+      expect((await current()).displayNamePolicy).toBe(scenario.override);
+    }
+    await db
+      .update(users)
+      .set({ role: 'admin', displayNamePolicy: 'restrict' })
+      .where(eq(users.id, user.id));
+    await db
+      .update(settings)
+      .set({ value: 'true' })
+      .where(eq(settings.key, 'restrictDisplayNameChanges'));
+    expect(
+      (await rpc('preferences', { displayName: 'Administrator name' })).status,
+    ).toBe(200);
   });
   it('validates only submitted expiry and preserves administrator restrictions', async () => {
     await env.DB.prepare('UPDATE users SET expiryPolicy=? WHERE id=?')

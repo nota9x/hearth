@@ -9,7 +9,11 @@ import { POST } from '../../apps/web/src/routes/api/actions/[action]/+server';
 import { GET as media } from '../../apps/web/src/routes/api/media/[id]/+server';
 import { auditEvent } from '../../packages/core/audit';
 import { presentAudit } from '../../packages/core/audit-presentation';
-import { createUser } from '../../packages/core/auth';
+import {
+  authenticateSession,
+  createSession,
+  createUser,
+} from '../../packages/core/auth';
 import { id, now } from '../../packages/core/common';
 import { database, type User } from '../../packages/core/db';
 import type { Env } from '../../packages/core/env';
@@ -203,6 +207,74 @@ describe('audit safety and historical presentation', () => {
 describe('persisted mutation coverage', () => {
   it('captures account, host, link, configuration, storage, and authentication actions', async () => {
     const db = database(env.DB);
+    await action(
+      'display-name-settings',
+      { restrictDisplayNameChanges: true },
+      member,
+      'auth.access_denied',
+      403,
+    );
+    await action(
+      'user-display-name-policy',
+      { userId: member.id, displayNamePolicy: 'allow' },
+      member,
+      'auth.access_denied',
+      403,
+    );
+    const session = await createSession(env.DB, member.id, 1);
+    const globalPolicy = await action(
+      'display-name-settings',
+      { restrictDisplayNameChanges: true },
+      admin,
+      'settings.display_name_policy',
+    );
+    expect(globalPolicy.log).toMatchObject({
+      actorId: admin.id,
+      targetId: 'restrictDisplayNameChanges',
+    });
+    expect(presentAudit(globalPolicy.log!).details).toEqual([
+      'Restrict display name changes changed from "No" to "Yes"',
+    ]);
+    const accountPolicy = await action(
+      'user-display-name-policy',
+      { userId: member.id, displayNamePolicy: 'restrict' },
+      admin,
+      'user.display_name_policy',
+    );
+    expect(accountPolicy.log).toMatchObject({
+      actorId: admin.id,
+      targetId: member.id,
+    });
+    expect(presentAudit(accountPolicy.log!).details).toEqual([
+      'Display name policy changed from "inherit" to "restrict"',
+    ]);
+    expect(await authenticateSession(env.DB, session)).toMatchObject({
+      id: member.id,
+      displayNamePolicy: 'restrict',
+    });
+    await action(
+      'user-update',
+      {
+        userId: member.id,
+        displayName: 'Assigned member',
+        status: 'active',
+        quotaBytes: null,
+      },
+      admin,
+      'user.updated',
+    );
+    await action(
+      'user-display-name-policy',
+      { userId: member.id, displayNamePolicy: 'inherit' },
+      admin,
+      'user.display_name_policy',
+    );
+    await action(
+      'display-name-settings',
+      { restrictDisplayNameChanges: false },
+      admin,
+      'settings.display_name_policy',
+    );
     const created = await action(
       'user-create',
       { displayName: 'New user', role: 'admin' },
@@ -311,7 +383,7 @@ describe('persisted mutation coverage', () => {
       member,
       'user.preferences',
     );
-    expect(presentAudit(preferences.log!).actor).toBe('Member');
+    expect(presentAudit(preferences.log!).actor).toBe('Assigned member');
     expect(presentAudit(preferences.log!).details).toContain(
       'Expiry changed from "Never" to "30 days"',
     );

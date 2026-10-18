@@ -35,6 +35,19 @@ images but can block future uploads. Saving account configuration revokes that
 account's sessions even if you only changed its name or quota; it must sign in again.
 See [storage management](storage-management.md) for global capacity.
 
+Under **Administration → Settings**, enable **Restrict display name changes** to
+lock member names in Settings and onboarding. It is disabled by default. Under a
+user's **Account configuration → Display name changes**, choose **Inherit instance
+policy**, **Allow display name changes**, or **Restrict display name changes**.
+An explicit allow or restrict overrides the instance setting. Administrators are
+always exempt and can rename accounts through the account editor.
+
+Use **Save display name policy** to save an override without revoking sessions.
+Policy changes take effect on the next request without signing out, and the
+controls reflect them when the page refreshes. Changes are recorded in the audit
+log with the responsible administrator and old/new policy values. Restricted
+members can still finish onboarding and update other preferences.
+
 In **Expiry policy**, inherit instance defaults or set individual overrides.
 Each field can inherit independently. An unlimited maximum removes the inherited
 maximum; making expiry optional alone does not override a finite maximum.

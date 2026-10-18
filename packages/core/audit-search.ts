@@ -6,6 +6,8 @@ export const auditActionTitles = {
   'onboarding.upload_skipped': 'First image milestone skipped',
   'user.created': 'User created',
   'user.updated': 'User updated',
+  'user.display_name_policy': 'User display name policy changed',
+  'settings.display_name_policy': 'Display name policy changed',
   'user.active': 'User activated',
   'user.disabled': 'User disabled',
   'user.deleted': 'User deleted',

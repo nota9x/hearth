@@ -152,8 +152,9 @@
 
 <style>
   .link-row {
+    flex-wrap: wrap;
     padding: 1rem;
-    gap: 1rem;
+    gap: 0.75rem;
     position: relative;
   }
   .link-preview {
@@ -170,6 +171,7 @@
     object-fit: cover;
   }
   .row-content {
+    flex-basis: min(14rem, calc(100% - 110px));
     min-width: 0;
   }
   .link-url {
@@ -180,28 +182,10 @@
   .link-state {
     display: flex;
     flex-wrap: wrap;
+    flex-shrink: 0;
     gap: 0.4rem;
-    max-width: 150px;
   }
-  [data-status='expired'],
-  [data-status='unavailable'] {
-    color: #efbba8;
-  }
-  @media (max-width: 1023px) {
-    .link-row {
-      flex-wrap: wrap;
-      gap: 0.75rem;
-    }
-    .row-content {
-      flex-basis: calc(100% - 110px);
-    }
-    .link-state {
-      max-width: none;
-      flex: 1;
-    }
-    .row-actions {
-      margin-left: auto;
-      width: auto;
-    }
+  .row-actions {
+    margin-left: auto;
   }
 </style>

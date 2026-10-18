@@ -64,8 +64,9 @@
   }));
   $effect(() => {
     const user = data.user;
+    const restricted = data.displayNameRestricted;
     untrack(() => {
-      if (displayName === savedPreferences.displayName)
+      if (restricted || displayName === savedPreferences.displayName)
         displayName = user.displayName;
       if (domainId === savedPreferences.domainId)
         domainId = user.preferredDeliveryDomainId;
@@ -124,11 +125,13 @@
       : data.available.find((domain) => domain.id === domainId),
   );
   const nameError = $derived(
-    displayName.trim().length === 0
-      ? 'Enter a name people will recognize.'
-      : displayName.trim().length > 80
-        ? 'Use 80 characters or fewer.'
-        : '',
+    data.displayNameRestricted
+      ? ''
+      : displayName.trim().length === 0
+        ? 'Enter a name people will recognize.'
+        : displayName.trim().length > 80
+          ? 'Use 80 characters or fewer.'
+          : '',
   );
 
   function clearCredential() {
@@ -222,7 +225,12 @@
     busy = true;
     error = '';
     try {
-      if (!skip && step === 2 && displayName.trim() !== data.user.displayName)
+      if (
+        !skip &&
+        step === 2 &&
+        !data.displayNameRestricted &&
+        displayName.trim() !== data.user.displayName
+      )
         await action('preferences', { displayName });
       if (
         !skip &&
@@ -494,6 +502,7 @@
                 >Your display name<input
                   bind:value={displayName}
                   disabled={busy}
+                  readonly={data.displayNameRestricted}
                   autocomplete="nickname"
                   maxlength="80"
                   required
@@ -502,7 +511,9 @@
                 /></label
               >
               <p id="name-help" class:error={!!nameError}>
-                {nameError || 'You can change this later in Settings.'}
+                {data.displayNameRestricted
+                  ? 'Display name changes are disabled by your administrator.'
+                  : nameError || 'You can change this later in Settings.'}
               </p>
             </form>
           {:else if step === 3}

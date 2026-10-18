@@ -11,6 +11,8 @@ export const auditFields = {
   onboardingStep: 'Onboarding step',
   onboardingUploadStatus: 'First image milestone',
   displayName: 'Display name',
+  displayNamePolicy: 'Display name policy',
+  restrictDisplayNameChanges: 'Restrict display name changes',
   role: 'Role',
   status: 'Status',
   defaultExpiry: 'Expiry',
