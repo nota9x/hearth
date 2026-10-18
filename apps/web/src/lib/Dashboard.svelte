@@ -20,7 +20,6 @@
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import Upload from '@lucide/svelte/icons/upload';
-  import ShareX from '@thesvg/svelte/sharex';
   import { onMount, untrack } from 'svelte';
 
   import type { AdminComponents } from '#lib/admin-types.ts';
@@ -597,10 +596,12 @@
   </div>
   {@render gallery()}
   {#if !shareXDismissed}<div class="upload-callout">
-      <ShareX width={25} height={25} fill="white" aria-hidden="true" />
-      <div>
-        <h3>ShareX</h3>
-        <p>Upload screenshots directly from ShareX.</p>
+      <div class="upload-callout-brand">
+        <img src="/sharex-logo.svg" alt="" width="32" height="32" />
+        <div>
+          <h3>ShareX</h3>
+          <p>Upload screenshots directly from ShareX.</p>
+        </div>
       </div>
       <div class="upload-callout-actions">
         <button
