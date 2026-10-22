@@ -26,6 +26,15 @@
     },
   ],
   "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "hearth-local" }],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "MAINTENANCE",
+        "class_name": "MaintenanceJob",
+        "script_name": "hearth-maintenance",
+      },
+    ],
+  },
   "ratelimits": [
     {
       "name": "LOGIN_LIMIT",

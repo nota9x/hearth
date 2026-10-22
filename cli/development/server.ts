@@ -196,196 +196,204 @@ export async function startServer(
       }
     }
     const startedAt = performance.now();
-    await Promise.all(
-      selected.map(async (component) => {
-        if (stopping) return;
-        const config = current.configs[component];
-        const vite = component === 'web' && mode === 'development';
-        const interactive = current.tools[component].interactive;
-        const arguments_ = [vite ? config.directory : 'dev'];
-        if (options['log-level']) {
-          if (vite)
-            arguments_.push(
-              '--logLevel',
-              options['log-level'] === 'debug' ? 'info' : options['log-level'],
-            );
-          else
-            arguments_.push(
-              '--log-level',
-              options['log-level'] === 'silent' ? 'none' : options['log-level'],
-            );
-          if (vite && options['log-level'] === 'debug')
-            arguments_.push('--debug');
-        }
-        if (vite) {
-          if (options.open) arguments_.push('--open');
-          if (options.force) arguments_.push('--force');
-        }
-        arguments_.push(...current.tools[component].tokens);
+    const startService = async (component: Component) => {
+      if (stopping) return;
+      const config = current.configs[component];
+      const vite = component === 'web' && mode === 'development';
+      const interactive = current.tools[component].interactive;
+      const arguments_ = [vite ? config.directory : 'dev'];
+      if (options['log-level']) {
         if (vite)
           arguments_.push(
-            '--host',
-            config.dev.ip,
-            '--port',
-            String(config.dev.port),
-            '--strictPort',
-            '--clearScreen',
-            'false',
+            '--logLevel',
+            options['log-level'] === 'debug' ? 'info' : options['log-level'],
           );
         else
           arguments_.push(
-            '--config',
-            current.files[component],
-            '--ip',
-            config.dev.ip,
-            '--port',
-            String(config.dev.port),
-            '--local',
-            '--persist-to',
-            persistence,
-            '--types',
-            'false',
-            ...(interactive ? [] : ['--show-interactive-dev-session', 'false']),
-            ...(component === 'maintenance' ? ['--test-scheduled'] : []),
+            '--log-level',
+            options['log-level'] === 'silent' ? 'none' : options['log-level'],
           );
-        dashboard.setState(
-          component,
-          'starting',
-          vite ? 'Starting Vite…' : 'Starting Worker…',
+        if (vite && options['log-level'] === 'debug')
+          arguments_.push('--debug');
+      }
+      if (vite) {
+        if (options.open) arguments_.push('--open');
+        if (options.force) arguments_.push('--force');
+      }
+      arguments_.push(...current.tools[component].tokens);
+      if (vite)
+        arguments_.push(
+          '--host',
+          config.dev.ip,
+          '--port',
+          String(config.dev.port),
+          '--strictPort',
+          '--clearScreen',
+          'false',
         );
-        if (interactive) await dashboard.close();
-        const child = execa(
-          process.execPath,
-          [
-            '--import',
-            pathToFileURL(path.join(root, 'cli/development/tool-process.mjs'))
-              .href,
-            toolExecutable(component, mode),
-            ...arguments_,
-          ],
-          {
-            cwd: config.directory,
-            env: {
-              HEARTH_LOCAL_CONFIG: current.files.web,
-              FORCE_COLOR:
-                process.env.NO_COLOR === undefined
-                  ? dashboard.colors
-                    ? (process.env.FORCE_COLOR ?? '1')
-                    : '0'
-                  : undefined,
-            },
-            stdin: interactive ? 'inherit' : 'pipe',
-            stdout: interactive ? 'inherit' : 'pipe',
-            stderr: interactive ? 'inherit' : 'pipe',
-            ipc: true,
-            buffer: false,
-            reject: false,
-            cancelSignal: controller.signal,
-            gracefulCancel: true,
-            forceKillAfterDelay: 15_000,
-            killDescendants: true,
+      else
+        arguments_.push(
+          '--config',
+          current.files[component],
+          '--ip',
+          config.dev.ip,
+          '--port',
+          String(config.dev.port),
+          '--local',
+          '--persist-to',
+          persistence,
+          '--types',
+          'false',
+          ...(interactive ? [] : ['--show-interactive-dev-session', 'false']),
+          ...(component === 'maintenance' ? ['--test-scheduled'] : []),
+        );
+      dashboard.setState(
+        component,
+        'starting',
+        vite ? 'Starting Vite…' : 'Starting Worker…',
+      );
+      if (interactive) await dashboard.close();
+      const child = execa(
+        process.execPath,
+        [
+          '--import',
+          pathToFileURL(path.join(root, 'cli/development/tool-process.mjs'))
+            .href,
+          toolExecutable(component, mode),
+          ...arguments_,
+        ],
+        {
+          cwd: config.directory,
+          env: {
+            HEARTH_LOCAL_CONFIG: current.files.web,
+            FORCE_COLOR:
+              process.env.NO_COLOR === undefined
+                ? dashboard.colors
+                  ? (process.env.FORCE_COLOR ?? '1')
+                  : '0'
+                : undefined,
           },
-        );
-        for (const stream of [child.stdout, child.stderr])
-          if (stream)
-            createInterface({ input: stream }).on('line', (line) =>
-              dashboard.serviceLine(component, line, stream === child.stderr),
-            );
-        const completion = child
-          .then(async (result) => {
-            if (stopping) {
-              if (result.isForcefullyTerminated) {
-                failed.add(component);
-                dashboard.setState(component, 'failed', 'Shutdown timed out');
-                code ||= 1;
-                log(
-                  component,
-                  'WARN',
-                  'Service did not stop within 15 seconds; its process tree was terminated.',
-                );
-              } else if (!result.isCanceled && result.exitCode)
-                code ||= result.exitCode;
-              return;
-            }
-            if (interactive && result.exitCode === 0) {
-              await stop();
-              return;
-            }
-            const status = result.exitCode ?? 1;
-            failed.add(component);
-            dashboard.setState(
-              component,
-              'failed',
-              `Exited (${result.signal || status})`,
-            );
-            log(
-              component,
-              'ERROR',
-              `${component} exited (${result.signal || status}). Check its labeled output.`,
-            );
-            await stop(status || (interactive ? 0 : 1));
-          })
-          .catch(async (error: unknown) => {
-            if (stopping) {
-              return;
-            }
+          stdin: interactive ? 'inherit' : 'pipe',
+          stdout: interactive ? 'inherit' : 'pipe',
+          stderr: interactive ? 'inherit' : 'pipe',
+          ipc: true,
+          buffer: false,
+          reject: false,
+          cancelSignal: controller.signal,
+          gracefulCancel: true,
+          forceKillAfterDelay: 15_000,
+          killDescendants: true,
+        },
+      );
+      for (const stream of [child.stdout, child.stderr])
+        if (stream)
+          createInterface({ input: stream }).on('line', (line) =>
+            dashboard.serviceLine(component, line, stream === child.stderr),
+          );
+      const completion = child
+        .then(async (result) => {
+          if (stopping) {
+            if (result.isForcefullyTerminated) {
+              failed.add(component);
+              dashboard.setState(component, 'failed', 'Shutdown timed out');
+              code ||= 1;
+              log(
+                component,
+                'WARN',
+                'Service did not stop within 15 seconds; its process tree was terminated.',
+              );
+            } else if (!result.isCanceled && result.exitCode)
+              code ||= result.exitCode;
+            return;
+          }
+          if (interactive && result.exitCode === 0) {
+            await stop();
+            return;
+          }
+          const status = result.exitCode ?? 1;
+          failed.add(component);
+          dashboard.setState(
+            component,
+            'failed',
+            `Exited (${result.signal || status})`,
+          );
+          log(
+            component,
+            'ERROR',
+            `${component} exited (${result.signal || status}). Check its labeled output.`,
+          );
+          await stop(status || (interactive ? 0 : 1));
+        })
+        .catch(async (error: unknown) => {
+          if (stopping) {
+            return;
+          }
 
-            failed.add(component);
-            dashboard.setState(component, 'failed', 'Unable to start process');
-            log(
-              component,
-              'ERROR',
-              error instanceof Error ? error.message : String(error),
-            );
-            await stop(1);
+          failed.add(component);
+          dashboard.setState(component, 'failed', 'Unable to start process');
+          log(
+            component,
+            'ERROR',
+            error instanceof Error ? error.message : String(error),
+          );
+          await stop(1);
+        });
+      children.push(completion);
+      if (vite)
+        await waitForServer(
+          component,
+          config.dev.ip,
+          config.dev.port,
+          controller.signal,
+        );
+      else {
+        const timeout = setTimeout(() => {
+          failed.add(component);
+          dashboard.setState(component, 'failed', 'Startup timed out');
+          log(
+            component,
+            'ERROR',
+            `${component} did not start within 60 seconds. Check its labeled output.`,
+          );
+          void stop(1);
+        }, 60_000);
+        try {
+          await child.getOneMessage({
+            filter: (message) =>
+              typeof message === 'string' &&
+              (JSON.parse(message) as { event?: string }).event ===
+                'DEV_SERVER_READY',
           });
-        children.push(completion);
-        if (vite)
+        } catch {
+          // Preserve the native exit code when a Worker exits before readiness.
+          await completion;
+        } finally {
+          clearTimeout(timeout);
+        }
+        if (component === 'web' && !stopping)
           await waitForServer(
             component,
             config.dev.ip,
             config.dev.port,
             controller.signal,
           );
-        else {
-          const timeout = setTimeout(() => {
-            failed.add(component);
-            dashboard.setState(component, 'failed', 'Startup timed out');
-            log(
-              component,
-              'ERROR',
-              `${component} did not start within 60 seconds. Check its labeled output.`,
-            );
-            void stop(1);
-          }, 60_000);
-          try {
-            await child.getOneMessage({
-              filter: (message) =>
-                typeof message === 'string' &&
-                (JSON.parse(message) as { event?: string }).event ===
-                  'DEV_SERVER_READY',
-            });
-          } catch {
-            // Preserve the native exit code when a Worker exits before readiness.
-            await completion;
-          } finally {
-            clearTimeout(timeout);
-          }
-          if (component === 'web' && !stopping)
-            await waitForServer(
-              component,
-              config.dev.ip,
-              config.dev.port,
-              controller.signal,
-            );
-        }
-        if (stopping) return;
-        dashboard.setState(
-          component,
-          'ready',
-          `Ready on http://${config.dev.ip}:${config.dev.port}`,
-        );
-      }),
+      }
+      if (stopping) return;
+      dashboard.setState(
+        component,
+        'ready',
+        `Ready on http://${config.dev.ip}:${config.dev.port}`,
+      );
+    };
+    // The SvelteKit platform proxy resolves external bindings when it starts.
+    const maintenanceFirst = selected.includes('maintenance');
+    if (maintenanceFirst) await startService('maintenance');
+    await Promise.all(
+      selected
+        .filter(
+          (component) => !(maintenanceFirst && component === 'maintenance'),
+        )
+        .map((component) => startService(component)),
     );
     if (stopping) return;
     if (selected.includes('maintenance'))

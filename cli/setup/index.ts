@@ -42,6 +42,7 @@ import { dashboard } from './dashboard';
 import {
   administrator,
   initializeDomains,
+  initializeFreshStorage,
   verifyBrowserLogin,
   verifyUpload,
   withBindings,
@@ -160,6 +161,24 @@ export function inspectConfig(
     );
   const origin = origins.values().next().value;
   const web = configs.web;
+  const maintenance = configs.maintenance;
+  for (const [component, config] of entries) {
+    if (component === 'delivery') continue;
+    const binding = config.durable_objects?.bindings.find(
+      (binding) => binding.name === 'MAINTENANCE',
+    );
+    if (
+      binding?.class_name !== 'MaintenanceJob' ||
+      (component === 'web'
+        ? !binding.script_name ||
+          (maintenance && binding.script_name !== maintenance.name)
+        : binding.script_name !== undefined ||
+          config.exports?.MaintenanceJob?.storage !== 'sqlite')
+    )
+      throw new SetupFailure(
+        `${component} requires the private MAINTENANCE binding to its maintenance Worker's SQLite MaintenanceJob class. Update the production configuration before retrying.`,
+      );
+  }
   if (
     web &&
     (web.routes ?? []).every((route) => `https://${route.pattern}` !== origin)
@@ -207,6 +226,16 @@ export function matchesSettings(
           String(binding.namespace_id) === limit.namespace_id &&
           binding.simple?.limit === limit.simple.limit &&
           binding.simple.period === limit.simple.period,
+      ),
+    ) &&
+    (config.durable_objects?.bindings ?? []).every((expected) =>
+      settings.bindings.some(
+        (binding) =>
+          binding.type === 'durable_object_namespace' &&
+          binding.name === expected.name &&
+          binding.class_name === expected.class_name &&
+          (binding.script_name ?? config.name) ===
+            (expected.script_name ?? config.name),
       ),
     ) &&
     settings.compatibility_date === config.compatibility_date &&
@@ -791,6 +820,7 @@ async function runSetup(advanced: boolean, remove = false) {
               );
             state.databaseId = undefined;
             state.created.database = false;
+            state.provisionedDatabaseId = undefined;
           }
           state.databaseName = databaseName;
           const bucket = await text(
@@ -804,6 +834,7 @@ async function runSetup(advanced: boolean, remove = false) {
                 'Production files already identify an instance. Use a separate checkout for a different bucket; existing Workers will not be retargeted.',
               );
             state.created.bucket = false;
+            state.provisionedBucket = undefined;
             state.bucketCreatedOn = undefined;
           }
           state.bucket = bucket;
@@ -841,10 +872,15 @@ async function runSetup(advanced: boolean, remove = false) {
           throw new SetupFailure(
             `The configured D1 database "${state.databaseName}" (${state.databaseId}) from ${existing ? 'the production.local.jsonc files' : 'artifacts/setup/state.json'} is missing or inaccessible in Cloudflare account ${state.accountId}.\nChoose "Change account" to check the account, verify its access permissions, or restore the database from backup. Retrying keeps the same database ID.\n${existing ? 'For a fresh installation, use a separate clean checkout with distinct Worker, database, and bucket names; existing production files will not be retargeted.' : `For a fresh installation, choose "Show advanced resource choices" and change "D1 database name" from "${state.databaseName}" to a new unused name. Changing the name clears the saved database ID.`}`,
           );
-        if (!state.databaseId)
-          state.databaseId = databases.find(
-            (database) => database.name === state.databaseName,
-          )?.uuid;
+        if (
+          !existing &&
+          databases.some((database) => database.name === state.databaseName) &&
+          (!state.databaseId ||
+            state.provisionedDatabaseId !== state.databaseId)
+        )
+          throw new SetupFailure(
+            'Fresh installations require a new dedicated D1 database. Creation provenance is unavailable; choose a new unused database name.',
+          );
         if (state.databaseId)
           state.databaseName = databases.find(
             (database) => database.uuid === state.databaseId,
@@ -857,6 +893,14 @@ async function runSetup(advanced: boolean, remove = false) {
         const bucketExists = buckets.some(
           (bucket) => bucket.name === state.bucket,
         );
+        if (
+          !existing &&
+          bucketExists &&
+          state.provisionedBucket?.name !== state.bucket
+        )
+          throw new SetupFailure(
+            'Fresh installations require a new dedicated R2 bucket, even if an existing bucket appears empty. Choose a new unused bucket name; setup cannot recover creation provenance.',
+          );
         const widgets = await step(
           'Discover Turnstile widgets',
           () =>
@@ -1118,6 +1162,7 @@ async function runSetup(advanced: boolean, remove = false) {
             state.created.database = true;
             await checkpoint();
             database = await cloudflare.createDatabase(state.databaseName);
+            state.provisionedDatabaseId = database.uuid;
           }
           if (!database)
             throw new SetupFailure(
@@ -1127,6 +1172,7 @@ async function runSetup(advanced: boolean, remove = false) {
           await checkpoint();
         });
         await step('Provision private R2', async () => {
+          let createdNow = false;
           if (
             (await cloudflare.buckets()).every(
               (bucket) => bucket.name !== state.bucket,
@@ -1141,6 +1187,7 @@ async function runSetup(advanced: boolean, remove = false) {
               state.bucket,
               '--no-update-config',
             ]);
+            createdNow = true;
           }
           const metadata = await cloudflare.api(
             `/accounts/${state.accountId}/r2/buckets/${encodeURIComponent(state.bucket)}`,
@@ -1149,11 +1196,21 @@ async function runSetup(advanced: boolean, remove = false) {
           if (
             !metadata ||
             (state.bucketCreatedOn &&
-              state.bucketCreatedOn !== metadata.creation_date)
+              state.bucketCreatedOn !== metadata.creation_date) ||
+            (state.provisionedBucket &&
+              (state.provisionedBucket.name !== state.bucket ||
+                state.provisionedBucket.createdOn !== metadata?.creation_date))
           )
             throw new SetupFailure(
               'The selected R2 bucket changed since setup. Review its ownership before continuing.',
             );
+          if (createdNow) {
+            // This block is reached only after successful creation in this invocation.
+            state.provisionedBucket = {
+              name: state.bucket,
+              createdOn: metadata.creation_date,
+            };
+          }
           state.bucketCreatedOn = metadata.creation_date;
           await checkpoint();
           await cloudflare.assertPrivate(state.bucket);
@@ -1231,15 +1288,14 @@ async function runSetup(advanced: boolean, remove = false) {
           }
         }
         await checkpoint();
-        if (users === 0 && !state.created.bucket)
-          await step('Check dedicated storage before initialization', () =>
-            withBindings(cloudflare, outputs[0].config, async (environment) => {
-              const objects = await environment.BUCKET.list({ limit: 1 });
-              if (objects.objects.length > 0)
-                throw new SetupFailure(
-                  'This unrecognized bucket contains objects. Choose a fresh dedicated bucket in advanced setup; existing objects are preserved.',
-                );
-            }),
+        if (
+          users === 0 &&
+          (state.provisionedDatabaseId !== state.databaseId ||
+            state.provisionedBucket?.name !== state.bucket ||
+            state.provisionedBucket.createdOn !== state.bucketCreatedOn)
+        )
+          throw new SetupFailure(
+            'Fresh storage creation cannot be verified. Use new dedicated resource names. Existing or restored storage requires the recovery workflow; accounting will not be reset.',
           );
         await step(
           'Save production configuration',
@@ -1289,6 +1345,31 @@ async function runSetup(advanced: boolean, remove = false) {
                     : binding,
                 );
               }
+              const bindings = config.durable_objects?.bindings ?? [];
+              if (
+                output.component === 'web' ||
+                output.component === 'maintenance'
+              ) {
+                config.durable_objects = {
+                  bindings: [
+                    ...bindings.filter(
+                      (binding) => binding.name !== 'MAINTENANCE',
+                    ),
+                    {
+                      name: 'MAINTENANCE',
+                      class_name: 'MaintenanceJob',
+                      ...(output.component === 'web' && {
+                        script_name: names.maintenance,
+                      }),
+                    },
+                  ],
+                };
+              }
+              if (output.component === 'maintenance')
+                config.exports = {
+                  ...config.exports,
+                  MaintenanceJob: { type: 'durable-object', storage: 'sqlite' },
+                };
               const content = JSON.stringify(config, null, 2) + '\n';
               const present = await optionalText(output.path);
               if (
@@ -1398,6 +1479,16 @@ async function runSetup(advanced: boolean, remove = false) {
           state.migrations = migrations;
           await checkpoint();
         });
+        if (
+          state.provisionedDatabaseId === state.databaseId &&
+          state.provisionedBucket?.name === state.bucket &&
+          state.provisionedBucket.createdOn === state.bucketCreatedOn
+        )
+          await step('Initialize dedicated storage accounting', () =>
+            withBindings(cloudflare, web, (environment) =>
+              initializeFreshStorage(environment.DB),
+            ),
+          );
         await step(
           'Initialize administrator',
           async () => {

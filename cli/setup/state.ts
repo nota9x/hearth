@@ -29,6 +29,10 @@ export const stateSchema = z.object({
   databaseName: z.string().default('hearth-production'),
   bucket: z.string().default('hearth-production'),
   bucketCreatedOn: z.string().optional(),
+  provisionedDatabaseId: z.uuid().optional(),
+  provisionedBucket: z
+    .object({ name: z.string(), createdOn: z.string() })
+    .optional(),
   webDraftCreatedOn: z.string().optional(),
   databaseId: z.uuid().optional(),
   turnstile: z.string().optional(),

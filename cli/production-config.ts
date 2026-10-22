@@ -55,6 +55,26 @@ export const productionConfigSchema = z.looseObject({
   r2_buckets: z
     .array(z.looseObject({ binding: z.string(), bucket_name: z.string() }))
     .nonempty(),
+  durable_objects: z
+    .object({
+      bindings: z.array(
+        z.object({
+          name: z.string(),
+          class_name: z.string(),
+          script_name: z.string().optional(),
+        }),
+      ),
+    })
+    .optional(),
+  exports: z
+    .record(
+      z.string(),
+      z.object({
+        type: z.literal('durable-object'),
+        storage: z.literal('sqlite'),
+      }),
+    )
+    .optional(),
   ratelimits: z
     .array(
       z.looseObject({
@@ -145,6 +165,12 @@ export async function renderProduction(options: ProductionOptions) {
       traces: { enabled: true, head_sampling_rate: 0.1 },
     };
     if (component === 'web') {
+      const maintenance = config.durable_objects?.bindings.find(
+        (binding) => binding.name === 'MAINTENANCE',
+      );
+      if (!maintenance)
+        throw new Error('Missing MAINTENANCE template binding.');
+      maintenance.script_name = `${options.prefix ?? 'hearth'}-maintenance`;
       config.vars = {
         ENVIRONMENT: 'production',
         APP_ORIGIN: `https://${application}`,

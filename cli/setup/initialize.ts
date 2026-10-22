@@ -17,6 +17,7 @@ import { validateDeliveryDomain } from '../../packages/core/domain-validation';
 import { deleteImage } from '../../packages/core/images';
 import { createLink } from '../../packages/core/links';
 import { contentUrl } from '../../packages/core/public-urls';
+import { initializeFreshStorageSql } from '../bootstrap-data';
 import { type ProductionConfig } from '../production-config';
 import type { Cloudflare } from './cloudflare';
 import { SetupFailure } from './cloudflare';
@@ -27,6 +28,18 @@ export interface SetupBindings {
   BUCKET: R2Bucket;
   APP_ORIGIN: string;
   ENVIRONMENT: string;
+}
+
+// Only the installer calls this after verifying both successful creation checkpoints.
+export async function initializeFreshStorage(db: D1Database) {
+  await db.prepare(initializeFreshStorageSql).run();
+  const capacity = await db
+    .prepare('SELECT ready FROM storage_capacity WHERE id=1')
+    .first<{ ready: number }>();
+  if (!capacity?.ready)
+    throw new SetupFailure(
+      'Dedicated storage accounting could not be initialized safely. No Workers were activated; review setup provenance and recover accounting before continuing.',
+    );
 }
 
 export async function withBindings<T>(

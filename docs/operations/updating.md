@@ -38,6 +38,14 @@ Wrangler changes with your production files: `configure` does not overwrite or
 refresh them. Carry over required bindings, flags, cron changes, and variables
 without replacing resource IDs or losing delivery hostnames.
 
+For on-demand maintenance, copy the `MAINTENANCE` Durable Object bindings into web
+and maintenance production files and the SQLite `exports.MaintenanceJob` declaration
+into maintenance. Web's binding must use your actual maintenance Worker name in
+`script_name`. Deployment provisions the namespace. Apply `0002_gifted_captain_america.sql`
+with the normal ordered migrations; it adds retry eligibility and scan-attempt
+markers without rebuilding tables or resetting accounting.
+Deploy maintenance before web.
+
 Keep local development files separate. Never run `pnpm db:generate` or a schema
 push as part of updating an instance; apply the repository's ordered SQL.
 
@@ -51,8 +59,10 @@ installation rather than applying this baseline over existing tables.
 
 For pending schema/runtime changes, stop writers using the
 [maintenance window](backups-and-recovery.md#establish-a-maintenance-window).
-Keep maintenance's cron temporarily empty until the updated runtime is compatible
-with the applied schema. Do not run old maintenance against a newly changed schema.
+On versions with maintenance controls, pause and verify **drained** first; the
+pause survives deployment. For older versions without controls, let existing jobs
+settle and temporarily disable cron using the previous release procedure. Keep the
+D1 lease throughout rollout. Do not run incompatible code against the schema.
 
 ```sh
 pnpm exec wrangler d1 migrations apply DB --remote --config apps/web/production.local.jsonc
@@ -67,7 +77,8 @@ inspect its error and migration status, and stop before deploying incompatible c
 Do not edit migration history or retry destructive SQL manually.
 
 Once schema and current code are ready, restore the normal cron in the production
-maintenance file and deploy maintenance, then web:
+maintenance file and deploy maintenance, then web. Resume durable maintenance
+after verifying bindings and accounting; enabling cron alone does not clear pause:
 
 ```sh
 pnpm exec wrangler deploy --config workers/maintenance/production.local.jsonc

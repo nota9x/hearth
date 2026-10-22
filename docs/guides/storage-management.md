@@ -28,12 +28,24 @@ is unlimited; zero prevents new image bytes. Lowering quota preserves existing
 files and may block further uploads. Quotas apply independently of global capacity.
 See [user management](user-management.md) for the session revocation on saving.
 
+## Fresh installations
+
+Guided setup creates a new dedicated private bucket and database and initializes
+accounting before writes become possible. Enable the global limit immediately in
+administrator Settings; no manual initialization or S3 credentials are needed.
+Existing buckets cannot be reused during fresh setup, even when they appear empty.
+Switching buckets requires an explicit migration; setup never resets usage on upgrades.
+External R2 writers bypass reservations and can require reconciliation.
+
 ## Initialize before enabling a global limit
+
+This procedure is for legacy unverified accounting, explicit migration, or recovery.
+Ordinary fresh installations are initialized automatically.
 
 The global limit defaults to unlimited. Before enabling it, apply the current migrations
 and deploy the current three Workers together.
-Older runtimes must no longer write to the bucket. This also applies to new
-installations: initial capacity readiness requires verification and a baseline scan.
+Older runtimes must no longer write to the bucket. Recovered or legacy storage
+requires multipart verification and a complete baseline scan.
 
 1. Install [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).
 2. Create bucket-scoped R2 **Object Read & Write** credentials and save them in an
@@ -41,7 +53,8 @@ installations: initial capacity readiness requires verification and a baseline s
    Use region `auto`. Do not use your Hearth key or Wrangler token as S3 credentials.
    Follow [R2 authentication](https://developers.cloudflare.com/r2/api/tokens/).
 3. Confirm the selected web production file names the intended bucket and D1.
-   Notify users: initialization can pause uploads.
+   Notify users and stop independent writers. Pause maintenance and verify
+   **drained** before changing recovery state; initialization also pauses reservations.
 4. Run from the repository root, replacing the account ID with your R2 endpoint's
    account ID. Use the jurisdiction-specific endpoint if your bucket requires it:
 
@@ -49,7 +62,7 @@ installations: initial capacity readiness requires verification and a baseline s
    pnpm storage:initialize --endpoint https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com --config apps/web/production.local.jsonc --profile hearth-r2
    ```
 
-5. Watch **Administration → Storage** until scheduled maintenance completes the
+5. Resume maintenance in **Administration → Storage** and watch until it completes the
    queued baseline scan. Resolve actual accounting blockers after review.
 6. In administrator Settings, enable the global limit, choose capacity/unit, and
    **Save limit**. Verify the displayed stored, reserved, and available values.
@@ -85,8 +98,11 @@ backup maintenance window; these do not stop every writer.
 ## Review scans and issues
 
 Storage scans compare R2 objects, image records, and accounting. Administrators can
-start a scan or retry a failed one. Maintenance advances it in pages; observed scan
-totals are not the live capacity ledger. Only one scan runs at a time.
+start a scan or retry a failed one. **Scan storage** starts one full maintenance
+pass immediately, including cleanup of expired/deleted images, then finishes the
+scan in background pages without waiting for cron. Closing the page does not stop
+it. Retries retain saved progress. Observed scan totals are not the live capacity
+ledger. Only one scan runs at a time.
 
 Read each **Needs attention** issue before resolving it:
 

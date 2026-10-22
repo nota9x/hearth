@@ -192,7 +192,11 @@
       data.section,
       data.admin,
       !!data.image,
-      $uploads || data.runs.some((run) => run.status === 'running'),
+      $uploads ||
+        data.runs.some((run) => run.status === 'running') ||
+        ['running', 'retrying', 'paused', 'stalled'].includes(
+          data.maintenance?.status ?? '',
+        ),
     ),
   );
 

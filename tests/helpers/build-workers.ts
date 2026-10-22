@@ -22,9 +22,26 @@ export default async function setup(project: TestProject) {
       compatibility_flags: web.compatibility_flags,
     }),
   );
+  const faultConfig = path.join(directory, 'maintenance-fault.json');
+  await writeFile(
+    faultConfig,
+    JSON.stringify({
+      name: 'maintenance-fault',
+      main: path.resolve('tests/fixtures/maintenance-worker.ts'),
+      compatibility_date: web.compatibility_date,
+      compatibility_flags: web.compatibility_flags,
+      durable_objects: {
+        bindings: [{ name: 'MAINTENANCE', class_name: 'TestMaintenanceJob' }],
+      },
+      exports: {
+        TestMaintenanceJob: { type: 'durable-object', storage: 'sqlite' },
+      },
+    }),
+  );
   for (const [name, config] of [
     ['delivery', 'workers/delivery/wrangler.jsonc'],
     ['upload', uploadConfig],
+    ['maintenance-fault', faultConfig],
   ] as const) {
     const result = spawnSync(
       process.execPath,

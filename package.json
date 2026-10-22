@@ -31,7 +31,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "wrangler d1 migrations apply DB --local --config apps/web/wrangler.jsonc",
     "bootstrap": "node scripts/cli.mjs bootstrap",
-    "typegen": "wrangler types packages/core/bindings.d.ts --config apps/web/wrangler.jsonc --env-interface CloudflareEnv && wrangler types packages/core/delivery-bindings.d.ts --config workers/delivery/wrangler.jsonc --env-interface DeliveryBindings --include-runtime false --strict-vars false",
+    "typegen": "wrangler types packages/core/bindings.d.ts --config apps/web/wrangler.jsonc --config workers/maintenance/wrangler.jsonc --env-interface CloudflareEnv && wrangler types packages/core/delivery-bindings.d.ts --config workers/delivery/wrangler.jsonc --env-interface DeliveryBindings --include-runtime false --strict-vars false",
     "verify": "pnpm format:check && pnpm lint && pnpm check && pnpm test && pnpm build",
     "test:unit": "vitest run --project unit",
     "test:integration": "vitest run --project integration",

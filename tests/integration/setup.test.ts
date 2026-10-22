@@ -2,12 +2,16 @@
 import { convertV4MiniflareOptions, Miniflare } from 'miniflare';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-import { prepareBootstrap } from '../../cli/bootstrap-data';
+import {
+  bootstrapLocalAdministrator,
+  prepareBootstrap,
+} from '../../cli/bootstrap-data';
 import { SetupFailure } from '../../cli/setup/cloudflare';
 import { assertHearthTables } from '../../cli/setup/index';
 import {
   administrator,
   initializeDomains,
+  initializeFreshStorage,
   type SetupBindings,
   verifyBrowserLogin,
   verifyUpload,
@@ -19,6 +23,7 @@ import {
   domainDetails,
   setPrimaryDeliveryDomain,
 } from '../../packages/core/delivery-domains';
+import { writeStoredObject } from '../../packages/core/storage';
 import { upload } from '../../packages/core/upload';
 import { migrateDatabase } from '../helpers/database';
 import { workerBundle, workerCompatibility } from '../helpers/workers';
@@ -167,6 +172,27 @@ it('bootstraps usable credentials, statistics, and a safe success audit atomical
   expect(JSON.stringify(audit.results)).not.toContain(bootstrap.key.plaintext);
   expect(bootstrap.sql).not.toContain(bootstrap.key.plaintext);
 });
+
+it('initializes accounting with the first local administrator and rolls back a refused bootstrap', async () => {
+  await bootstrapLocalAdministrator(environment, bootstrap);
+  expect(
+    await environment.DB.prepare(
+      'SELECT ready,multipartVerified FROM storage_capacity',
+    ).first(),
+  ).toEqual({ ready: 1, multipartVerified: 1 });
+  await environment.DB.prepare(
+    'UPDATE storage_capacity SET ready=0,multipartVerified=0 WHERE id=1',
+  ).run();
+  await expect(
+    bootstrapLocalAdministrator(environment, await prepareBootstrap('Other')),
+  ).rejects.toThrow();
+  expect(
+    await environment.DB.prepare(
+      'SELECT ready,multipartVerified FROM storage_capacity',
+    ).first(),
+  ).toEqual({ ready: 0, multipartVerified: 0 });
+});
+
 it('refuses duplicate/concurrent bootstrap without replacing the first credential or adding audit events', async () => {
   const other = await prepareBootstrap('Other owner');
   const results = await Promise.allSettled(
@@ -383,4 +409,54 @@ it('repairs a saved-without-link verification image after delivery selection is 
       'SELECT count(*) AS count FROM images',
     ).first(),
   ).toEqual({ count: 1 });
+});
+
+it('initializes trusted fresh accounting before writes and never resets an upgraded or restored ledger', async () => {
+  await initializeFreshStorage(environment.DB);
+  expect(
+    await environment.DB.prepare(
+      'SELECT ready,multipartVerified,persistedBytes,reservedBytes FROM storage_capacity',
+    ).first(),
+  ).toEqual({
+    ready: 1,
+    multipartVerified: 1,
+    persistedBytes: 0,
+    reservedBytes: 0,
+  });
+  await environment.DB.prepare(
+    'UPDATE storage_capacity SET limitBytes=5 WHERE id=1',
+  ).run();
+  const first = await writeStoredObject(
+    environment.DB,
+    environment.BUCKET,
+    'first-write',
+    'probe',
+    new Uint8Array(5),
+  );
+  await first.writer.finalizeStatement().run();
+  expect(
+    await environment.DB.prepare(
+      'SELECT persistedBytes,reservedBytes,ready FROM storage_capacity',
+    ).first(),
+  ).toEqual({ persistedBytes: 5, reservedBytes: 0, ready: 1 });
+  await environment.DB.prepare(
+    'UPDATE storage_capacity SET persistedBytes=123,reservedBytes=45,limitBytes=200 WHERE id=1',
+  ).run();
+  await initializeFreshStorage(environment.DB);
+  expect(
+    await environment.DB.prepare(
+      'SELECT ready,persistedBytes,reservedBytes,limitBytes FROM storage_capacity',
+    ).first(),
+  ).toEqual({
+    ready: 1,
+    persistedBytes: 123,
+    reservedBytes: 45,
+    limitBytes: 200,
+  });
+  await environment.DB.prepare(
+    'UPDATE storage_capacity SET ready=0 WHERE id=1',
+  ).run();
+  await expect(initializeFreshStorage(environment.DB)).rejects.toThrow(
+    'could not be initialized safely',
+  );
 });

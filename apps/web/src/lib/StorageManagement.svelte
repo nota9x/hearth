@@ -50,7 +50,11 @@
           ? 'Reconciliation required'
           : data.findings.length > 0
             ? 'Issues detected'
-            : 'Healthy',
+            : data.maintenance?.error || data.maintenance?.backlog?.deferred
+              ? 'Maintenance needs attention'
+              : data.maintenance?.backlog?.purges
+                ? 'Cleanup pending'
+                : 'No inventory findings',
   );
   let findingPage = $state(1);
   const findingPages = $derived(
@@ -230,9 +234,70 @@
   {#if !capacity.ready}<p class="notice">
       Physical accounting is being established. Run <code
         >pnpm storage:initialize</code
-      > using the deployment instructions, then complete the baseline scan before
-      enabling a limit. Completed files are preserved.
+      > for legacy accounting or recovery, then complete the baseline scan before
+      enabling a limit. Fresh setup initializes accounting automatically. Completed
+      files are preserved.
     </p>{/if}
+</section>
+
+<section class="panel" aria-label="Maintenance status">
+  <div class="health-heading">
+    <h2>Maintenance</h2>
+    <span class="badge">{data.maintenance?.status ?? 'Unavailable'}</span>
+  </div>
+  {#if data.maintenance}
+    <p>
+      Stage: {data.maintenance.stage}. Last progress: {data.maintenance.progress
+        ? dateTime(Math.floor(data.maintenance.progress / 1000))
+        : 'Awaiting first pass'}.
+    </p>
+    <p class="muted">
+      Last routine pass: {data.maintenance.routineAt
+        ? dateTime(Math.floor(data.maintenance.routineAt / 1000))
+        : 'Not yet completed'}.
+    </p>
+    {#if data.maintenance.lastFailure && !data.maintenance.error}<p
+        class="muted"
+      >
+        Last failure: {dateTime(
+          Math.floor(data.maintenance.lastFailure.at / 1000),
+        )}, stage {data.maintenance.lastFailure.stage}. Work has since
+        progressed.
+      </p>{/if}
+    {#if data.maintenance.error}<p class="notice">
+        {data.maintenance.error} Stage: {data.maintenance.failedStage}.
+        Failures: {data.maintenance.failures}.{#if data.maintenance.retryAt}
+          Next retry: {dateTime(
+            Math.floor(data.maintenance.retryAt / 1000),
+          )}.{/if}
+      </p>{/if}
+    {#if data.maintenance.backlog}<p class="muted">
+        {data.maintenance.backlog.previews} images without previews · {data
+          .maintenance.backlog.purges} pending purges · {data.maintenance
+          .backlog.deferred} deferred after failures. Counts reflect the last routine
+        pass; previews require the optional Images binding.
+      </p>{/if}
+    {#if data.maintenance.status === 'drained'}<p>
+        Maintenance is drained at a safe checkpoint. Uploads and external
+        storage writers continue independently.
+      </p>{/if}
+    <button
+      type="button"
+      disabled={busy}
+      onclick={() =>
+        run(
+          data.maintenance?.paused || data.maintenance?.status === 'failed'
+            ? 'maintenance-resume'
+            : 'maintenance-pause',
+          {},
+        )}
+      >{data.maintenance.status === 'failed'
+        ? 'Retry maintenance'
+        : data.maintenance.paused
+          ? 'Resume maintenance'
+          : 'Pause and drain'}</button
+    >
+  {/if}
 </section>
 
 <div class="storage-split">
@@ -292,8 +357,8 @@
   </div>
   <p class="muted">
     A scan compares R2 files with image records and capacity accounting.
-    Scanning preserves files; repairs and permanent deletions require a separate
-    action.
+    Maintenance also cleans expired and deleted images. Repairs and permanent
+    deletion of findings require a separate action.
   </p>
   {#if scan?.status === 'running'}<div class="scan-progress" role="status">
       <Spinner /><span
@@ -304,8 +369,8 @@
     </div>
     <small
       >Started {dateTime(scan.startedAt)}. These are incomplete observations,
-      not bucket totals. Scheduled maintenance advances the scan every five
-      minutes.</small
+      not bucket totals. Maintenance continues in the background, even if you
+      close this page.</small
     >{/if}
   {#if scan?.status === 'failed'}<p class="error" role="status">
       {scan.error ??
@@ -329,7 +394,7 @@
         run(
           'reconcile',
           scan?.status === 'failed' ? { id: scan.id } : {},
-          'Storage scan queued. Scheduled maintenance will advance it.',
+          'Maintenance started. The storage scan continues in the background.',
         )}
       ><RefreshCw size={16} />{scan?.status === 'failed'
         ? 'Retry scan'

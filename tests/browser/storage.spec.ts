@@ -156,6 +156,11 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
   ).run();
   await page.reload();
   await expect(page.getByText('Storage access failed.')).toBeVisible();
+  await hearth.DB.prepare(
+    "INSERT INTO maintenance_lock(id,holder,expiresAt) VALUES('cron','ui-fixture',?)",
+  )
+    .bind(Math.floor(Date.now() / 1000) + 300)
+    .run();
   await page.getByRole('button', { name: 'Retry scan' }).click();
   await expect(
     page.getByText('Scan in progress', { exact: true }),
@@ -348,4 +353,64 @@ test('storage findings paginate, expose styled details, and resolve all with can
   await expect(
     attention.getByRole('button', { name: 'Resolve all', exact: true }),
   ).toHaveCount(0);
+});
+
+test('Scan storage starts maintenance immediately and completes after the page closes', async ({
+  hearth,
+  page,
+  request,
+  baseURL,
+}) => {
+  const login = await request.post('/api/actions/login', {
+    headers: { Origin: baseURL! },
+    data: {
+      key: await readFile(process.env.TEST_KEY_FILE!, 'utf8'),
+      token: 'XXXX.DUMMY.TOKEN.XXXX',
+    },
+  });
+  expect(login.status()).toBe(200);
+  await page.context().addCookies((await request.storageState()).cookies);
+  await hearth.DB.prepare(
+    "INSERT INTO maintenance_lock(id,holder,expiresAt) VALUES('cron','browser-test',?)",
+  )
+    .bind(Math.floor(Date.now() / 1000) + 60)
+    .run();
+  await page.goto('/admin/storage');
+  const paused = page.waitForResponse('/api/actions/maintenance-pause');
+  await page
+    .getByRole('button', { name: 'Pause and drain', exact: true })
+    .click();
+  expect((await paused).status()).toBe(200);
+  await expect(
+    page
+      .getByRole('region', { name: 'Maintenance status' })
+      .getByText('drained', { exact: true }),
+  ).toBeVisible();
+  const started = page.waitForResponse('/api/actions/reconcile');
+  await page.getByRole('button', { name: 'Scan storage', exact: true }).click();
+  expect((await started).status()).toBe(200);
+  await expect(
+    page.getByText('Scan in progress', { exact: true }),
+  ).toBeVisible();
+  const resumed = page.waitForResponse('/api/actions/maintenance-resume');
+  await page
+    .getByRole('button', { name: 'Resume maintenance', exact: true })
+    .click();
+  expect((await resumed).status()).toBe(200);
+  await page.close();
+  await hearth.DB.prepare(
+    "DELETE FROM maintenance_lock WHERE holder='browser-test'",
+  ).run();
+  await expect
+    .poll(
+      async () => {
+        // eslint-disable-next-line playwright/no-useless-await -- D1 first executes SQL; this is not a locator.
+        const result = await hearth.DB.prepare(
+          'SELECT status FROM reconciliation_runs',
+        ).first<{ status: string }>();
+        return result?.status;
+      },
+      { timeout: 15_000 },
+    )
+    .toBe('completed');
 });

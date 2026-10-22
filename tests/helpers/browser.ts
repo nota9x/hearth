@@ -114,6 +114,7 @@ async function start(accountMode: AccountMode) {
   for (const [directory, name] of [
     ['apps/web', 'web'],
     ['workers/delivery', 'delivery'],
+    ['workers/maintenance', 'maintenance'],
   ]) {
     const source = nodePath.join(root, directory, 'wrangler.jsonc');
     const parsed = ts.parseConfigFileTextToJson(
@@ -133,6 +134,7 @@ async function start(accountMode: AccountMode) {
         directory,
         config.assets.directory,
       );
+    config.vars ??= {};
     config.vars.APP_ORIGIN = `http://127.0.0.1:${webPort}`;
     if (name === 'web') config.vars.LOCAL_DELIVERY_PORT = deliveryPort;
     config.d1_databases[0].database_name = 'hearth-adversarial-local';
@@ -141,7 +143,8 @@ async function start(accountMode: AccountMode) {
     config.r2_buckets[0].bucket_name = 'hearth-adversarial-local';
     // The full browser suite tests functionality; native limiter thresholds are
     // exercised separately with the production delivery configuration in Vitest.
-    for (const limiter of config.ratelimits) limiter.simple.limit = 1000;
+    const limiters = config.ratelimits ?? [];
+    for (const limiter of limiters) limiter.simple.limit = 1000;
     await mkdir(nodePath.join(destination, name), { recursive: true });
     await writeFile(
       nodePath.join(destination, name, 'wrangler.jsonc'),
@@ -181,24 +184,21 @@ async function start(accountMode: AccountMode) {
     // Wrangler already bundled every source module for this local runtime.
     delete workerOptions.modulesRules;
     const script = name === 'web' ? '_worker.js' : 'index.js';
-    return new Miniflare(
-      convertV4MiniflareOptions({
-        ...workerOptions,
-        rootPath: nodePath.join(process.env.HEARTH_BROWSER_BUNDLES!, name),
-        name: `hearth-adversarial-${name}`,
-        modules: true,
-        scriptPath: nodePath.join(
-          process.env.HEARTH_BROWSER_BUNDLES!,
-          name,
-          script,
-        ),
-        resourcePersistencePath: nodePath.join(state, 'v3'),
-        unsafeDevRegistryPath: nodePath.join(destination, 'registry'),
-        outboundService: outbound,
-        cf: false,
-        logRequests: false,
-      }),
-    );
+    return {
+      ...workerOptions,
+      rootPath: nodePath.join(process.env.HEARTH_BROWSER_BUNDLES!, name),
+      name: `hearth-adversarial-${name}`,
+      modules: true,
+      scriptPath: nodePath.join(
+        process.env.HEARTH_BROWSER_BUNDLES!,
+        name,
+        script,
+      ),
+      unsafeDevRegistryPath: nodePath.join(destination, 'registry'),
+      outboundService: outbound,
+      cf: false,
+      logRequests: false,
+    };
   }
 
   const proxy = createServer((_request, response) => {
@@ -214,7 +214,21 @@ async function start(accountMode: AccountMode) {
   if (!proxyAddress || typeof proxyAddress === 'string')
     throw new Error('Local deny proxy did not bind.');
 
-  const web = worker(config, 'web');
+  const web = new Miniflare(
+    convertV4MiniflareOptions({
+      workers: [
+        worker(config, 'web'),
+        {
+          ...worker(
+            nodePath.join(destination, 'maintenance/wrangler.jsonc'),
+            'maintenance',
+          ),
+          name: 'hearth-maintenance',
+        },
+      ],
+      resourcePersistencePath: nodePath.join(state, 'v3'),
+    }),
+  );
   let delivery: Miniflare;
   const keyFile = nodePath.join(destination, 'test-key');
   const dispose = async () => {
@@ -233,7 +247,12 @@ async function start(accountMode: AccountMode) {
   try {
     // Initialize shared local SQLite storage before a second runtime opens it.
     await web.ready;
-    delivery = worker(deliveryConfig, 'delivery');
+    delivery = new Miniflare(
+      convertV4MiniflareOptions({
+        ...worker(deliveryConfig, 'delivery'),
+        resourcePersistencePath: nodePath.join(state, 'v3'),
+      }),
+    );
     await delivery.ready;
     await migrateDatabase(await web.getD1Database('DB'));
     const binding = await web.getD1Database('DB');
