@@ -126,7 +126,7 @@ describe('database-backed audit search', () => {
       'Vacation 119',
       'Named grantee',
       'defaultExpiry',
-      '30d',
+      '0d', // Match the stored 30d value without invoking the relative date filter.
       '100%_literal',
     ]) {
       const result = await search(`q=${encodeURIComponent(query)}`);
