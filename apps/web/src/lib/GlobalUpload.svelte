@@ -2,7 +2,6 @@
   import {
     defaultExpiryError,
     type EffectiveExpiryPolicy,
-    expiryLabel,
     formatLifetime,
   } from '@hearth/core/expiry-policy';
   import Image from '@lucide/svelte/icons/image';
@@ -41,7 +40,6 @@
         </div>
         <h2>Release to upload</h2>
         <p>PNG, JPEG, GIF, WebP or AVIF</p>
-        <p>Image expiry: {expiryLabel(defaultExpiry)}</p>
         {#if invalidDefault}<p class="error">
             Update your default image expiry in Settings before uploading.
           </p>
