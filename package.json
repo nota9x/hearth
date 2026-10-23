@@ -1,6 +1,6 @@
 {
   "name": "hearth",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A private, invitation-only ShareX image host on Cloudflare Workers.",
   "private": true,
   "license": "GPL-3.0-or-later",
