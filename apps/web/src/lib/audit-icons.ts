@@ -1,6 +1,8 @@
 import type { AuditAction } from '@hearth/core/audit-search';
 import type { LucideIcon } from '@lucide/svelte';
 import ArrowRight from '@lucide/svelte/icons/arrow-right';
+import CirclePause from '@lucide/svelte/icons/circle-pause';
+import CirclePlay from '@lucide/svelte/icons/circle-play';
 import CirclePlus from '@lucide/svelte/icons/circle-plus';
 import CircleX from '@lucide/svelte/icons/circle-x';
 import DatabaseCheck from '@lucide/svelte/icons/database-check';
@@ -79,6 +81,8 @@ const auditIcons = {
   'settings.expiry_policy': Timer,
   'user.expiry_policy': Timer,
   'storage.reconciliation': RefreshCw,
+  'maintenance.paused': CirclePause,
+  'maintenance.resumed': CirclePlay,
   'storage.reconciliation_completed': DatabaseCheck,
   'storage.finding_resolved': ListChecks,
   'storage.limit_updated': HardDrive,

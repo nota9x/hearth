@@ -1,23 +1,55 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { getPlatformProxy, unstable_DevEnv } from 'wrangler';
 
 import { readDevelopmentConfig } from '../../cli/development/config';
 import { database } from '../../packages/core/db';
 import { saveDeliveryDomain } from '../../packages/core/delivery-domains';
 import { validateDeliveryDomain } from '../../packages/core/domain-validation';
+import type { Env } from '../../packages/core/env';
 import { users } from '../../packages/core/schema';
 import { migrateDatabase } from '../helpers/database';
 
 it('dispatches the real scheduled handler against shared persistent D1 and R2, respects its lease, and survives restart', async () => {
   const state = await mkdtemp(path.join(tmpdir(), 'hearth-dev-maintenance-'));
+  const registry = path.join(state, 'registry');
+  vi.stubEnv('WRANGLER_REGISTRY_PATH', registry);
   const config = await readDevelopmentConfig('maintenance');
   const webConfig = await readDevelopmentConfig('web');
-  const proxy = await getPlatformProxy<{ DB: D1Database; BUCKET: R2Bucket }>({
-    configPath: webConfig.config,
+  const instance = `maintenance-test-${crypto.randomUUID()}`;
+  async function localConfig(component: 'web' | 'maintenance' | 'delivery') {
+    const config = await readDevelopmentConfig(component);
+    const source: Record<string, unknown> = {
+      ...config.source,
+      name: `${instance}-${component}`,
+      main: path.join(config.directory, String(config.source.main)),
+    };
+    if (component === 'web') {
+      delete source.assets;
+      source.durable_objects = {
+        bindings: [
+          {
+            name: 'MAINTENANCE',
+            class_name: 'MaintenanceJob',
+            script_name: `${instance}-maintenance`,
+          },
+        ],
+      };
+    }
+    const file = path.join(state, `${component}.json`);
+    await writeFile(file, JSON.stringify(source));
+    return file;
+  }
+  const webFile = await localConfig('web');
+  const maintenanceFile = await localConfig('maintenance');
+  const deliveryFile = await localConfig('delivery');
+  const proxy = await getPlatformProxy<
+    Pick<Env, 'DB' | 'BUCKET' | 'MAINTENANCE'>
+  >({
+    configPath: webFile,
     persist: { path: path.join(state, 'v3') },
     remoteBindings: false,
   });
@@ -34,11 +66,11 @@ it('dispatches the real scheduled handler against shared persistent D1 and R2, r
     ).run();
     await BUCKET.put('original', 'test');
     await BUCKET.put('retained', 'keep');
-    const deliveryConfig = await readDevelopmentConfig('delivery');
     const deliveryRuntime = new unstable_DevEnv();
     delivery = await deliveryRuntime.startWorker({
-      config: deliveryConfig.config,
+      config: deliveryFile,
       dev: {
+        registry,
         persist: state,
         remote: false,
         inspector: false,
@@ -73,8 +105,9 @@ it('dispatches the real scheduled handler against shared persistent D1 and R2, r
     const start = async () => {
       const runtime = new unstable_DevEnv();
       const started = await runtime.startWorker({
-        config: config.config,
+        config: maintenanceFile,
         dev: {
+          registry,
           persist: state,
           remote: false,
           inspector: false,
@@ -95,37 +128,96 @@ it('dispatches the real scheduled handler against shared persistent D1 and R2, r
       );
       expect(await result.json()).toEqual({ outcome: 'ok', noRetry: false });
     };
-    worker = await start();
     await DB.prepare(
       "INSERT INTO maintenance_lock(id,holder,expiresAt) VALUES('cron','test',?)",
     )
       .bind(Math.floor(Date.now() / 1000) + 60)
       .run();
+    worker = await start();
     await trigger();
     expect(await BUCKET.head('original')).not.toBeNull();
-    await DB.prepare("DELETE FROM maintenance_lock WHERE holder='test'").run();
-    await trigger();
-    const expired = await DB.prepare(
-      "SELECT deletedAt,purgedAt FROM images WHERE id='expired'",
-    ).first<{ deletedAt: number; purgedAt: number }>();
-    expect(expired?.deletedAt).toBeGreaterThan(0);
-    expect(expired?.purgedAt).toBeGreaterThan(0);
-    expect(await BUCKET.head('original')).toBeNull();
-    expect(await BUCKET.head('retained')).not.toBeNull();
-    expect(
+    const dispatcher = await getPlatformProxy<Pick<Env, 'MAINTENANCE'>>({
+      configPath: webFile,
+      persist: { path: path.join(state, 'v3') },
+      remoteBindings: false,
+    });
+    try {
+      await dispatcher.env.MAINTENANCE.getByName('instance').control(true);
       await DB.prepare(
-        'SELECT count(*) AS count FROM storage_snapshots',
-      ).first(),
-    ).toEqual({ count: 1 });
+        "DELETE FROM maintenance_lock WHERE holder='test'",
+      ).run();
+      await dispatcher.env.MAINTENANCE.getByName('instance').control(false);
+      await trigger();
+      await vi.waitFor(
+        async () => expect(await BUCKET.head('original')).toBeNull(),
+        { timeout: 15_000, interval: 100 },
+      );
+      await vi.waitFor(
+        async () =>
+          expect(
+            await DB.prepare(
+              'SELECT count(*) AS count FROM storage_snapshots',
+            ).first(),
+          ).toEqual({ count: 1 }),
+        { timeout: 15_000, interval: 100 },
+      );
+      await vi.waitFor(
+        async () =>
+          expect(
+            await DB.prepare(
+              "SELECT count(*) AS count FROM reconciliation_runs WHERE status='running'",
+            ).first(),
+          ).toEqual({ count: 0 }),
+        { timeout: 15_000, interval: 100 },
+      );
+      await dispatcher.env.MAINTENANCE.getByName('instance').control(true);
+      const expired = await DB.prepare(
+        "SELECT deletedAt,purgedAt FROM images WHERE id='expired'",
+      ).first<{ deletedAt: number; purgedAt: number }>();
+      expect(expired?.deletedAt).toBeGreaterThan(0);
+      expect(expired?.purgedAt).toBeGreaterThan(0);
+      expect(await BUCKET.head('original')).toBeNull();
+      expect(await BUCKET.head('retained')).not.toBeNull();
+      expect(
+        await DB.prepare(
+          'SELECT count(*) AS count FROM storage_snapshots',
+        ).first(),
+      ).toEqual({ count: 1 });
+    } finally {
+      await dispatcher.dispose();
+    }
     await worker.dispose();
     worker = await start();
     await trigger();
+    const resumed = await getPlatformProxy<Pick<Env, 'MAINTENANCE'>>({
+      configPath: webFile,
+      persist: { path: path.join(state, 'v3') },
+      remoteBindings: false,
+    });
+    try {
+      await vi.waitFor(
+        async () => {
+          const resumedStatus =
+            await resumed.env.MAINTENANCE.getByName('instance').status();
+          expect(resumedStatus.status).toBe('drained');
+        },
+        { timeout: 15_000, interval: 100 },
+      );
+      await resumed.env.MAINTENANCE.getByName('instance').control(false);
+    } finally {
+      await resumed.dispose();
+    }
+    await trigger();
     expect(await BUCKET.head('retained')).not.toBeNull();
-    expect(
-      await DB.prepare(
-        'SELECT count(*) AS count FROM maintenance_lock',
-      ).first(),
-    ).toEqual({ count: 0 });
+    await vi.waitFor(
+      async () =>
+        expect(
+          await DB.prepare(
+            'SELECT count(*) AS count FROM maintenance_lock',
+          ).first(),
+        ).toEqual({ count: 0 }),
+      { timeout: 15_000, interval: 100 },
+    );
   } finally {
     await worker?.dispose();
     await delivery?.dispose();

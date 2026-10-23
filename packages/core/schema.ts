@@ -177,11 +177,21 @@ export const images = sqliteTable(
     deletedAt: integer(),
     purgedAt: integer(),
     previewKey: text(),
+    previewRetryAt: integer().notNull().default(0),
+    previewFailures: integer().notNull().default(0),
+    purgeRetryAt: integer().notNull().default(0),
+    purgeFailures: integer().notNull().default(0),
     previewSize: integer().notNull().default(0),
   },
   (t) => [
     index('images_owner_date').on(t.userId, t.createdAt),
     index('images_expiry').on(t.expiresAt),
+    index('images_preview_retry')
+      .on(t.previewRetryAt, t.id)
+      .where(sql`${t.deletedAt} IS NULL AND ${t.previewKey} IS NULL`),
+    index('images_purge_retry')
+      .on(t.purgeRetryAt, t.id)
+      .where(sql`${t.deletedAt} IS NOT NULL AND ${t.purgedAt} IS NULL`),
     index('images_deleted').on(t.deletedAt, t.purgedAt),
     index('images_preview')
       .on(t.previewKey)
@@ -273,6 +283,8 @@ export const reconciliation = sqliteTable(
     cursor: text(),
     metadataCursor: text(),
     phase: text().notNull().default('objects'),
+    attempt: integer().notNull().default(1),
+    routineDone: integer().notNull().default(0),
     objectCount: integer().notNull().default(0),
     bytes: integer().notNull().default(0),
     startedAt: integer().notNull(),
@@ -339,11 +351,14 @@ export const storageObjects = sqliteTable(
     token: text().notNull(),
     uploadId: text(),
     reservedBytes: integer().notNull().default(0),
+    retryAt: integer().notNull().default(0),
+    failures: integer().notNull().default(0),
     stagedBytes: integer().notNull().default(0),
     storedBytes: integer().notNull().default(0),
     updatedAt: integer().notNull(),
   },
   (t) => [
+    index('storage_retry').on(t.retryAt, t.key),
     index('storage_recovery').on(t.state, t.updatedAt),
     index('storage_image').on(t.imageId),
     check(

@@ -107,6 +107,56 @@ function mockSetupTerminal() {
     else Reflect.deleteProperty(process.stdout, 'isTTY');
   };
 }
+
+it.each(['bucket', 'database'])(
+  'refuses %s resource adoption during fresh setup before provisioning or writes',
+  async (kind) => {
+    const restoreTerminal = mockSetupTerminal();
+    vi.spyOn(setupState, 'loadState').mockResolvedValue(stateSchema.parse({}));
+    vi.spyOn(setupState, 'optionalText').mockResolvedValue(undefined);
+    vi.spyOn(setupState, 'saveState').mockResolvedValue();
+    vi.spyOn(setupState, 'acquireLock').mockResolvedValue(() =>
+      Promise.resolve(),
+    );
+    vi.spyOn(Cloudflare.prototype, 'identify').mockResolvedValue({
+      loggedIn: true,
+      authType: 'OAuth Token',
+      accounts: [{ id: options.accountId, name: 'Account' }],
+    });
+    vi.spyOn(Cloudflare.prototype, 'credentials').mockResolvedValue();
+    vi.spyOn(Cloudflare.prototype, 'pages').mockResolvedValue([
+      { id: 'zone', name: 'example.com', status: 'active' },
+    ]);
+    vi.spyOn(Cloudflare.prototype, 'json').mockResolvedValue(
+      kind === 'database'
+        ? [{ name: 'hearth-production', uuid: options.databaseId }]
+        : [],
+    );
+    vi.spyOn(Cloudflare.prototype, 'buckets').mockResolvedValue([
+      { name: 'hearth-production' },
+    ]);
+    const run = vi.spyOn(Cloudflare.prototype, 'run').mockResolvedValue('');
+    vi.mocked(prompts.text)
+      .mockReset()
+      .mockResolvedValueOnce(options.application)
+      .mockResolvedValueOnce(options.delivery[0]);
+    vi.mocked(prompts.select)
+      .mockReset()
+      .mockResolvedValueOnce(options.accountId)
+      .mockResolvedValueOnce('cancel');
+    vi.mocked(prompts.log.warn).mockClear();
+    try {
+      await runCommand(setupCommand, { rawArgs: [] });
+      expect(run).not.toHaveBeenCalled();
+      expect(prompts.log.warn).toHaveBeenCalledWith(
+        expect.stringMatching(/new dedicated|creation provenance/i),
+      );
+      expect(process.exitCode).toBe(130);
+    } finally {
+      restoreTerminal();
+    }
+  },
+);
 const platform = vi.hoisted(() => ({ open: vi.fn() }));
 vi.mock('wrangler', () => ({ getPlatformProxy: platform.open }));
 vi.mock('@clack/prompts', async (importOriginal) => {
@@ -153,6 +203,22 @@ it('generates matching private production bindings and retains migration/runtime
   expect(outputs[0].config.ratelimits?.[0].namespace_id).toBe('123456');
   expect(outputs[2].config.triggers?.crons).toEqual(['*/5 * * * *']);
 });
+it('binds custom instances to their own maintenance Worker and rejects mismatches', async () => {
+  const outputs = await renderProduction({ ...options, prefix: 'photos' });
+  const configs = Object.fromEntries(
+    outputs.map((output) => [output.component, output.config]),
+  );
+  expect(configs.web.durable_objects?.bindings).toEqual([
+    {
+      name: 'MAINTENANCE',
+      class_name: 'MaintenanceJob',
+      script_name: 'photos-maintenance',
+    },
+  ]);
+  expect(() => inspectConfig(configs)).not.toThrow();
+  configs.web.durable_objects!.bindings[0].script_name = 'hearth-maintenance';
+  expect(() => inspectConfig(configs)).toThrow('private MAINTENANCE binding');
+});
 it('rejects application/delivery overlap and mismatched resource bindings before mutations', async () => {
   expect(() =>
     validateHostnames('app.example.com', ['app.example.com']),
@@ -173,6 +239,11 @@ it('keeps checkpoints credential-free and resumes resource/deployment observatio
     ...options,
     prefix: 'hearth',
     databaseId: options.databaseId,
+    provisionedDatabaseId: options.databaseId,
+    provisionedBucket: {
+      name: options.bucket,
+      createdOn: '2026-10-19T00:00:00Z',
+    },
     deployments: { delivery: { fingerprint: 'hash', versionId: 'version' } },
     token: 'do-not-save',
     plaintext: 'do-not-save',
@@ -180,6 +251,11 @@ it('keeps checkpoints credential-free and resumes resource/deployment observatio
   await saveState(state, directory);
   expect(await loadState(directory)).toMatchObject({
     databaseId: options.databaseId,
+    provisionedDatabaseId: options.databaseId,
+    provisionedBucket: {
+      name: options.bucket,
+      createdOn: '2026-10-19T00:00:00Z',
+    },
     deployments: state.deployments,
   });
   expect(
@@ -417,21 +493,24 @@ it('checks both R2 public-access mechanisms before reusing a bucket', async () =
   );
 });
 
-it('reconciles D1 creation after a lost response without sending a second create', async () => {
+it('uses the creation response identity and rejects ambiguous D1 creation without resource adoption', async () => {
   const cloudflare = new Cloudflare({});
-  const run = vi
-    .spyOn(cloudflare, 'run')
-    .mockRejectedValueOnce(new SetupFailure('lost response', 'transient'))
-    .mockResolvedValueOnce(
-      JSON.stringify([{ name: 'hearth-production', uuid: options.databaseId }]),
-    );
+  cloudflare.accountId = options.accountId;
+  vi.spyOn(cloudflare, 'api')
+    .mockResolvedValueOnce({
+      name: 'hearth-production',
+      uuid: options.databaseId,
+    })
+    .mockRejectedValueOnce(new SetupFailure('lost response', 'transient'));
+  const list = vi.spyOn(cloudflare, 'json');
   expect(await cloudflare.createDatabase('hearth-production')).toEqual({
     name: 'hearth-production',
     uuid: options.databaseId,
   });
-  expect(
-    run.mock.calls.filter(([arguments_]) => arguments_.includes('create')),
-  ).toHaveLength(1);
+  await expect(cloudflare.createDatabase('another')).rejects.toThrow(
+    'lost response',
+  );
+  expect(list).not.toHaveBeenCalled();
 });
 
 it.each(['failure', 'cancellation'])(

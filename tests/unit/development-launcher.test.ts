@@ -79,7 +79,7 @@ async function launch(scenario: string, mode = 'development') {
 
 describe('launcher lifecycle', () => {
   it.each(['development', 'preview'])(
-    'starts %s concurrently, reports staggered readiness, and drains final stderr on shutdown',
+    'starts maintenance before web in %s, reports readiness, and drains final stderr on shutdown',
     async (mode) => {
       const { stdout, stderr, code } = await launch('success', mode);
       expect(code).toBe(0);
@@ -91,7 +91,8 @@ describe('launcher lifecycle', () => {
       const maintenance = stdout.indexOf('[maintenance] READY');
       const web = stdout.indexOf('[web]         READY');
       expect(delivery).toBeGreaterThan(stdout.indexOf('booting web'));
-      expect(maintenance).toBeGreaterThan(delivery);
+      expect(stdout.indexOf('booting web')).toBeGreaterThan(maintenance);
+      expect(stdout.indexOf('booting delivery')).toBeGreaterThan(maintenance);
       expect(web).toBeGreaterThan(maintenance);
       for (const component of ['web', 'delivery', 'maintenance']) {
         expect(stderr).toContain(`final diagnostic ${component}`);

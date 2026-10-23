@@ -416,7 +416,18 @@ export async function readDashboard({
           .from(storageCapacity)
           .where(eq(storageCapacity.id, 1))
       : [];
+  let maintenance = null;
+  if (admin && section === 'storage') {
+    try {
+      maintenance = await locals.env.MAINTENANCE.getByName('instance').status();
+    } catch {
+      /*
+      The dashboard remains available during coordinator outages.
+      */
+    }
+  }
   return {
+    maintenance,
     storageWarnings: await storageWarnings(locals.env.DB, user.id),
     storage:
       admin && section === 'storage'

@@ -24,6 +24,7 @@ import {
   getDisplayNameRestriction,
 } from '@hearth/core/display-name-policy';
 import { validateDeliveryDomain } from '@hearth/core/domain-validation';
+import type { Env } from '@hearth/core/env';
 import {
   expiryOverridesSchema,
   expiryPolicySchema,
@@ -80,6 +81,26 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { body, failure } from '#lib/server/http.ts';
+
+async function startMaintenance(environment: Env, runId: string) {
+  try {
+    await environment.MAINTENANCE.getByName('instance').start(runId);
+  } catch {
+    await environment.DB.prepare(
+      "UPDATE reconciliation_runs SET status='failed',error='Maintenance could not start. Retry to continue from saved progress.',updatedAt=? WHERE id=? AND status='running'",
+    )
+      .bind(now(), runId)
+      .run();
+    console.error(
+      JSON.stringify({ event: 'maintenance.dispatch_failed', runId }),
+    );
+    throw new AppError(
+      503,
+      'MAINTENANCE_UNAVAILABLE',
+      'Maintenance could not start. Retry the storage scan.',
+    );
+  }
+}
 
 export const POST: RequestHandler<{ action: string }> = async ({
   request,
@@ -810,6 +831,19 @@ export const POST: RequestHandler<{ action: string }> = async ({
             ]);
             break;
           }
+          case 'maintenance-pause':
+          case 'maintenance-resume': {
+            const paused = params.action === 'maintenance-pause';
+            await environment.MAINTENANCE.getByName('instance').control(
+              paused,
+              await audit(
+                paused ? 'maintenance.paused' : 'maintenance.resumed',
+                'maintenance',
+                { name: 'Maintenance' },
+              ),
+            );
+            break;
+          }
           case 'reconcile': {
             const matchingReconciliation = await database_
               .select()
@@ -834,7 +868,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
               );
               const results = await environment.DB.batch([
                 environment.DB.prepare(
-                  "UPDATE reconciliation_runs SET status='running',error=NULL,updatedAt=? WHERE id=? AND status='failed'",
+                  "UPDATE reconciliation_runs SET status='running',attempt=attempt+1,error=NULL,updatedAt=? WHERE id=? AND status='failed'",
                 ).bind(timestamp, retryId),
                 environment.DB.prepare(
                   "INSERT INTO audit_log(id,actorId,action,targetId,metadata,createdAt) SELECT ?,?,'storage.reconciliation',?,?,? WHERE changes()>0",
@@ -852,22 +886,29 @@ export const POST: RequestHandler<{ action: string }> = async ({
                   'SCAN_CHANGED',
                   'This scan cannot be retried. Refresh and try again.',
                 );
+              await startMaintenance(environment, retryId);
               break;
             }
             const runId = id('rec');
-            await database_.batch([
-              database_.insert(reconciliation).values({
-                id: runId,
-                status: 'running',
-                startedAt: timestamp,
-              }),
-              database_.insert(auditLog).values(
-                await audit('storage.reconciliation', runId, {
-                  name: 'Storage reconciliation',
-                  context: { reason: 'Administrator request' },
-                }),
-              ),
+            const event = await audit('storage.reconciliation', runId, {
+              name: 'Storage reconciliation',
+              context: { reason: 'Administrator request' },
+            });
+            const created = await environment.DB.batch([
+              environment.DB.prepare(
+                "INSERT INTO reconciliation_runs(id,status,startedAt) SELECT ?,'running',? WHERE NOT EXISTS(SELECT 1 FROM reconciliation_runs WHERE status='running') ON CONFLICT DO NOTHING",
+              ).bind(runId, timestamp),
+              environment.DB.prepare(
+                "INSERT INTO audit_log(id,actorId,action,targetId,metadata,createdAt) SELECT ?,?,'storage.reconciliation',?,?,? WHERE changes()>0",
+              ).bind(event.id, user.id, runId, event.metadata, timestamp),
             ]);
+            if (!created[0].meta.changes)
+              throw new AppError(
+                409,
+                'RUNNING',
+                'A reconciliation is already running.',
+              );
+            await startMaintenance(environment, runId);
             break;
           }
           case 'finding-resolve': {

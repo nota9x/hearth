@@ -26,22 +26,19 @@ before changing them. Account suspension and a low global cap do not stop every
 writer or create a consistent backup.
 
 1. Notify users and stop independent S3/dashboard/Worker jobs touching the bucket.
-2. In Cloudflare **Workers & Pages → the web Worker → Domains**, detach the
+2. Open **Administration → Storage → Advanced diagnostics & history**, choose
+   **Pause automatic maintenance**, and verify **drained** in diagnostics before
+   disconnecting administrator access. This acknowledges that
+   the active bounded slice has checkpointed and no maintenance slice remains
+   active. A recorded pause alone is not a completed drain. Cron and pending
+   Durable Object alarms honor the durable pause without changing triggers.
+3. In Cloudflare **Workers & Pages → the web Worker → Domains**, detach the
    application Custom Domain temporarily. Verify the application origin no longer
    serves Hearth. Disable any additional application routes you added; keep
-   `workers.dev` and preview URLs disabled. Do not deploy the normal web configuration
-   while the window is in progress, because it reconnects the hostname.
-3. Set maintenance's production `triggers` to `{"crons": []}` and deploy it:
-
-   ```sh
-   pnpm exec wrangler deploy --config workers/maintenance/production.local.jsonc
-   ```
-
-   Keep the explicit empty array; do not merely omit `triggers`. Cloudflare says
-   [cron changes can take up to 15 minutes](https://developers.cloudflare.com/workers/configuration/cron-triggers/)
-   to propagate. Wait for that propagation and already-running scheduled/request
-   work to finish, checking invocation logs. Elapsed time alone does not prove
-   in-flight uploads settled.
+   `workers.dev` and preview URLs disabled. Do not deploy the normal web
+   configuration while the window is in progress, because it reconnects the
+   hostname. Wait for in-flight uploads, domain validation and other writers;
+   maintenance pause does not stop them or external R2 modifications.
 
 4. Before taking a clean backup, check there are no pending storage operations or
    uncertain writes requiring recovery. If there are, reconcile them under the
@@ -51,7 +48,7 @@ writer or create a consistent backup.
    a partially restored state. Keep originals and the pre-recovery backup intact.
 
 The application has no read-only maintenance switch or public production maintenance
-endpoint. This procedure uses Cloudflare routing and the existing cron configuration.
+endpoint. This procedure combines Cloudflare routing with durable maintenance pause/drain.
 
 ## Export D1 and copy R2
 
@@ -98,7 +95,7 @@ as a universal R2 configuration backup. Ensure your local filesystem can represe
 all keys without case/path collisions; investigate independent/non-Hearth keys
 before claiming the backup complete.
 
-Resume by restoring the recorded cron and deploying maintenance, then web. If
+Resume by restoring administrator access, choosing **Resume maintenance**, and deploying maintenance before web when deployments are needed. If
 delivery was detached, deploy delivery first. Verify login, delivery, and the next
 maintenance invocation. Store the backup securely.
 
@@ -141,7 +138,7 @@ maintenance invocation. Store the backup securely.
    [initialization procedure](../guides/storage-management.md#initialize-before-enabling-a-global-limit)
    when recovered bucket/ledger state differs. It aborts untracked unfinished uploads;
    keep independent writers stopped and use schema-compatible code.
-8. Deploy compatible delivery, restore/deploy maintenance cron, then web. Check
+8. Deploy compatible delivery, restore/deploy maintenance, resume it after verification, then restore general web access. Check
    login, several retained images/links, a new upload, and the storage scan. Resolve
    missing/orphan findings only after matching records and objects are verified.
 

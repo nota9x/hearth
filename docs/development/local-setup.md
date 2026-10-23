@@ -8,13 +8,22 @@ Use Node 24 and the pnpm version pinned in `package.json`. Run commands from the
 ```sh
 pnpm install --frozen-lockfile
 pnpm db:migrate
-pnpm bootstrap "Your name"
+pnpm bootstrap
 pnpm dev
 ```
 
 Save the printed administrator key privately. Migrations/bootstrap are explicit;
 starting development does not initialize or reset the database. Bootstrap is for
-the first administrator only.
+the first administrator only. With an empty local bucket and ledger, bootstrap
+also initializes physical storage accounting so a global limit can be enabled
+immediately. Existing storage is preserved and still requires accounting recovery.
+
+Bootstrap asks for your display name; `pnpm bootstrap "Your name"` skips that
+prompt. If an administrator already exists, an interactive local bootstrap offers
+to purge the local database and start again, defaulting to No. Confirming deletes
+all local accounts, image records, and settings, reapplies migrations, and creates
+the new administrator. Local R2 files are kept. Remote bootstrap never offers a
+purge; non-interactive commands require a name and never reset existing data.
 
 Open `http://127.0.0.1:5173` and sign in. In **Administration → Domains**, add
 `127.0.0.1:8788` or `shots.localhost`, validate, and set the instance default. Upload an image and
@@ -132,3 +141,8 @@ restart, and cleanup of a disposable expired image. Use
 Browser fixtures create their own state and ports; they do not use this bootstrap.
 Stop preview before rebuilding on Windows. Local success does not verify live DNS,
 TLS, real Turnstile/Images access, Cloudflare cron, or distributed edge limits.
+
+On-demand storage scans require the maintenance Worker. The combined launcher starts
+maintenance before web so SvelteKit's platform proxy can resolve its private binding.
+When using separate terminals, start maintenance before `pnpm dev:web`; restart web
+if it started before maintenance was available.

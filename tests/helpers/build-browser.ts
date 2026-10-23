@@ -11,6 +11,7 @@ export default async function setup() {
   for (const [name, config] of [
     ['web', 'apps/web/wrangler.jsonc'],
     ['delivery', 'workers/delivery/wrangler.jsonc'],
+    ['maintenance', 'workers/maintenance/wrangler.jsonc'],
   ]) {
     const result = spawnSync(
       process.execPath,

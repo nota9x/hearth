@@ -24,9 +24,16 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
   page.on('pageerror', (error) => {
     errors.push(error.message);
   });
+  const health = page.getByRole('button', {
+    name: /^Storage health & maintenance/,
+  });
   await page.goto('/admin/storage');
+  await expect(health).toHaveAttribute('aria-expanded', 'false');
+  await health.focus();
+  await page.keyboard.press('Enter');
+  await expect(health).toHaveAttribute('aria-expanded', 'true');
   await expect(
-    page.getByText(/Physical accounting is being established/),
+    page.getByText('Storage setup is incomplete', { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole('switch', { name: 'Enable global limit' }),
@@ -42,9 +49,13 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
   await expect(
     page.getByRole('heading', { name: 'Storage', exact: true }),
   ).toBeVisible();
+  await health.click();
   await expect(
-    page.getByText('Storage has no configured capacity limit.'),
+    page.getByText('Storage has not been checked yet.', { exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByText('No unresolved storage issues', { exact: true }),
+  ).toHaveCount(0);
   await expect(page.getByRole('meter')).toHaveCount(0);
   await page.goto('/admin/settings');
   await page.getByRole('switch', { name: 'Enable global limit' }).check();
@@ -105,7 +116,7 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
       "INSERT INTO reconciliation_runs(id,status,startedAt,completedAt,objectCount,bytes) VALUES('rec_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb','completed',1,2,1,800000)",
     ),
     hearth.DB.prepare(
-      "INSERT INTO reconciliation_runs(id,status,startedAt,objectCount,bytes) VALUES('rec_cccccccccccccccccccccccccccccccc','running',3,4,5000000)",
+      "INSERT INTO reconciliation_runs(id,status,startedAt,objectCount,bytes,routineDone) VALUES('rec_cccccccccccccccccccccccccccccccc','running',3,4,5000000,1)",
     ),
     hearth.DB.prepare(
       "INSERT INTO reconciliation_findings(id,runId,kind,objectKey,details,createdAt) VALUES('find_ffffffffffffffffffffffffffffffff','rec_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb','orphan','review-me','review',2)",
@@ -113,18 +124,34 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
   ]);
   await page.reload();
   await expect(page.getByRole('meter')).toHaveAttribute('aria-valuenow', '90');
+  await health.click();
   await expect(page.getByRole('meter')).toHaveAttribute(
     'aria-valuetext',
     /100 KB available/,
   );
   await expect(
-    page.getByText('Scan in progress', { exact: true }),
+    page.getByText('800 KB of 1 MB used', { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText(/4 objects observed so far/)).toBeVisible();
   await expect(
-    page.getByText(/These are incomplete observations/),
+    page.getByText('1 storage issue needs attention', { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText(/Reserved capacity includes/)).toBeVisible();
+  await expect(
+    page.getByText('Checking stored files.', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Check storage', exact: true }),
+  ).toBeDisabled();
+  const metrics = page.locator('.storage-metrics');
+  await expect(
+    metrics
+      .locator('div')
+      .filter({ has: page.getByText('Images', { exact: true }) }),
+  ).toContainText('500 KB in active images and previews');
+  await expect(
+    metrics
+      .locator('div')
+      .filter({ has: page.getByText('Reserved for uploads', { exact: true }) }),
+  ).toContainText('100 KB');
   await expect(page.getByText('PNG', { exact: true })).toBeVisible();
   await expect(
     page.getByRole('link', { name: 'Browser administrator', exact: true }),
@@ -136,7 +163,10 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
   await diagnostics.focus();
   await page.keyboard.press('Enter');
   await expect(diagnostics).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.getByText('Confirmed completed objects')).toBeVisible();
+  await expect(page.getByText('Confirmed completed files')).toBeVisible();
+  await expect(
+    page.getByText(/These are incomplete observations/),
+  ).toBeVisible();
   await page.keyboard.press('Space');
   await expect(diagnostics).toHaveAttribute('aria-expanded', 'false');
   await page.goto('/admin/settings');
@@ -148,17 +178,29 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
   await page.getByRole('button', { name: 'Save limit' }).click();
   expect((await savedLimit2).status()).toBe(200);
   await page.goto('/admin/storage');
-  await expect(
-    page.getByText(/New capacity-consuming writes are blocked/),
-  ).toBeVisible();
+  await health.click();
+  await expect(page.getByText(/Storage is full\. New uploads/)).toBeVisible();
+  await expect(page.getByRole('meter')).toHaveAttribute('aria-valuenow', '100');
   await hearth.DB.prepare(
     "UPDATE reconciliation_runs SET status='failed',error='Storage access failed.' WHERE id='rec_cccccccccccccccccccccccccccccccc'",
   ).run();
   await page.reload();
+  await health.click();
+  await page
+    .getByRole('button', { name: 'Advanced diagnostics & history' })
+    .click();
   await expect(page.getByText('Storage access failed.')).toBeVisible();
-  await page.getByRole('button', { name: 'Retry scan' }).click();
+  await page
+    .getByRole('button', { name: 'Advanced diagnostics & history' })
+    .click();
+  await hearth.DB.prepare(
+    "INSERT INTO maintenance_lock(id,holder,expiresAt) VALUES('cron','ui-fixture',?)",
+  )
+    .bind(Math.floor(Date.now() / 1000) + 300)
+    .run();
+  await page.getByRole('button', { name: 'Retry check' }).click();
   await expect(
-    page.getByText('Scan in progress', { exact: true }),
+    page.getByText('1 storage issue needs attention', { exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Delete file', exact: true }).click();
   const dialog = page.getByRole('dialog');
@@ -172,8 +214,14 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
     .click();
   await expect(dialog).toHaveCount(0);
   await expect(
-    page.getByText('No storage problems need attention.'),
+    page.getByRole('region', { name: 'Needs attention' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText('Storage check in progress', { exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByText('No unresolved storage issues', { exact: true }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Delete file', exact: true }),
   ).toHaveCount(0);
@@ -189,6 +237,7 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
     'UPDATE storage_capacity SET limitBytes=1000000 WHERE id=1',
   ).run();
   await page.reload();
+  await health.click();
   await page.setViewportSize({ width: 390, height: 844 });
   expect(
     await page.evaluate(
@@ -245,6 +294,9 @@ test('storage findings paginate, expose styled details, and resolve all with can
   );
   await page.goto('/admin/storage');
   const attention = page.getByRole('region', { name: 'Needs attention' });
+  await page
+    .getByRole('button', { name: /^Storage health & maintenance/ })
+    .click();
   await expect(attention.getByRole('article')).toHaveCount(10);
   await expect(attention.getByText('12 issues', { exact: true })).toBeVisible();
   const firstFinding = attention.getByRole('article').first();
@@ -342,10 +394,82 @@ test('storage findings paginate, expose styled details, and resolve all with can
     .getByRole('button', { name: 'Resolve all issues', exact: true })
     .click();
   await expect(dialog).toHaveCount(0);
+  await expect(attention).toHaveCount(0);
+});
+
+test('storage checks respect pause, resume safely, and complete after the page closes', async ({
+  hearth,
+  page,
+  request,
+  baseURL,
+}) => {
+  const login = await request.post('/api/actions/login', {
+    headers: { Origin: baseURL! },
+    data: {
+      key: await readFile(process.env.TEST_KEY_FILE!, 'utf8'),
+      token: 'XXXX.DUMMY.TOKEN.XXXX',
+    },
+  });
+  expect(login.status()).toBe(200);
+  await page.context().addCookies((await request.storageState()).cookies);
+  await hearth.DB.prepare(
+    'UPDATE storage_capacity SET ready=1,multipartVerified=1 WHERE id=1',
+  ).run();
+  await hearth.DB.prepare(
+    "INSERT INTO maintenance_lock(id,holder,expiresAt) VALUES('cron','browser-test',?)",
+  )
+    .bind(Math.floor(Date.now() / 1000) + 60)
+    .run();
+  await page.goto('/admin/storage');
+  const health = page.getByRole('button', {
+    name: /^Storage health & maintenance/,
+  });
+  await health.click();
+  await page
+    .getByRole('button', { name: 'Advanced diagnostics & history' })
+    .click();
+  const started = page.waitForResponse('/api/actions/reconcile');
+  await page
+    .getByRole('button', { name: 'Check storage', exact: true })
+    .click();
+  expect((await started).status()).toBe(200);
   await expect(
-    attention.getByText('No storage problems need attention.'),
+    page.getByText('Storage check in progress', { exact: true }),
   ).toBeVisible();
   await expect(
-    attention.getByRole('button', { name: 'Resolve all', exact: true }),
-  ).toHaveCount(0);
+    page.getByRole('button', { name: 'Check storage', exact: true }),
+  ).toBeDisabled();
+  const pausedDuringCheck = page.waitForResponse(
+    '/api/actions/maintenance-pause',
+  );
+  await page
+    .getByRole('button', { name: 'Pause automatic maintenance', exact: true })
+    .click();
+  expect((await pausedDuringCheck).status()).toBe(200);
+  await expect(
+    page.getByText('Storage check paused', { exact: true }),
+  ).toBeVisible();
+  const resumed = page.waitForResponse('/api/actions/maintenance-resume');
+  await page
+    .getByRole('button', { name: 'Resume maintenance', exact: true })
+    .click();
+  expect((await resumed).status()).toBe(200);
+  await page.close();
+  await hearth.DB.prepare(
+    "DELETE FROM maintenance_lock WHERE holder='browser-test'",
+  ).run();
+  await expect
+    .poll(
+      async () => {
+        // eslint-disable-next-line playwright/no-useless-await -- D1 first executes SQL; this is not a locator.
+        const result = await hearth.DB.prepare(
+          'SELECT status FROM reconciliation_runs',
+        ).first<{ status: string }>();
+        return result?.status;
+      },
+      { timeout: 15_000 },
+    )
+    .toBe('completed');
+  const results = await request.get('/admin/storage');
+  expect(await results.text()).toContain('No unresolved storage issues');
 });

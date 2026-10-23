@@ -517,6 +517,7 @@ describe('global physical storage admission', () => {
       .run();
     await scanStorage(env.DB, env.BUCKET, run);
     await scanStorage(env.DB, env.BUCKET, run);
+    await scanStorage(env.DB, env.BUCKET, run);
     expect(await capacity()).toMatchObject({
       persistedBytes: 8,
       reservedBytes: 0,
@@ -560,7 +561,7 @@ describe('global physical storage admission', () => {
     await operation.cleanup();
     expect(await capacity()).toMatchObject({ reservedBytes: 0 });
   });
-  it('records failed scans and preserves their cursor for retry', async () => {
+  it('leaves transient scan failures and saved cursors for executor-owned retry', async () => {
     const run = id('rec');
     await env.DB.prepare(
       "INSERT INTO reconciliation_runs(id,status,startedAt,cursor) VALUES(?,'running',?,'saved-cursor')",
@@ -578,7 +579,7 @@ describe('global physical storage admission', () => {
       )
         .bind(run)
         .first(),
-    ).toEqual({ status: 'failed', cursor: 'saved-cursor' });
+    ).toEqual({ status: 'running', cursor: 'saved-cursor' });
   });
   it.each(['physical-size', 'ledger'])(
     'detects %s discrepancies, retains conservative charges, and closes admission',
@@ -602,6 +603,7 @@ describe('global physical storage admission', () => {
       )
         .bind(run, now())
         .run();
+      await scanStorage(env.DB, env.BUCKET, run);
       await scanStorage(env.DB, env.BUCKET, run);
       await scanStorage(env.DB, env.BUCKET, run);
       expect(await capacity()).toMatchObject({

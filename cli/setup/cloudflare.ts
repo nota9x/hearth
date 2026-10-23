@@ -77,6 +77,8 @@ export const settingsSchema = z.looseObject({
         id: z.string().optional(),
         bucket_name: z.string().optional(),
         service: z.string().optional(),
+        class_name: z.string().optional(),
+        script_name: z.string().optional(),
         text: z.string().optional(),
         namespace_id: z.union([z.string(), z.number()]).optional(),
         simple: z.object({ limit: z.number(), period: z.number() }).optional(),
@@ -490,28 +492,14 @@ export class Cloudflare {
     return rows.flatMap((result) => result.results);
   }
   async createDatabase(name: string) {
-    let failure: Error | undefined;
-    try {
-      await this.run(['d1', 'create', name, '--no-update-config']);
-    } catch (error) {
-      failure =
-        error instanceof Error
-          ? error
-          : new SetupFailure(
-              'D1 creation did not complete. Retry to inspect its remote state.',
-            );
-    }
-    const databases = await this.json(
-      ['d1', 'list', '--json'],
-      z.array(databaseSchema),
+    const database = await this.api(
+      `/accounts/${this.accountId}/d1/database`,
+      databaseSchema,
+      { method: 'POST', body: { name } },
     );
-    const database = databases.find((item) => item.name === name);
     if (!database)
-      throw (
-        failure ??
-        new SetupFailure(
-          'D1 creation could not be verified. Retry to rediscover it before creating anything else.',
-        )
+      throw new SetupFailure(
+        'D1 creation could not be verified. Choose a new unused database name; existing resources cannot establish a fresh baseline.',
       );
     return database;
   }

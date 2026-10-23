@@ -129,111 +129,27 @@ If removal fails or is interrupted, resolve the reported issue and rerun the sam
 command. Keep `artifacts/setup/uninstall.json` until removal finishes; it saves
 the progress needed to resume.
 
-## Manual installation
+## Advanced installation and resource ownership
 
-Use this alternative if you want to create and deploy the services yourself.
-Otherwise, use guided installation above.
+Use `pnpm run setup --advanced` for custom instance prefixes, database and bucket
+names, hostnames, and Turnstile choices. Every new instance must provision a new
+D1 database and a new private R2 bucket through setup. Existing buckets, including
+apparently empty buckets, cannot be adopted by a new instance.
 
-### 1. Get the source and install dependencies
+Setup records successful creation identities in `artifacts/setup/state.json` and
+initializes zero-based accounting before administrator/domain initialization or
+Worker deployment. Save this local resume state privately with your configuration.
+If creation succeeded but its checkpoint was lost, setup fails safely: use new
+unused resource names and review the abandoned resources separately. Do not mark
+accounting ready by hand or delete resources without verifying their ownership.
 
-Complete [Before you start](#before-you-start), then run:
+After successful setup, the global physical limit can be enabled immediately in
+administrator Settings. Normal installation needs no AWS CLI or S3 credentials.
+Direct R2 writers bypass reservations; reconcile after any out-of-band changes.
 
-```sh
-git clone https://github.com/nota9x/hearth.git
-cd hearth
-pnpm install --frozen-lockfile
-```
-
-### 2. Authenticate and create storage
-
-```sh
-pnpm exec wrangler login
-pnpm exec wrangler whoami
-pnpm exec wrangler d1 create hearth-production
-pnpm exec wrangler r2 bucket create YOUR_BUCKET_NAME
-```
-
-Confirm that `whoami` shows the account that owns your domain. Save the database
-UUID printed by the D1 command. Replace `YOUR_BUCKET_NAME` with a unique name of
-3–63 lowercase letters, digits, or hyphens, starting and ending with a letter or digit.
-
-Use a dedicated R2 bucket and keep its **Public Development URL** and **Custom
-Domains** disabled. You will connect the image address during deployment.
-
-### 3. Create a Turnstile widget
-
-Follow [Cloudflare's widget setup](https://developers.cloudflare.com/turnstile/get-started/)
-to create a **Managed** widget. Allow your application hostname, such as
-`app.example.com`, and save the site key and secret key. Use production keys,
-not local test keys.
-
-### 4. Generate and review production configuration
-
-Replace the example addresses and `YOUR_...` values with your own:
-
-```sh
-pnpm configure --application app.example.com --delivery images.example.com --database YOUR_D1_UUID --bucket YOUR_BUCKET_NAME --turnstile YOUR_TURNSTILE_SITE_KEY
-```
-
-This creates three local configuration files:
-
-- `apps/web/production.local.jsonc`
-- `workers/delivery/production.local.jsonc`
-- `workers/maintenance/production.local.jsonc`
-
-Review the addresses, database, and bucket in each file. If files already exist,
-inspect and back them up before retrying. For custom settings or additional
-instances, see the [configuration reference](../reference/configuration.md).
-
-### 5. Build, migrate, and bootstrap
-
-```sh
-pnpm build
-pnpm exec wrangler d1 migrations list DB --remote --config apps/web/production.local.jsonc
-pnpm exec wrangler d1 migrations apply DB --remote --config apps/web/production.local.jsonc
-pnpm bootstrap "Your administrator name" --remote --config apps/web/production.local.jsonc
-```
-
-Confirm that the migration prompt targets your new production database.
-`pnpm db:migrate` is for local development; use the commands above for production.
-
-**Save the administrator key in a password manager.** It is printed once and is
-also your login credential. Run bootstrap only for a new installation; create
-additional accounts in the dashboard.
-
-### 6. Set the secret and deploy
-
-```sh
-pnpm exec wrangler secret put TURNSTILE_SECRET_KEY --config apps/web/production.local.jsonc
-```
-
-Enter the Turnstile secret key at the prompt. Accept the offer to create the
-Worker if prompted.
-
-Check and deploy in this order:
-
-```sh
-pnpm exec wrangler deploy --dry-run --config workers/delivery/production.local.jsonc
-pnpm exec wrangler deploy --dry-run --config workers/maintenance/production.local.jsonc
-pnpm exec wrangler deploy --dry-run --config apps/web/production.local.jsonc
-pnpm exec wrangler deploy --config workers/delivery/production.local.jsonc
-pnpm exec wrangler deploy --config workers/maintenance/production.local.jsonc
-pnpm exec wrangler deploy --config apps/web/production.local.jsonc
-```
-
-Review any address conflicts before accepting changes. Allow time for Cloudflare
-to connect your addresses and enable HTTPS.
-
-### 7. Verify the instance
-
-1. Open `https://app.example.com/login` and confirm login verification works.
-2. Sign in with the administrator key.
-3. Follow [first-run setup](first-run.md) to validate your image address and make
-   it the default.
-4. Follow [ShareX setup](sharex-setup.md), upload a screenshot, and open its image
-   link.
-5. Confirm a scheduled maintenance run using
-   [maintenance and monitoring](../operations/maintenance.md).
-
-For failures, see [troubleshooting](../operations/troubleshooting.md). Set up
-[backups](../operations/backups-and-recovery.md) before relying on the installation.
+`pnpm configure` remains available for configuration management and explicit
+migration/recovery. It does not prove fresh storage creation or initialize
+accounting. Upgrades preserve their database, bucket, readiness, and usage; use
+[updating](../operations/updating.md). Restore database and storage together using
+[backup and recovery](../operations/backups-and-recovery.md), including multipart
+verification where necessary.

@@ -150,6 +150,20 @@ function fixture() {
       },
     ]),
   );
+  const maintenanceNamespace = 'maintenance-namespace';
+  workers.get('hearth-maintenance')!.bindings.push({
+    name: 'MAINTENANCE',
+    type: 'durable_object_namespace',
+    class_name: 'MaintenanceJob',
+    namespace_id: maintenanceNamespace,
+  });
+  workers.get('hearth-web')!.bindings.push({
+    name: 'MAINTENANCE',
+    type: 'durable_object_namespace',
+    class_name: 'MaintenanceJob',
+    namespace_id: maintenanceNamespace,
+    script_name: 'hearth-maintenance',
+  });
   const databases = [{ uuid: databaseId, name: 'hearth-production' }];
   const buckets = [
     { name: 'hearth-production', creation_date: '2026-10-01T00:00:00Z' },
@@ -210,7 +224,28 @@ function fixture() {
     if (init?.method === 'DELETE') {
       deleted.push(resource);
       if (resource.startsWith('/workers/scripts/')) {
-        if (!keepWorker) workers.delete(resource.split('/').at(-1)!);
+        const target = resource.split('/').at(-1)!;
+        if (!keepWorker && target === 'hearth-maintenance') {
+          let referenced = false;
+          for (const worker of workers.values()) {
+            if (
+              worker.id !== target &&
+              worker.bindings.some(
+                (binding) =>
+                  binding.type === 'durable_object_namespace' &&
+                  binding.namespace_id === maintenanceNamespace,
+              )
+            ) {
+              referenced = true;
+              break;
+            }
+          }
+          if (referenced && url.searchParams.get('force') !== 'true')
+            throw new Error(
+              'Maintenance namespace still has external bindings',
+            );
+        }
+        if (!keepWorker) workers.delete(target);
       } else if (resource.startsWith('/d1/database/')) {
         if (failDatabase)
           return Promise.resolve(
@@ -578,6 +613,7 @@ describe('Hearth uninstall', () => {
     { kind: 'widget', proceed: false },
     { kind: 'service', proceed: false },
     { kind: 'service', proceed: true },
+    { kind: 'namespace', proceed: true },
   ])(
     'reviews shared $kind and honors proceed: $proceed',
     async ({ kind, proceed }) => {
@@ -592,7 +628,13 @@ describe('Hearth uninstall', () => {
               ? bindings.find(
                   (binding) => binding.name === 'TURNSTILE_SITE_KEY',
                 )!
-              : { name: 'APP', type: 'service', service: names[0] };
+              : kind === 'namespace'
+                ? {
+                    name: 'JOBS',
+                    type: 'durable_object_namespace',
+                    namespace_id: 'maintenance-namespace',
+                  }
+                : { name: 'APP', type: 'service', service: names[0] };
       remote.workers.set('another-app', {
         id: 'another-app',
         created_on: 'today',
@@ -612,7 +654,7 @@ describe('Hearth uninstall', () => {
         remote.fetch.mock.calls.some(
           ([url]) => typeof url === 'string' && url.includes('force=true'),
         ),
-      ).toBe(proceed && kind === 'service');
+      ).toBe(proceed && ['service', 'namespace'].includes(kind));
     },
   );
 

@@ -29,14 +29,31 @@ import {
   users,
 } from '../../packages/core/schema';
 import { upload } from '../../packages/core/upload';
-import { maintain } from '../../workers/maintenance/src/index';
 import { migrateDatabase } from '../helpers/database';
+import { maintain } from '../helpers/maintenance';
 
 let mf: Miniflare, env: Env, admin: User, member: User;
 const secrets: string[] = ['audit-test-secret', 'audit-test-turnstile'];
 const auditIp = '203.0.113.42';
+const maintenanceStart = vi.fn<(runId: string) => Promise<void>>();
+const maintenanceControl =
+  vi.fn<
+    (
+      paused: boolean,
+      event: Awaited<ReturnType<typeof auditEvent>>,
+    ) => Promise<void>
+  >();
+const maintenanceBinding = vi.fn(() => ({
+  start: maintenanceStart,
+  control: maintenanceControl,
+}));
 beforeEach(async () => {
   secrets.length = 2;
+  maintenanceStart.mockReset().mockResolvedValue(undefined);
+  maintenanceBinding.mockClear();
+  maintenanceControl.mockReset().mockImplementation(async (_paused, event) => {
+    await database(env.DB).insert(auditLog).values(event);
+  });
   mf = new Miniflare(
     convertV4MiniflareOptions({
       cf: false,
@@ -52,6 +69,9 @@ beforeEach(async () => {
   // @ts-expect-error Miniflare R2 proxies use Undici Headers types, but implement the Workers binding at runtime.
   env = {
     ASSETS: { fetch: vi.fn() },
+    MAINTENANCE: {
+      getByName: maintenanceBinding,
+    },
     DB: binding,
     BUCKET: await mf.getR2Bucket('BUCKET'),
     ENVIRONMENT: 'development',
@@ -158,6 +178,57 @@ async function seedImage(owner = member, expiresAt: number | null = null) {
 }
 
 describe('audit safety and historical presentation', () => {
+  it('restricts pause/resume to administrators and presents their captured audit events', async () => {
+    await action('maintenance-pause', {}, member, 'auth.access_denied', 403);
+    await action('maintenance-resume', {}, null, undefined, 401);
+    expect(maintenanceControl).not.toHaveBeenCalled();
+    await action('maintenance-pause', {}, admin, 'maintenance.paused');
+    await action('maintenance-resume', {}, admin, 'maintenance.resumed');
+    expect(maintenanceControl.mock.calls.map(([paused]) => paused)).toEqual([
+      true,
+      false,
+    ]);
+  });
+  it('authorizes maintenance dispatch and retains scan progress when dispatch fails and is retried', async () => {
+    const dispatch = maintenanceStart.mockRejectedValue(
+      new Error('unavailable'),
+    );
+    const binding = maintenanceBinding;
+    await action('reconcile', {}, member, 'auth.access_denied', 403);
+    await action('reconcile', {}, null, undefined, 401);
+    expect(binding).not.toHaveBeenCalled();
+    const failed = await action(
+      'reconcile',
+      {},
+      admin,
+      'storage.reconciliation',
+      503,
+    );
+    const runId = failed.log!.targetId!;
+    expect(dispatch).toHaveBeenCalledWith(runId);
+    expect(
+      await env.DB.prepare('SELECT status FROM reconciliation_runs WHERE id=?')
+        .bind(runId)
+        .first(),
+    ).toEqual({ status: 'failed' });
+    await env.DB.prepare(
+      'UPDATE reconciliation_runs SET cursor=?,objectCount=100 WHERE id=?',
+    )
+      .bind('saved-cursor', runId)
+      .run();
+    dispatch.mockResolvedValue(undefined);
+    await action('reconcile', { id: runId }, admin, 'storage.reconciliation');
+    expect(
+      await env.DB.prepare(
+        'SELECT status,cursor,objectCount FROM reconciliation_runs WHERE id=?',
+      )
+        .bind(runId)
+        .first(),
+    ).toEqual({ status: 'running', cursor: 'saved-cursor', objectCount: 100 });
+    expect(dispatch).toHaveBeenCalledTimes(2);
+    await action('reconcile', {}, admin, undefined, 409);
+    expect(dispatch).toHaveBeenCalledTimes(2);
+  });
   it('authorizes, validates, and transactionally audits global storage limit changes', async () => {
     await action(
       'storage-limit',

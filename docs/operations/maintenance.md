@@ -1,6 +1,6 @@
 # Maintain and monitor Hearth
 
-The maintenance Worker performs scheduled cleanup and storage scans. Deploy it
+The maintenance Worker performs scheduled and on-demand cleanup and storage scans. Deploy it
 alongside web and delivery; a functioning dashboard does not prove cron is running.
 
 ## Automatic work
@@ -8,15 +8,81 @@ alongside web and delivery; a functioning dashboard does not prove cron is runni
 The production configuration uses `*/5 * * * *`, every five minutes in UTC.
 Cloudflare invokes `scheduled()`; no public URL or external cron service is needed.
 
-Each execution removes expired sessions/consumed deletion capabilities, processes
-bounded batches of expired images and failed purges, recovers interrupted storage
-operations, optionally generates previews, records daily logical usage, and advances
-a running storage scan. Backlogs can take several invocations to clear.
+Cron wakes one private, instance-scoped `MaintenanceJob` Durable Object. Only its
+serialized alarm executor performs maintenance. D1 owns scans, cursors, findings,
+accounting and audit records; coordinator storage owns scheduling, retry timing,
+routine checkpoints and pause intent. All scan origins, including recovery
+initialization, are discovered from D1. The previous per-run objects forward old
+jobs to the coordinator. The D1 lease remains during this transition. Its holder
+is the coordinator's stable identity, so that serialized actor can reclaim a lease
+after a failed release; different legacy holders still block execution.
 
-A lease prevents overlapping maintenance. The daily scan starts during the 03:00
-UTC hour if no run has started that UTC day; an outage during that window can miss
-automatic initiation. An administrator can start a scan from Storage. This is not
-continuous reconciliation or automatic domain-health checking.
+Each alarm performs one bounded routine stage or scan slice. Routine stages cycle
+through session/capability cleanup, image expiry, pending purges, interrupted writes,
+optional previews and daily usage snapshots. Backlogs continue promptly across
+alarms; scans and routine stages alternate. A full-maintenance attempt first finishes
+its bounded routine pass, then resumes its scan. `attempt`/`routineDone` in D1
+prevent duplicate requests from starting another associated pass. Daily scans catch
+up after downtime, based on the most recent 03:00 UTC boundary.
+
+**Check storage** starts a full maintenance attempt, including routine cleanup of
+already deleted or expired images before checking files and usage. **Retry check**
+preserves saved cursors and starts an intentional new attempt. Discovered issues
+require a separately confirmed repair/deletion. The job continues after closing the page.
+
+Temporary failures preserve progress and use application-owned exponential backoff
+(from two seconds to one hour). After 24 consecutive slice failures, or a terminal
+schema/constraint error, maintenance exposes an actionable failure. The coordinator
+pre-arms a watchdog alarm before D1 work, retains retry metadata independently of
+D1, and cron repairs missing wakeups. Terminal publication retries until D1 is
+reachable. Operator retry or resume recovers failed work. Successful slices clear
+consecutive executor failures; per-item failures remain visible as deferred backlog.
+
+Failed previews, purges and storage recovery use deterministic persisted eligibility
+with exponential delays from one minute to one day. Eligible later items keep moving.
+Capacity is only released after the existing physical-absence checks succeed.
+
+## Pause, drain, resume and diagnose
+
+In **Administration → Storage → Advanced diagnostics & history**, choose
+**Pause automatic maintenance**. The pause flag commits before waiting for the
+current bounded slice. The page explains when a task is finishing and when no
+maintenance task remains active. Diagnostics expose the corresponding `paused`
+and `drained` states. Pending alarms and cron honor this flag. **Resume maintenance**
+in **Storage health & maintenance** continues saved work. New checks are disabled
+while paused. Control audit intents survive a D1 outage in a small durable outbox.
+
+The health section distinguishes completed storage checks from automatic cleanup,
+incomplete checks, failures, and unresolved issues. Advanced diagnostics show the
+active stage, last progress, last completed routine pass, retry diagnostics and
+backlog counts sampled at routine boundaries. Scan completion is separate from
+preview/purge health. Active work uses existing dashboard polling.
+A stale progress timestamp is a reason to check the private binding and Worker logs.
+Pausing maintenance does **not** stop uploads, external R2 writers, domain validation,
+or all other storage mutations. Coordinate those writers independently for backups.
+
+## Execution budgets
+
+The executor meters at most 40 D1 statements (including batch contents) and 40 R2
+operations per alarm, reserving headroom below D1 Free's 50-query limit (Paid: 1,000).
+Work units are sized before execution; an unexpected operation overrun fails visibly.
+An eight-second elapsed checkpoint target prevents starting additional work after
+slow I/O; individual in-flight binding calls finish before checkpointing. The normal
+DO CPU limit is 30 seconds and alarm wall time is 15 minutes. Operations are serial,
+remaining below the six simultaneous connection limit. Preview input/output remain
+bounded at 20 MiB/5 MiB.
+
+The comparable 100-orphan listing page uses **7 SQL statements**, down from **402**:
+one run lookup and six set-based transactional statements. Page-level JSON joins
+replace per-object image lookups, redundant ledger insert attempts and ledger reads.
+Existing ledger entries are not inserted again. R2 listings retain 100 entries;
+metadata HEAD checks checkpoint up to 20 entries, and account checks page 100 users.
+The listing cursor never advances without its complete page transaction.
+See the statement-count regression in `tests/integration/global-storage.test.ts`.
+
+Platform references: [D1 limits](https://developers.cloudflare.com/d1/platform/limits/),
+[alarm semantics](https://developers.cloudflare.com/durable-objects/api/alarms/),
+[Worker limits](https://developers.cloudflare.com/workers/platform/limits/).
 
 Expiry blocks delivery before physical cleanup. Global capacity remains charged
 until physical absence/cleanup is verified. Existing image reads need not stop when
@@ -28,8 +94,9 @@ an upload, preview, or cleanup operation fails. See [storage management](../guid
    expected cron trigger in Cloudflare.
 2. Inspect scheduled invocations and errors around a five-minute boundary. Trigger
    changes can take up to 15 minutes to propagate.
-3. Start a scan from **Administration → Storage** and refresh after an invocation.
-   Expect its progress to advance, complete, or display a diagnostic failure.
+3. Inspect cron invocations to verify scheduled work independently of manual work.
+   **Check storage** should start immediately and progress automatically. Closing
+   the page must not stop it; reopen Storage to inspect completion or errors.
 4. If safe for your instance, give a disposable image a short expiry. Its link
    should become unavailable at expiry, followed by cleanup and capacity reclamation.
 
@@ -61,7 +128,7 @@ pnpm exec wrangler tail --config workers/maintenance/production.local.jsonc --fo
 | Maintenance | Cron, purges, previews, storage recovery, and scan progress.   |
 
 Relevant structured event names include `upload.cleanup_failed`,
-`maintenance.purge_failed`, `preview.failed`, `delivery.unavailable`, and
+`maintenance.purge_failed`, `maintenance.dispatch_failed`, `maintenance.job_failed`, `preview.failed`, `delivery.unavailable`, and
 `delivery.protection_unavailable`. Correlate timestamps with the user-visible error
 and domain/storage diagnostics. Do not log or publish bodies, Authorization headers,
 cookies, `.sxcu` contents, or deletion tokens.

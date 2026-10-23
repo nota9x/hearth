@@ -203,6 +203,19 @@ async function reviewShared(plan: Plan, current: Inventory, review: Review) {
   const own = new Set(plan.workers.map((worker) => worker.id));
   const widgetIds = new Set(plan.widgets.map((widget) => widget.sitekey));
   const forceWorkers = new Set<string>();
+  const namespaceOwners = new Map<string, string>();
+  for (const name of own) {
+    const bindings = current.settings.get(name)?.bindings ?? [];
+    for (const binding of bindings) {
+      const owner = binding.script_name ?? name;
+      if (
+        binding.type === 'durable_object_namespace' &&
+        binding.namespace_id !== undefined &&
+        own.has(owner)
+      )
+        namespaceOwners.set(String(binding.namespace_id), owner);
+    }
+  }
   for (const [name, settings] of current.settings) {
     if (
       own.has(name) ||
@@ -218,7 +231,9 @@ async function reviewShared(plan: Plan, current: Inventory, review: Review) {
             (binding.type === 'plain_text' &&
               binding.text &&
               widgetIds.has(binding.text)) ||
-            (binding.service && own.has(binding.service))
+            (binding.service && own.has(binding.service)) ||
+            (binding.type === 'durable_object_namespace' &&
+              namespaceOwners.has(String(binding.namespace_id)))
           ),
       )
     ) {
@@ -226,7 +241,7 @@ async function reviewShared(plan: Plan, current: Inventory, review: Review) {
     }
 
     await review(
-      `Worker ${name} uses a selected resource. Removing the selected storage, widget, or service can break that Worker. It will not itself be deleted.`,
+      `Worker ${name} uses a selected resource. Removing the selected storage, widget, service, or Durable Object namespace can break that Worker. It will not itself be deleted.`,
       [
         dashboard(plan.accountId, 'worker', name),
         ...plan.workers.map((worker) =>
@@ -244,9 +259,13 @@ async function reviewShared(plan: Plan, current: Inventory, review: Review) {
       ],
       settings.bindings,
     );
-    for (const binding of settings.bindings)
+    for (const binding of settings.bindings) {
       if (binding.service && own.has(binding.service))
         forceWorkers.add(binding.service);
+      const owner = namespaceOwners.get(String(binding.namespace_id));
+      if (owner && binding.type === 'durable_object_namespace')
+        forceWorkers.add(owner);
+    }
   }
   return forceWorkers;
 }
@@ -1018,7 +1037,12 @@ export async function executePlan(
         `domain:${domain.id}`,
         `${base}/workers/domains/${domain.id}`,
       );
-    for (const worker of plan.workers)
+    const workers = plan.workers.toSorted(
+      (a, b) =>
+        Number(a.id.endsWith('-maintenance')) -
+        Number(b.id.endsWith('-maintenance')),
+    );
+    for (const worker of workers)
       await remove(
         `worker:${worker.id}`,
         `${base}/workers/scripts/${encodeURIComponent(worker.id)}${forceWorkers.has(worker.id) ? '?force=true' : ''}`,
@@ -1161,7 +1185,7 @@ async function runUninstall(
   prompts.note(
     [
       `Account: ${plan.accountId}`,
-      `Workers (including versions, secrets, assets and schedules): ${plan.workers.map((worker) => worker.id).join(', ') || 'none'}`,
+      `Workers (including versions, secrets, assets, schedules and owned Durable Object namespaces): ${plan.workers.map((worker) => worker.id).join(', ') || 'none'}`,
       `Worker Custom Domains: ${plan.domains.map((domain) => domain.hostname).join(', ') || 'none'}`,
       `Worker routes: ${plan.routes.map((route) => route.pattern).join(', ') || 'none'}`,
       `D1 (all data): ${plan.database ? `${plan.database.name} (${plan.database.uuid})` : 'none'}`,

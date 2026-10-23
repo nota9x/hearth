@@ -40,6 +40,8 @@ export const auditActionTitles = {
   'settings.expiry_policy': 'Expiry policy changed',
   'user.expiry_policy': 'User expiry policy changed',
   'storage.reconciliation': 'Storage reconciliation started',
+  'maintenance.paused': 'Maintenance paused',
+  'maintenance.resumed': 'Maintenance resumed',
   'storage.reconciliation_completed': 'Storage reconciliation completed',
   'storage.finding_resolved': 'Storage finding resolved',
   'storage.limit_updated': 'Global storage limit changed',

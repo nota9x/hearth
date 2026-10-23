@@ -9,8 +9,9 @@ import {
   resolvePublicShare,
 } from '../../packages/core/public-share';
 import { observeStoredObject } from '../../packages/core/storage';
-import { maintain } from '../../workers/maintenance/src/index';
+import { runMaintenance } from '../../workers/maintenance/src/maintenance';
 import { migrateDatabase } from '../helpers/database';
+import { maintain } from '../helpers/maintenance';
 
 let runtime: Miniflare;
 let env: Parameters<typeof maintain>[0];
@@ -85,6 +86,9 @@ describe('maintenance recovery and integrity', () => {
     ).toEqual({ persistedBytes: 5, reservedBytes: 0 });
     await env.DB.prepare(
       'UPDATE storage_capacity SET limitBytes=10 WHERE id=1',
+    ).run();
+    await env.DB.prepare(
+      "UPDATE images SET previewRetryAt=0 WHERE id='image'",
     ).run();
     await maintain({ ...env, IMAGES });
     expect(
@@ -202,7 +206,7 @@ describe('maintenance recovery and integrity', () => {
     const DB = {
       ...env.DB,
       prepare(query: string) {
-        if (query.startsWith('delete from "sessions"'))
+        if (query.startsWith('DELETE FROM sessions'))
           throw new Error('D1 unavailable');
         return prepare(query);
       },
@@ -262,4 +266,62 @@ describe('maintenance recovery and integrity', () => {
       ).first(),
     ).toEqual({ status: 'completed' });
   });
+});
+
+it('defers failing previews and purges so later eligible items make progress without releasing failed capacity', async () => {
+  await image('a');
+  await image('b');
+  const IMAGES = {
+    input: () => ({
+      transform: () => ({
+        output: () =>
+          Promise.resolve({ response: () => new Response('small') }),
+      }),
+    }),
+  } as unknown as NonNullable<typeof env.IMAGES>;
+  const BUCKET = new Proxy(env.BUCKET, {
+    get(target, key): unknown {
+      const method: unknown = Reflect.get(target, key);
+      if (typeof method !== 'function') return method;
+      if (key === 'get' || key === 'delete')
+        return (objectKey: string): unknown =>
+          objectKey === 'a'
+            ? Promise.reject(new Error('Persistent R2 failure'))
+            : Reflect.apply(method, target, [objectKey]);
+      return typeof method === 'function'
+        ? (...arguments_: unknown[]): unknown =>
+            Reflect.apply(method, target, arguments_)
+        : method;
+    },
+  });
+  await runMaintenance({ ...env, BUCKET, IMAGES }, 'preview');
+  await runMaintenance({ ...env, BUCKET, IMAGES }, 'preview');
+  expect(
+    await env.DB.prepare(
+      "SELECT previewKey IS NOT NULL AS preview FROM images WHERE id='b'",
+    ).first(),
+  ).toEqual({ preview: 1 });
+  expect(
+    await env.DB.prepare(
+      "SELECT previewFailures,previewRetryAt FROM images WHERE id='a'",
+    ).first(),
+  ).toMatchObject({
+    previewFailures: 1,
+    previewRetryAt: expect.any(Number) as unknown,
+  });
+  await env.DB.prepare('UPDATE images SET deletedAt=1').run();
+  await runMaintenance({ ...env, BUCKET }, 'purge');
+  await runMaintenance({ ...env, BUCKET }, 'purge');
+  expect(
+    await env.DB.prepare(
+      "SELECT purgeFailures,purgedAt FROM images WHERE id='a'",
+    ).first(),
+  ).toEqual({ purgeFailures: 1, purgedAt: null });
+  expect(await env.BUCKET.head('a')).not.toBeNull();
+  expect(await env.BUCKET.head('b')).toBeNull();
+  expect(
+    await env.DB.prepare(
+      'SELECT persistedBytes,reservedBytes FROM storage_capacity',
+    ).first(),
+  ).toEqual({ persistedBytes: 5, reservedBytes: 0 });
 });
