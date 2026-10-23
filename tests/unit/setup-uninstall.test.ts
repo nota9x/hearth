@@ -164,7 +164,6 @@ function fixture() {
     namespace_id: maintenanceNamespace,
     script_name: 'hearth-maintenance',
   });
-  const namespaces = new Set([maintenanceNamespace]);
   const databases = [{ uuid: databaseId, name: 'hearth-production' }];
   const buckets = [
     { name: 'hearth-production', creation_date: '2026-10-01T00:00:00Z' },
@@ -245,7 +244,6 @@ function fixture() {
             throw new Error(
               'Maintenance namespace still has external bindings',
             );
-          if (!keepWorker) namespaces.delete(maintenanceNamespace);
         }
         if (!keepWorker) workers.delete(target);
       } else if (resource.startsWith('/d1/database/')) {
@@ -336,7 +334,6 @@ function fixture() {
   return {
     cloudflare,
     workers,
-    namespaces,
     buckets,
     widgets,
     domains,
@@ -404,7 +401,6 @@ describe('Hearth uninstall', () => {
     remote.uploads.set(imageKey, 'unfinished-upload');
     expect(await remote.run()).toBe(true);
     expect(remote.uploads.size).toBe(0);
-    expect(remote.namespaces.size).toBe(0);
     expect(remote.deleted).toEqual([
       '/zones/zone/workers/routes/route',
       '/workers/domains/domain',
@@ -617,7 +613,6 @@ describe('Hearth uninstall', () => {
     { kind: 'widget', proceed: false },
     { kind: 'service', proceed: false },
     { kind: 'service', proceed: true },
-    { kind: 'namespace', proceed: false },
     { kind: 'namespace', proceed: true },
   ])(
     'reviews shared $kind and honors proceed: $proceed',

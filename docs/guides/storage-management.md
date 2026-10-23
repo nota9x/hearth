@@ -4,6 +4,14 @@ Hearth separates account quotas from an optional global capacity budget. Open
 **Administration → Storage** to inspect usage, reservations, scan progress, and
 issues; configure **Global storage limit** in administrator Settings.
 
+The overview always shows the configured capacity, including **Unlimited** when
+Hearth has no limit. The capacity meter includes both used and reserved space.
+**Images** counts active images and shows their original/preview usage;
+**Stored files** also includes other completed files and files awaiting deletion.
+**Reserved for uploads** holds space for unfinished uploads and recovery.
+**Awaiting deletion** is already included in used or reserved space, not additional
+usage. File types compare active originals; usage by person also includes previews.
+
 ## Understand the numbers
 
 | Measure                | What it counts                                                                                           |
@@ -53,8 +61,10 @@ requires multipart verification and a complete baseline scan.
    Use region `auto`. Do not use your Hearth key or Wrangler token as S3 credentials.
    Follow [R2 authentication](https://developers.cloudflare.com/r2/api/tokens/).
 3. Confirm the selected web production file names the intended bucket and D1.
-   Notify users and stop independent writers. Pause maintenance and verify
-   **drained** before changing recovery state; initialization also pauses reservations.
+   Notify users and stop independent writers. Use **Pause automatic maintenance**
+   in **Advanced diagnostics & history** and verify that no maintenance task is
+   running (`drained` in diagnostics) before changing recovery state;
+   initialization also pauses reservations.
 4. Run from the repository root, replacing the account ID with your R2 endpoint's
    account ID. Use the jurisdiction-specific endpoint if your bucket requires it:
 
@@ -98,11 +108,21 @@ backup maintenance window; these do not stop every writer.
 ## Review scans and issues
 
 Storage scans compare R2 objects, image records, and accounting. Administrators can
-start a scan or retry a failed one. **Scan storage** starts one full maintenance
+start a scan or retry a failed one. **Check storage** starts one full maintenance
 pass immediately, including cleanup of expired/deleted images, then finishes the
 scan in background pages without waiting for cron. Closing the page does not stop
 it. Retries retain saved progress. Observed scan totals are not the live capacity
-ledger. Only one scan runs at a time.
+ledger. Only one scan runs at a time. **Retry check** continues saved progress.
+Resume paused maintenance before starting or continuing a check.
+
+**Storage health & maintenance** shows the last completed storage check separately
+from the last automatic cleanup. Expand this section to review status and actions;
+a dot marks conditions that need attention even while it is collapsed.
+No completed check means storage has not been
+checked yet; incomplete or failed checks do not establish that storage is healthy.
+**Needs attention** appears when unresolved issues exist. Technical errors, scan
+observations, maintenance controls, and usage history remain available in
+**Advanced diagnostics & history**.
 
 Read each **Needs attention** issue before resolving it:
 

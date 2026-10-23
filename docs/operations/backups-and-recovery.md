@@ -26,8 +26,9 @@ before changing them. Account suspension and a low global cap do not stop every
 writer or create a consistent backup.
 
 1. Notify users and stop independent S3/dashboard/Worker jobs touching the bucket.
-2. Open **Administration → Storage**, choose **Pause and drain**, and verify
-   **drained** before disconnecting administrator access. This acknowledges that
+2. Open **Administration → Storage → Advanced diagnostics & history**, choose
+   **Pause automatic maintenance**, and verify **drained** in diagnostics before
+   disconnecting administrator access. This acknowledges that
    the active bounded slice has checkpointed and no maintenance slice remains
    active. A recorded pause alone is not a completed drain. Cron and pending
    Durable Object alarms honor the durable pause without changing triggers.

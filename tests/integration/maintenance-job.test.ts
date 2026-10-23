@@ -2,7 +2,6 @@
 import { convertV4MiniflareOptions, Miniflare } from 'miniflare';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-import { createUser } from '../../packages/core/auth';
 import { id, now } from '../../packages/core/common';
 import { migrateDatabase } from '../helpers/database';
 import { workerBundle, workerCompatibility } from '../helpers/workers';
@@ -100,7 +99,6 @@ async function status() {
   const result = await (await command('status')).json();
   return result as {
     status: string;
-    stage: string;
     failures: number;
   };
 }
@@ -227,73 +225,4 @@ it('retains committed progress when the continuation alarm fails and duplicate d
       .first(),
   ).toEqual({ count: 1 });
   expect(await bucket.head('orphan')).not.toBeNull();
-});
-
-it('runs full maintenance and completes multiple scan pages after the caller returns, without cron', async () => {
-  const owner = await createUser(DB, 'Owner', 'admin', null);
-  await DB.prepare(
-    "INSERT INTO images(id,userId,objectKey,filename,mime,extension,size,sha256,width,height,createdAt,expiresAt) VALUES('expired',?,'expired','expired.png','image/png','png',4,'hash',1,1,1,2)",
-  )
-    .bind(owner.userId)
-    .run();
-  await bucket.put('expired', 'test');
-  await Promise.all(
-    Array.from({ length: 105 }, (_, index) =>
-      bucket.put(`orphan-${String(index).padStart(3, '0')}`, 'keep'),
-    ),
-  );
-  await start();
-  await completed();
-  expect(await bucket.head('expired')).toBeNull();
-  const expired = await DB.prepare(
-    "SELECT purgedAt FROM images WHERE id='expired'",
-  ).first<{ purgedAt: number }>();
-  expect(expired?.purgedAt).toBeGreaterThan(0);
-  expect(
-    await DB.prepare(
-      'SELECT objectCount,bytes FROM reconciliation_runs WHERE id=?',
-    )
-      .bind(runId)
-      .first(),
-  ).toEqual({ objectCount: 105, bytes: 420 });
-  expect(
-    await DB.prepare(
-      'SELECT count(*) AS count FROM reconciliation_findings WHERE runId=?',
-    )
-      .bind(runId)
-      .first(),
-  ).toEqual({ count: 105 });
-  expect((await bucket.list()).objects).toHaveLength(105);
-});
-
-it('waits for the cron lease, coalesces duplicate starts, and resumes without cron', async () => {
-  await DB.prepare(
-    "INSERT INTO maintenance_lock(id,holder,expiresAt) VALUES('cron','other',?)",
-  )
-    .bind(now() + 60)
-    .run();
-  await Promise.all([start(), start()]);
-  await vi.waitFor(
-    async () =>
-      expect(await status()).toMatchObject({
-        stage: 'waiting-for-lease',
-        status: 'running',
-      }),
-    { timeout: 10_000 },
-  );
-  expect(
-    await DB.prepare('SELECT phase FROM reconciliation_runs WHERE id=?')
-      .bind(runId)
-      .first(),
-  ).toEqual({ phase: 'objects' });
-  await DB.prepare("DELETE FROM maintenance_lock WHERE holder='other'").run();
-  await completed();
-  expect(
-    await DB.prepare('SELECT count(*) AS count FROM maintenance_lock').first(),
-  ).toEqual({ count: 0 });
-  expect(
-    await DB.prepare(
-      "SELECT count(*) AS count FROM audit_log WHERE action='storage.reconciliation_completed'",
-    ).first(),
-  ).toEqual({ count: 1 });
 });

@@ -25,9 +25,10 @@ its bounded routine pass, then resumes its scan. `attempt`/`routineDone` in D1
 prevent duplicate requests from starting another associated pass. Daily scans catch
 up after downtime, based on the most recent 03:00 UTC boundary.
 
-**Scan storage** starts a full maintenance attempt. **Retry scan** preserves saved
-cursors and starts an intentional new attempt. Findings remain informational until
-a separately authorized repair/deletion. The job continues after closing the page.
+**Check storage** starts a full maintenance attempt, including routine cleanup of
+already deleted or expired images before checking files and usage. **Retry check**
+preserves saved cursors and starts an intentional new attempt. Discovered issues
+require a separately confirmed repair/deletion. The job continues after closing the page.
 
 Temporary failures preserve progress and use application-owned exponential backoff
 (from two seconds to one hour). After 24 consecutive slice failures, or a terminal
@@ -43,15 +44,19 @@ Capacity is only released after the existing physical-absence checks succeed.
 
 ## Pause, drain, resume and diagnose
 
-In **Administration → Storage**, choose **Pause and drain**. The pause flag commits
-before waiting for the current bounded slice. A recorded pause is displayed as
-`paused` while a slice finishes; **drained** means there is no active maintenance
-slice. Pending alarms and cron honor this flag. **Resume maintenance** continues
-saved work. Control audit intents survive a D1 outage in a small durable outbox.
+In **Administration → Storage → Advanced diagnostics & history**, choose
+**Pause automatic maintenance**. The pause flag commits before waiting for the
+current bounded slice. The page explains when a task is finishing and when no
+maintenance task remains active. Diagnostics expose the corresponding `paused`
+and `drained` states. Pending alarms and cron honor this flag. **Resume maintenance**
+in **Storage health & maintenance** continues saved work. New checks are disabled
+while paused. Control audit intents survive a D1 outage in a small durable outbox.
 
-The panel shows the active stage, last progress, last completed routine pass,
-retry diagnostics and backlog counts sampled at routine boundaries. Scan completion
-is separate from preview/purge health. Active work uses existing dashboard polling.
+The health section distinguishes completed storage checks from automatic cleanup,
+incomplete checks, failures, and unresolved issues. Advanced diagnostics show the
+active stage, last progress, last completed routine pass, retry diagnostics and
+backlog counts sampled at routine boundaries. Scan completion is separate from
+preview/purge health. Active work uses existing dashboard polling.
 A stale progress timestamp is a reason to check the private binding and Worker logs.
 Pausing maintenance does **not** stop uploads, external R2 writers, domain validation,
 or all other storage mutations. Coordinate those writers independently for backups.
@@ -90,7 +95,7 @@ an upload, preview, or cleanup operation fails. See [storage management](../guid
 2. Inspect scheduled invocations and errors around a five-minute boundary. Trigger
    changes can take up to 15 minutes to propagate.
 3. Inspect cron invocations to verify scheduled work independently of manual work.
-   **Scan storage** should start immediately and progress automatically. Closing
+   **Check storage** should start immediately and progress automatically. Closing
    the page must not stop it; reopen Storage to inspect completion or errors.
 4. If safe for your instance, give a disposable image a short expiry. Its link
    should become unavailable at expiry, followed by cleanup and capacity reclamation.

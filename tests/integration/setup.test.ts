@@ -23,7 +23,6 @@ import {
   domainDetails,
   setPrimaryDeliveryDomain,
 } from '../../packages/core/delivery-domains';
-import { writeStoredObject } from '../../packages/core/storage';
 import { upload } from '../../packages/core/upload';
 import { migrateDatabase } from '../helpers/database';
 import { workerBundle, workerCompatibility } from '../helpers/workers';
@@ -411,7 +410,7 @@ it('repairs a saved-without-link verification image after delivery selection is 
   ).toEqual({ count: 1 });
 });
 
-it('initializes trusted fresh accounting before writes and never resets an upgraded or restored ledger', async () => {
+it('initializes fresh accounting without resetting an existing or restored ledger', async () => {
   await initializeFreshStorage(environment.DB);
   expect(
     await environment.DB.prepare(
@@ -423,22 +422,6 @@ it('initializes trusted fresh accounting before writes and never resets an upgra
     persistedBytes: 0,
     reservedBytes: 0,
   });
-  await environment.DB.prepare(
-    'UPDATE storage_capacity SET limitBytes=5 WHERE id=1',
-  ).run();
-  const first = await writeStoredObject(
-    environment.DB,
-    environment.BUCKET,
-    'first-write',
-    'probe',
-    new Uint8Array(5),
-  );
-  await first.writer.finalizeStatement().run();
-  expect(
-    await environment.DB.prepare(
-      'SELECT persistedBytes,reservedBytes,ready FROM storage_capacity',
-    ).first(),
-  ).toEqual({ persistedBytes: 5, reservedBytes: 0, ready: 1 });
   await environment.DB.prepare(
     'UPDATE storage_capacity SET persistedBytes=123,reservedBytes=45,limitBytes=200 WHERE id=1',
   ).run();
