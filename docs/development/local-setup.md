@@ -25,9 +25,10 @@ all local accounts, image records, and settings, reapplies migrations, and creat
 the new administrator. Local R2 files are kept. Remote bootstrap never offers a
 purge; non-interactive commands require a name and never reset existing data.
 
-Open `http://127.0.0.1:5173` and sign in. In **Administration → Domains**, add
-`127.0.0.1:8788` or `shots.localhost`, validate, and set the instance default. Upload an image and
-open its port-8788 URL. Without usable delivery, images save privately.
+Open `http://127.0.0.1:5173` and sign in. Local bootstrap configures
+`127.0.0.1` as the default delivery domain when no domains exist. Upload an image
+and open its `http://127.0.0.1:8788/<slug>` URL; share URLs follow the configured
+delivery port.
 
 The local configuration includes a Turnstile test site key; development falls back
 to the matching test secret. Siteverify still needs network access. Optional local
