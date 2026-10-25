@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
-import { auditChanges } from '../packages/core/audit';
+import { auditChanges, auditEvent } from '../packages/core/audit';
 import { id, now } from '../packages/core/common';
 import { newKey } from '../packages/core/crypto';
+import { database } from '../packages/core/db';
 
 const quote = (value: string) => `'${value.replaceAll("'", "''")}'`;
 
@@ -33,12 +34,51 @@ export async function bootstrapLocalAdministrator(
   candidate: Awaited<ReturnType<typeof prepareBootstrap>>,
 ) {
   const objects = await environment.BUCKET.list({ limit: 1 });
-  await environment.DB.batch(
+  const domainId = id('dom');
+  const timestamp = now();
+  const events = await Promise.all(
     [
-      ...candidate.statements,
-      ...(objects.objects.length === 0 ? [initializeFreshStorageSql] : []),
-    ].map((sql) => environment.DB.prepare(sql)),
+      {
+        action: 'domain.created',
+        after: {
+          hostname: '127.0.0.1',
+          enabled: true,
+          health: 'active',
+          accessMode: 'everyone',
+        },
+      },
+      { action: 'domain.primary', after: { isPrimary: true } },
+    ].map((event) =>
+      auditEvent(database(environment.DB), null, event.action, domainId, {
+        name: '127.0.0.1',
+        before: {},
+        after: event.after,
+      }),
+    ),
   );
+  await environment.DB.batch([
+    ...candidate.statements.map((sql) => environment.DB.prepare(sql)),
+    ...(objects.objects.length === 0
+      ? [environment.DB.prepare(initializeFreshStorageSql)]
+      : []),
+    environment.DB.prepare(
+      `INSERT INTO delivery_domains(id,hostname,enabled,health,accessMode,isPrimary,createdAt,updatedAt)
+         SELECT ?,'127.0.0.1',1,'active','everyone',1,?,? WHERE NOT EXISTS(SELECT 1 FROM delivery_domains)`,
+    ).bind(domainId, timestamp, timestamp),
+    ...events.map((event) =>
+      environment.DB.prepare(
+        'INSERT INTO audit_log(id,actorId,action,targetId,metadata,createdAt) SELECT ?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM delivery_domains WHERE id=?)',
+      ).bind(
+        event.id,
+        event.actorId,
+        event.action,
+        event.targetId,
+        event.metadata,
+        event.createdAt,
+        domainId,
+      ),
+    ),
+  ]);
 }
 
 export async function prepareBootstrap(name: string, userId = id('usr')) {
