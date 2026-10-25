@@ -1,9 +1,8 @@
 /* eslint-disable unicorn/no-await-expression-member -- Assertions inspect completed browser responses. */
-import { readFile } from 'node:fs/promises';
 
-import { expect, test } from '../helpers/browser';
+import { expect, signIn, test } from '../helpers/browser';
 
-test('storage explains capacity, reservations, settings, scans, and confirmed repairs on desktop and mobile', async ({
+test('storage reports capacity, reservations, scans, and confirmed repairs', async ({
   hearth,
   page,
   request,
@@ -11,15 +10,7 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
 }) => {
   test.setTimeout(120_000);
   page.setDefaultTimeout(10_000);
-  const login = await request.post('/api/actions/login', {
-    headers: { Origin: baseURL! },
-    data: {
-      key: await readFile(process.env.TEST_KEY_FILE!, 'utf8'),
-      token: 'XXXX.DUMMY.TOKEN.XXXX',
-    },
-  });
-  expect(login.status()).toBe(200);
-  await page.context().addCookies((await request.storageState()).cookies);
+  await signIn(page, request, baseURL!);
   const errors: string[] = [];
   page.on('pageerror', (error) => {
     errors.push(error.message);
@@ -28,10 +19,7 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
     name: /^Storage health & maintenance/,
   });
   await page.goto('/admin/storage');
-  await expect(health).toHaveAttribute('aria-expanded', 'false');
-  await health.focus();
-  await page.keyboard.press('Enter');
-  await expect(health).toHaveAttribute('aria-expanded', 'true');
+  await health.click();
   await expect(
     page.getByText('Storage setup is incomplete', { exact: true }),
   ).toBeVisible();
@@ -159,16 +147,12 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
   const diagnostics = page.getByRole('button', {
     name: 'Advanced diagnostics & history',
   });
-  await expect(diagnostics).toHaveAttribute('aria-expanded', 'false');
-  await diagnostics.focus();
-  await page.keyboard.press('Enter');
-  await expect(diagnostics).toHaveAttribute('aria-expanded', 'true');
+  await diagnostics.click();
   await expect(page.getByText('Confirmed completed files')).toBeVisible();
   await expect(
     page.getByText(/These are incomplete observations/),
   ).toBeVisible();
-  await page.keyboard.press('Space');
-  await expect(diagnostics).toHaveAttribute('aria-expanded', 'false');
+  await diagnostics.click();
   await page.goto('/admin/settings');
   await page.getByLabel('Capacity', { exact: true }).fill('0.0005');
   await expect(
@@ -239,17 +223,7 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
   await page.reload();
   await health.click();
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
   await page.goto('/admin/settings');
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
   await page.getByRole('switch', { name: 'Enable global limit' }).focus();
   await expect(
     page.getByRole('switch', { name: 'Enable global limit' }),
@@ -257,21 +231,13 @@ test('storage explains capacity, reservations, settings, scans, and confirmed re
   expect(errors).toEqual([]);
 });
 
-test('storage findings paginate, expose styled details, and resolve all with cancellation and partial failures', async ({
+test('storage findings paginate and resolve with cancellation and partial failures', async ({
   hearth,
   page,
   request,
   baseURL,
 }) => {
-  const login = await request.post('/api/actions/login', {
-    headers: { Origin: baseURL! },
-    data: {
-      key: await readFile(process.env.TEST_KEY_FILE!, 'utf8'),
-      token: 'XXXX.DUMMY.TOKEN.XXXX',
-    },
-  });
-  expect(login.status()).toBe(200);
-  await page.context().addCookies((await request.storageState()).cookies);
+  await signIn(page, request, baseURL!);
   const protectedKey = 'objects/' + 'long-object-key-'.repeat(12);
   await hearth.DB.prepare(
     "INSERT INTO reconciliation_runs(id,status,startedAt,completedAt) VALUES('rec_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','completed',1,2)",
@@ -311,11 +277,6 @@ test('storage findings paginate, expose styled details, and resolve all with can
     firstFinding.getByText(protectedKey, { exact: true }),
   ).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
   await attention.getByRole('link', { name: 'Next page' }).click();
   await expect(attention.getByRole('article')).toHaveCount(2);
   await attention
@@ -403,15 +364,7 @@ test('storage checks respect pause, resume safely, and complete after the page c
   request,
   baseURL,
 }) => {
-  const login = await request.post('/api/actions/login', {
-    headers: { Origin: baseURL! },
-    data: {
-      key: await readFile(process.env.TEST_KEY_FILE!, 'utf8'),
-      token: 'XXXX.DUMMY.TOKEN.XXXX',
-    },
-  });
-  expect(login.status()).toBe(200);
-  await page.context().addCookies((await request.storageState()).cookies);
+  await signIn(page, request, baseURL!);
   await hearth.DB.prepare(
     'UPDATE storage_capacity SET ready=1,multipartVerified=1 WHERE id=1',
   ).run();

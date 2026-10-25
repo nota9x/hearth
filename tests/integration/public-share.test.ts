@@ -4,7 +4,6 @@ import { convertV4MiniflareOptions, Miniflare } from 'miniflare';
 import ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { SHARE_PROTECTION_CACHE } from '../../packages/core/share-protection';
 import { migrateDatabase } from '../helpers/database';
 import { workerBundle, workerCompatibility } from '../helpers/workers';
 
@@ -175,9 +174,13 @@ describe('public share delivery with real native bindings, D1 and R2', () => {
           },
           representation === 'html' ? '203.0.113.11' : productionIp,
         );
+      const original = await lookup();
+      expect(original.status).toBe(200);
+      const etag = original.headers.get('ETag')!;
+      await original.arrayBuffer();
       const variants = [
-        ['GET', '/aB3xQ', { 'If-None-Match': '"anything"' }],
-        ['HEAD', '/aB3xQ', { 'If-None-Match': '"anything"' }],
+        ['GET', '/aB3xQ', { 'If-None-Match': etag }],
+        ['HEAD', '/aB3xQ', { 'If-None-Match': etag }],
         ['GET', '/aB3xQ', { Range: 'bytes=1-3' }],
         ['GET', '/aB3xQ?download', { 'If-Match': '"anything"' }],
       ] as const;
@@ -273,94 +276,82 @@ describe('public share delivery with real native bindings, D1 and R2', () => {
   });
 
   it('uses the configured native budget and prevents method, host and forwarding-header bypass', async () => {
-    // Miniflare uses wall-clock windows. Retry only a 404 explained by rollover,
-    // with a fresh identity so partial budgets and cooldowns cannot leak between attempts.
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const actor = `198.51.100.${20 + attempt}`;
-      const epoch = Math.floor(Date.now() / (failureBudget.period * 1000));
-      const original = await get('/aB3xQ', {}, actor);
-      const etag = original.headers.get('ETag')!;
-      const variants: Pick<RequestInit, 'method' | 'headers'>[] = [
-        { method: 'HEAD' },
-        { headers: { 'If-None-Match': etag } },
-        { headers: { Range: 'bytes=1-3' } },
-        { headers: { 'If-Match': '"wrong"' } },
-      ];
-      for (let index = 0; index < failureBudget.limit; index++) {
-        const response = await get(
-          index % 2
-            ? '/guess?download'
-            : 'https://other.example.com/guess?preview',
-          { method: index % 3 ? 'GET' : 'HEAD' },
-          actor,
-        );
-        expect(response.status).toBe(404);
-        const refreshes = index === 5 || index === 40 ? 20 : 0;
-        for (let refresh = 0; refresh < refreshes; refresh++) {
-          const variant = refresh % 4;
-          const options = variants[variant];
-          await expect(
-            get('/aB3xQ?download', options, actor),
-          ).resolves.toHaveProperty('status', [200, 304, 206, 412][variant]);
-        }
+    const actor = '198.51.100.20';
+    const original = await get('/aB3xQ', {}, actor);
+    const etag = original.headers.get('ETag')!;
+    const variants: Pick<RequestInit, 'method' | 'headers'>[] = [
+      { method: 'HEAD' },
+      { headers: { 'If-None-Match': etag } },
+      { headers: { Range: 'bytes=1-3' } },
+      { headers: { 'If-Match': '"wrong"' } },
+    ];
+    for (const [index, options] of variants.entries())
+      await expect(
+        get('/aB3xQ?download', options, actor),
+      ).resolves.toHaveProperty('status', [200, 304, 206, 412][index]);
+    // The native budget may cross one minute boundary during this bounded run.
+    // Controlled-clock unit tests cover exact exhaustion, expiry, and cache eviction.
+    const window = () => Math.floor(Date.now() / (failureBudget.period * 1000));
+    const firstWindow = window();
+    let exhausted = false;
+    let guesses = 0;
+    for (let index = 0; index <= failureBudget.limit * 2; index++) {
+      guesses++;
+      const response = await get(
+        index % 2
+          ? '/guess?download'
+          : 'https://other.example.com/guess?preview',
+        { method: index % 3 ? 'GET' : 'HEAD' },
+        actor,
+      );
+      if (response.status === 429) {
+        exhausted = true;
+        break;
       }
-      const exhausted = await get('/guess', {}, actor);
-      if (
-        exhausted.status === 404 &&
-        Math.floor(Date.now() / (failureBudget.period * 1000)) !== epoch
-      )
-        continue;
-      expect(exhausted.status).toBe(429);
-      for (const path of [
-        '/aB3xQ',
-        '/guess',
-        'https://other.example.com/aB3xQ',
-        '/s/aB3xQ',
-        '/aB3xQ?download',
-      ]) {
-        const response = await get(
-          path,
-          {
-            headers: {
-              'X-Forwarded-For': '192.0.2.1',
-              'X-Real-IP': '192.0.2.2',
-              'Cache-Control': 'no-cache',
-            },
-          },
-          actor,
-        );
-        expect(response.status).toBe(429);
-        expect(response.headers.get('Retry-After')).toBe('60');
-        expect(response.headers.get('Cache-Control')).toBe('private, no-store');
-      }
-      const head = await get('/aB3xQ', { method: 'HEAD' }, actor);
-      expect(head.status).toBe(429);
-      expect(await head.text()).toBe('');
-      await expect(get('/aB3xQ', {}, '198.51.100.30')).resolves.toHaveProperty(
-        'status',
-        200,
-      );
-      await expect(get('/guess', {}, '198.51.100.30')).resolves.toHaveProperty(
-        'status',
-        404,
-      );
-      // Eviction restores cooldown only while the native window is still exhausted.
-      await mf.purgeCache(SHARE_PROTECTION_CACHE);
-      const evicted = await get('/guess', {}, actor);
-      if (
-        evicted.status === 404 &&
-        Math.floor(Date.now() / (failureBudget.period * 1000)) !== epoch
-      )
-        continue;
-      expect(evicted.status).toBe(429);
-      await expect(get('/aB3xQ', {}, actor)).resolves.toHaveProperty(
-        'status',
-        429,
-      );
-      return;
+      expect(response.status).toBe(404);
     }
-    throw new Error(
-      'Native rate-limit window rolled over during all three attempts',
+    expect(
+      exhausted,
+      'The configured native failure budget must reject guesses',
+    ).toBe(true);
+    expect(guesses).toBeGreaterThan(failureBudget.limit);
+    expect(guesses).toBeLessThanOrEqual(
+      (window() === firstWindow
+        ? failureBudget.limit
+        : failureBudget.limit * 2) + 1,
+    );
+    for (const path of [
+      '/aB3xQ',
+      '/guess',
+      'https://other.example.com/aB3xQ',
+      '/s/aB3xQ',
+      '/aB3xQ?download',
+    ]) {
+      const response = await get(
+        path,
+        {
+          headers: {
+            'X-Forwarded-For': '192.0.2.1',
+            'X-Real-IP': '192.0.2.2',
+            'Cache-Control': 'no-cache',
+          },
+        },
+        actor,
+      );
+      expect(response.status).toBe(429);
+      expect(response.headers.get('Retry-After')).toBe('60');
+      expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+    }
+    const head = await get('/aB3xQ', { method: 'HEAD' }, actor);
+    expect(head.status).toBe(429);
+    expect(await head.text()).toBe('');
+    await expect(get('/aB3xQ', {}, '198.51.100.30')).resolves.toHaveProperty(
+      'status',
+      200,
+    );
+    await expect(get('/guess', {}, '198.51.100.30')).resolves.toHaveProperty(
+      'status',
+      404,
     );
   });
 });

@@ -39,6 +39,23 @@ const webTests = 'tests/integration/security-web.test.ts';
 const shareTests = 'tests/integration/public-share.test.ts';
 const mutations = [
   {
+    id: 'upload-retry-identity',
+    file: 'apps/web/src/lib/uploads.ts',
+    before: '        item.id,',
+    after:
+      "        crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', ''),",
+    tests: ['tests/unit/upload-progress.test.ts'],
+    pattern: 'retries with the same key|retries the same operation',
+  },
+  {
+    id: 'storage-initialize-verification',
+    file: 'cli/commands/storage-initialize.ts',
+    before: 'if (parts !== null)',
+    after: 'if (false)',
+    tests: ['tests/integration/storage-initialize.test.ts'],
+    pattern: 'keeps admission paused',
+  },
+  {
     id: 'key-verifier',
     file: auth,
     before: '!row || !valid ||',
@@ -133,8 +150,9 @@ const mutations = [
   {
     id: 'bearer-conflicting-browser-identity',
     file: bearer,
-    before: 'upload(request, authenticated.user, locals.env)',
-    after: 'upload(request, locals.user || authenticated.user, locals.env)',
+    before: "upload(request, authenticated.user, locals.env, 'bearer')",
+    after:
+      "upload(request, locals.user || authenticated.user, locals.env, 'bearer')",
     tests: [authTests],
     pattern: 'uses the bearer owner rather than a conflicting browser identity',
   },
@@ -189,16 +207,16 @@ const mutations = [
   {
     id: 'upload-rollback',
     file: 'packages/core/upload.ts',
-    before: 'if (!referenced) await environment.BUCKET.delete(objectKey);',
-    after: 'if (false) await environment.BUCKET.delete(objectKey);',
+    before: '      await writer.cleanup();',
+    after: '      void writer;',
     tests: ['tests/integration/upload.test.ts'],
     pattern: 'protects D1 writes when failure occurs after commit=false',
   },
   {
     id: 'maintenance-purge-retry',
-    file: 'workers/maintenance/src/index.ts',
-    before: 'and(isNotNull(images.deletedAt), isNull(images.purgedAt))',
-    after: 'and(isNotNull(images.deletedAt), isNotNull(images.purgedAt))',
+    file: 'workers/maintenance/src/maintenance.ts',
+    before: '          isNull(images.purgedAt),',
+    after: '          isNotNull(images.purgedAt),',
     tests: ['tests/integration/maintenance.test.ts'],
     pattern: 'keeps failed purges unavailable',
   },

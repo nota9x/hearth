@@ -34,8 +34,8 @@ manifests. Use Node 24 (CI) and the pnpm version pinned in `package.json`; depen
 - CI baseline: `pnpm verify` = formatting, lint, types, unit/integration tests,
   web build. `.github/workflows/ci.yml` distributes these across quality/unit,
   two integration shards, and two browser shards; `validate` requires all to pass.
-  Browser shards build web; both test harnesses bundle delivery. Quality also
-  checks the maintenance bundle. See `docs/development/releasing.md#continuous-integration`.
+  Browser shards build web; both test harnesses bundle delivery. Browser setup
+  also bundles and runs maintenance. See `docs/development/releasing.md#continuous-integration`.
 - Schema generation: `pnpm db:generate`; apply local SQL: `pnpm db:migrate`.
 - Worker bundle checks: `pnpm exec wrangler deploy --dry-run --config workers/delivery/wrangler.jsonc`
   and `pnpm exec wrangler deploy --dry-run --config workers/maintenance/wrangler.jsonc`.
@@ -114,6 +114,9 @@ manifests. Use Node 24 (CI) and the pnpm version pinned in `package.json`; depen
   regressions, edge cases, and critical functionality; avoid redundant, brittle,
   or implementation-specific tests and disproportionate coverage for trivial
   changes or one-off fixes.
+  Extend an existing scenario when it protects the same rule. Test count and raw
+  coverage percentages are not targets; see `docs/development/testing.md` for
+  test levels, fixtures, and controlled regression checks.
 - Docs-only: formatting and referenced paths/commands. Code: start with the affected
   `tests/unit` or `tests/integration`, then applicable lint/types. Broaden to `pnpm verify` for shared
   behavior, schema, toolchain, cross-Worker changes, or unresolved failures.

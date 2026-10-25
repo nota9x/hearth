@@ -4,6 +4,9 @@ Start with the changed behavior's tests, then run the repository checks. A test
 belongs in the suite when it detects a realistic regression that matters to users,
 authorization, persistence, or a supported HTTP contract. Before adding one, check
 whether an existing scenario already detects that failure.
+Extend that scenario when the new case exercises the same rule; add a separate
+test when it has a different failure or recovery obligation. Test count and raw
+coverage percentages measure neither regression detection nor test quality.
 
 ## Local feedback
 
@@ -20,12 +23,18 @@ unit project. It does not bundle Workers or start D1/R2 except for explicitly
 tested native development processes. Integration cases use fresh Miniflare
 instances, the real migration chain, and disposable D1/R2. Keep mutation isolation;
 do not share a writable database between cases to make a run faster.
+Vitest's shared cleanup restores spies, globals, environment stubs, and timers.
+Keep local teardown only for resources the test owns, such as runtimes or stores.
 
 Use browser tests for interaction, navigation, download gestures, browser image
 decoding, and the assembled web/delivery Workers. Build first when running browser
 tests directly. Do not rebuild while a browser fixture holds adapter output open
 on Windows. CI runs both Vitest projects and the browser suite; there is no hidden
 slow tier or reduced CI selection.
+Use `signIn` for browser setup and `hearth.DB` for fixture writes. Exercise sign-in
+and domain forms in their own journeys; unrelated tests should not repeat them.
+Fixture disposal removes browser data, so teardown need not delete accounts or
+reset settings through the application.
 
 ## Choosing coverage
 
@@ -41,6 +50,10 @@ that failed before completion, a completed object with an uncertain D1 commit, a
 reservation held by a paused writer, and an unverified physical deletion cannot
 share one generic failure test. Assert persisted state and accessible bytes, not
 only a thrown error.
+Inject failures at storage boundaries or with real D1 constraints. Do not select
+an upload transaction by its number of SQL statements. Check retained bytes,
+accounting, receipts, and audits after failures, and compare retry identities
+with the original request for the same file.
 
 Avoid repeating ordinary upload, settings, search, and deletion workflows at all
 three levels. Metadata unit tests protect each container's lossless privacy rules;

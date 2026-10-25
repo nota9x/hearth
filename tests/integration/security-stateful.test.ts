@@ -89,10 +89,6 @@ beforeEach(async () => {
   });
 });
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 afterEach(async () => {
   await mf?.dispose();
 });

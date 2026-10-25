@@ -82,18 +82,18 @@ and [GitHub immutable releases](https://docs.github.com/en/code-security/concept
 `Validate` runs on every pull request and push to `main`, without path exclusions.
 Five work jobs start independently:
 
-| Job                    | Validation                                                                   |
-| ---------------------- | ---------------------------------------------------------------------------- |
-| Quality and unit tests | Formatting, lint, web/root types, all unit tests, maintenance Worker dry run |
-| Integration (1/2, 2/2) | All integration tests, divided by Vitest's native file sharding              |
-| Browser (1/2, 2/2)     | Web build and all browser tests, divided by Playwright's native sharding     |
+| Job                    | Validation                                                               |
+| ---------------------- | ------------------------------------------------------------------------ |
+| Quality and unit tests | Formatting, lint, web/root types, all unit tests                         |
+| Integration (1/2, 2/2) | All integration tests, divided by Vitest's native file sharding          |
+| Browser (1/2, 2/2)     | Web build and all browser tests, divided by Playwright's native sharding |
 
 Vitest retains two workers per runner; Playwright retains one. Browser jobs use
 `--fully-parallel` to distribute individual tests across shards, while each test
 still receives fresh isolated D1/R2 and synthetic credentials. Each browser job
-builds web locally, then its global setup bundles web and delivery with Wrangler.
+builds web locally, then its global setup bundles web, delivery, and maintenance with Wrangler.
 Integration global setup also bundles delivery and its upload fixture. These
-cover the delivery dry run; maintenance has a separate dry run in the quality job.
+cover the Worker dry runs; the browser fixture also runs the maintenance Worker.
 Each integration runner runs `svelte-kit sync` before Vitest: tests import web
 routes whose TypeScript configuration extends the generated `$app/tsconfig`.
 Generated configuration is local to each runner; it cannot come from another job.

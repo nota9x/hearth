@@ -302,19 +302,29 @@ function gate(target: number) {
   };
 }
 function gatedEnvironment(barrier: ReturnType<typeof gate>) {
-  const DB = env.DB;
+  const bucket = env.BUCKET;
   return {
     ...env,
-    DB: {
-      prepare: DB.prepare.bind(DB),
-      exec: DB.exec.bind(DB),
-      dump: DB.dump.bind(DB),
-      withSession: DB.withSession.bind(DB),
-      async batch<T = unknown>(
-        statements: D1PreparedStatement[],
-      ): Promise<D1Result<T>[]> {
-        if (statements.length > 3) await barrier.wait();
-        return DB.batch<T>(statements);
+    BUCKET: {
+      head: bucket.head.bind(bucket),
+      get: bucket.get.bind(bucket),
+      put: bucket.put.bind(bucket),
+      list: bucket.list.bind(bucket),
+      delete: bucket.delete.bind(bucket),
+      resumeMultipartUpload: bucket.resumeMultipartUpload.bind(bucket),
+      async createMultipartUpload(key: string, options?: R2MultipartOptions) {
+        const multipart = await bucket.createMultipartUpload(key, options);
+        return {
+          key: multipart.key,
+          uploadId: multipart.uploadId,
+          abort: () => multipart.abort(),
+          uploadPart: multipart.uploadPart.bind(multipart),
+          async complete(parts: R2UploadedPart[]) {
+            const object = await multipart.complete(parts);
+            await barrier.wait();
+            return object;
+          },
+        };
       },
     },
   };

@@ -51,7 +51,6 @@ beforeEach(async () => {
   );
 });
 afterEach(async () => {
-  vi.unstubAllGlobals();
   await runtime.dispose();
 });
 async function current(userId = user.id) {

@@ -52,10 +52,6 @@ import manifest from '../../package.json' with { type: 'json' };
 
 const directories: string[] = [];
 afterEach(async () => {
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
-  vi.unstubAllEnvs();
-  vi.useRealTimers();
   process.exitCode = 0;
   for (const directory of directories.splice(0))
     await rm(directory, { recursive: true, force: true });

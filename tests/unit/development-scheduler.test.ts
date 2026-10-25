@@ -1,13 +1,7 @@
-import { afterEach, expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vitest';
 
 import { readDevelopmentConfig } from '../../cli/development/config';
 import { startScheduler } from '../../cli/development/scheduler';
-
-afterEach(() => {
-  vi.useRealTimers();
-  vi.unstubAllGlobals();
-  vi.restoreAllMocks();
-});
 
 it('uses the configured production cadence at UTC boundaries, dispatches metadata, and stops', async () => {
   const config = await readDevelopmentConfig('maintenance');

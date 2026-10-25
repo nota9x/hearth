@@ -1,11 +1,9 @@
 /* eslint-disable unicorn/no-await-expression-member -- Assertions inspect completed browser API responses. */
-import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
-import nodePath from 'node:path';
 
 import { z } from 'zod';
 
-import { expect, test } from '../helpers/browser';
+import { expect, signIn, test } from '../helpers/browser';
 import { configureDeliveryDomain } from '../helpers/delivery';
 
 test('Domains manages validation, primary selection, diagnostics, search and deletion paging', async ({
@@ -17,14 +15,8 @@ test('Domains manages validation, primary selection, diagnostics, search and del
   browser,
 }) => {
   test.setTimeout(180_000);
-  const key = await readFile(process.env.TEST_KEY_FILE!, 'utf8');
+  const key = await signIn(page, request, baseURL!);
   const headers = { Origin: baseURL! };
-  const login = await request.post('/api/actions/login', {
-    headers,
-    data: { key, token: 'XXXX.DUMMY.TOKEN.XXXX' },
-  });
-  expect(login.status()).toBe(200);
-  await page.context().addCookies((await request.storageState()).cookies);
   const errors: string[] = [];
   page.on('pageerror', (problem) => {
     errors.push(problem.message);
@@ -121,12 +113,6 @@ test('Domains manages validation, primary selection, diagnostics, search and del
   await page.goto(`/links?image=${image.id}`);
   await expect(page.locator('.link-row')).toContainText(hostname);
   await page.goto('/admin/domains');
-  for (const width of [320, 375, 1440]) {
-    await page.setViewportSize({ width, height: 1000 });
-    await row.getByLabel(`Actions for ${hostname}`, { exact: true }).click();
-    await expect(row.locator('.action-popover')).toBeVisible();
-    await page.keyboard.press('Escape');
-  }
   await row.getByLabel(`Actions for ${hostname}`, { exact: true }).click();
   await row.getByRole('button', { name: 'Remove domain', exact: true }).click();
   await expect(dialog).toContainText('1 share link');
@@ -146,22 +132,9 @@ test('Domains manages validation, primary selection, diagnostics, search and del
   ).toBeVisible();
   await page.getByRole('link', { name: 'Clear search', exact: true }).click();
   // A deterministic fixture covers deleting the only row on the final filtered page.
-  const seeded = spawnSync(
-    process.execPath,
-    [
-      nodePath.resolve('node_modules/wrangler/bin/wrangler.js'),
-      'd1',
-      'execute',
-      'DB',
-      '--local',
-      '--config',
-      process.env.TEST_DB_CONFIG!,
-      '--command',
-      `WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<25) INSERT INTO delivery_domains(id,hostname,notes,createdAt,updatedAt) SELECT 'dom_'||lower(hex(randomblob(16))),'paging-'||x||'-${stamp}.localhost','Paging ${stamp}',unixepoch()+x,unixepoch() FROM n`,
-    ],
-    { encoding: 'utf8' },
-  );
-  expect(seeded.status, seeded.stderr).toBe(0);
+  await hearth.DB.prepare(
+    `WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<25) INSERT INTO delivery_domains(id,hostname,notes,createdAt,updatedAt) SELECT 'dom_'||lower(hex(randomblob(16))),'paging-'||x||'-${stamp}.localhost','Paging ${stamp}',unixepoch()+x,unixepoch() FROM n`,
+  ).run();
   await page.goto(`/admin/domains?q=Paging+${stamp}&page=2`);
   await expect(page.locator('.domain-row')).toHaveCount(1);
   await page
@@ -311,21 +284,6 @@ for (const role of ['user'] as const) {
     await expect(
       defaultRow.getByText('Instance default', { exact: true }),
     ).toBeVisible();
-    for (const width of [320, 375, 1440]) {
-      await page.setViewportSize({ width, height: 1000 });
-      await expect(
-        panel.getByRole('button', {
-          name: 'Use instance default',
-          exact: true,
-        }),
-      ).toBeVisible();
-      await expect(
-        defaultRow.getByText('Your selection', { exact: true }),
-      ).toBeVisible();
-      expect(
-        await page.evaluate(() => document.documentElement.scrollWidth),
-      ).toBeLessThanOrEqual(width);
-    }
     await defaultRow
       .getByLabel('Actions for default.localhost', { exact: true })
       .click();

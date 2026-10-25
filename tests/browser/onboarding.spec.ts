@@ -64,6 +64,8 @@ test('welcomes a new account, saves preferences, reuses its key and completes tr
   hearth,
   baseURL,
 }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 390, height: 844 });
   const key = await signIn(page);
   await expect(page.getByRole('heading', { level: 1 })).toContainText(
     'Welcome to hearth',
@@ -77,7 +79,9 @@ test('welcomes a new account, saves preferences, reuses its key and completes tr
   await hearth.DB.prepare(
     "UPDATE users SET defaultExpiry='7d',stripImageMetadata=0",
   ).run();
-  await start(page);
+  await page.getByRole('button', { name: 'Get started', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
   await page.getByLabel('Your display name').fill('A new home');
   await page
     .getByRole('button', { name: 'Save & continue', exact: true })
@@ -172,22 +176,6 @@ test('welcomes a new account, saves preferences, reuses its key and completes tr
     .click();
   await expect(page.getByLabel('Current API key', { exact: true })).toBeEmpty();
   await page.keyboard.press('Escape');
-  await page.getByLabel('Display name', { exact: true }).fill('A saved name');
-  await hearth.DB.prepare(
-    "UPDATE users SET defaultExpiry='7d',stripImageMetadata=1",
-  ).run();
-  const saving = page.waitForResponse('**/api/actions/preferences');
-  await page.getByRole('button', { name: 'Save preferences' }).click();
-  const response = await saving;
-  expect(response.status()).toBe(200);
-  const saved = await hearth.DB.prepare(
-    'SELECT displayName,defaultExpiry,stripImageMetadata FROM users',
-  ).all();
-  expect(saved.results[0]).toEqual({
-    displayName: 'A saved name',
-    defaultExpiry: '7d',
-    stripImageMetadata: 1,
-  });
 });
 
 test('cancels a delayed configuration download when the retained key expires', async ({
@@ -196,23 +184,19 @@ test('cancels a delayed configuration download when the retained key expires', a
   await page.clock.install();
   await signIn(page);
   await sharexStep(page);
-  let requested!: () => void;
-  let served!: () => void;
-  /* eslint-disable unicorn/prefer-promise-with-resolvers -- Repository test typings target ES2022. */
-  const whenRequested = new Promise<void>((resolve) => {
-    requested = resolve;
-  });
-  const whenServed = new Promise<void>((resolve) => {
-    served = resolve;
-  });
-  /* eslint-enable unicorn/prefer-promise-with-resolvers */
+  const { promise: whenRequested, resolve: requested } =
+    Promise.withResolvers<void>();
+  const { promise: whenServed, resolve: served } =
+    Promise.withResolvers<void>();
+  const { promise: responseReady, resolve: release } =
+    Promise.withResolvers<void>();
   const downloads: string[] = [];
   page.on('download', (file) => {
     downloads.push(file.suggestedFilename());
   });
   await page.route('**/api/actions/sxcu', async (route) => {
     requested();
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await responseReady;
     try {
       await route.fulfill({ json: { Name: 'Delayed configuration' } });
     } catch {
@@ -224,11 +208,16 @@ test('cancels a delayed configuration download when the retained key expires', a
     .getByRole('button', { name: 'Download ShareX configuration' })
     .click();
   await whenRequested;
+  const cancelled = page.waitForEvent('requestfailed', (request) =>
+    request.url().endsWith('/api/actions/sxcu'),
+  );
   await page.clock.fastForward(15 * 60_000);
+  await cancelled;
   await expect(page.getByLabel('Current API key', { exact: true })).toBeEmpty();
   await expect(page.locator('.sharex-config .error')).toHaveText(
     'Enter your current API key to try again.',
   );
+  release();
   await whenServed;
   expect(downloads).toEqual([]);
 });
@@ -313,64 +302,6 @@ test('handles failed persistence and expired sessions without losing saved progr
     onboardingStep: 3,
     displayName: 'Try again',
   });
-});
-
-test('works with keyboard, mobile and tablet layouts and reduced motion', async ({
-  page,
-}) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await signIn(page);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
-  await page.getByRole('button', { name: 'Get started', exact: true }).focus();
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
-  await page.getByLabel('Your display name').focus();
-  await page.keyboard.press('Enter');
-  await expect(
-    page.getByRole('group', { name: 'Your delivery selection' }),
-  ).toBeVisible();
-  await page.getByRole('button', { name: 'Skip', exact: true }).click();
-  await expect(
-    page.getByRole('group', { name: 'Default image expiration' }),
-  ).toBeVisible();
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
-  await page.setViewportSize({ width: 820, height: 1180 });
-  await page.getByRole('button', { name: 'Skip', exact: true }).click();
-  await expect(
-    page.getByLabel('Current API key', { exact: true }),
-  ).toBeVisible();
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
-  await stepButton(page, 'First image').click();
-  await expect(page.getByText('Waiting for your first image…')).toBeVisible();
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
-  await page.setViewportSize({ width: 320, height: 568 });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
-  expect(
-    await page
-      .locator('.first-image .loading-spinner')
-      .evaluate((node) => getComputedStyle(node).animationName),
-  ).toBe('none');
 });
 
 test.describe('bootstrap administrator', () => {

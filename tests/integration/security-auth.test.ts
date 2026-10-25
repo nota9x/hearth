@@ -244,6 +244,8 @@ const memberActions = [
   'alias-primary',
 ];
 const adminActions = [
+  'display-name-settings',
+  'user-display-name-policy',
   'share-slug-settings',
   'expiry-policy',
   'user-expiry-policy',
@@ -259,6 +261,9 @@ const adminActions = [
   'delivery-domain-availability',
   'delivery-domain-remove',
   'reconcile',
+  'storage-limit',
+  'maintenance-pause',
+  'maintenance-resume',
   'finding-resolve',
   'settings',
 ];
@@ -310,7 +315,7 @@ describe('route authorization matrix', () => {
   it('requires a session for action', async () => {
     for (const name of [...memberActions, ...adminActions]) {
       const response = await action(name, {}, null);
-      expect([name, response.status]).toEqual([name, 401]);
+      expect(response.status, name).toBe(401);
       expect(await response.json()).toMatchObject({
         error: { code: 'UNAUTHENTICATED' },
       });
@@ -320,7 +325,7 @@ describe('route authorization matrix', () => {
   it('denies member access to privileged action settings and other administrative actions', async () => {
     for (const name of adminActions) {
       const response = await action(name, {}, owner);
-      expect([name, response.status]).toEqual([name, 403]);
+      expect(response.status, name).toBe(403);
       expect(await response.json()).toMatchObject({
         error: { code: 'FORBIDDEN' },
       });

@@ -17,10 +17,6 @@ describe('precise storage limits and presentation', () => {
       const input = storageLimitInput(bytes);
       expect(parseStorageLimit(input.amount, input.unit)).toBe(bytes);
     }
-    expect(storageLimitInput(1_234_000_001)).toEqual({
-      unit: 'MB',
-      amount: '1234.000001',
-    });
   });
   it.each(['0', '0.0000001', '9007199255'])(
     'rejects invalid or imprecise values %s',

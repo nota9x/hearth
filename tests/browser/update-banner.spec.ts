@@ -1,9 +1,8 @@
-/* eslint-disable unicorn/no-await-expression-member -- Assertions inspect completed browser requests and measurements. */
 import { readFile } from 'node:fs/promises';
 
 import type { Page } from '@playwright/test';
 
-import { expect, test } from '../helpers/browser';
+import { expect, signIn, test } from '../helpers/browser';
 
 async function showUpdate(page: Page) {
   await page.route('**/_app/version.json', async (route) => {
@@ -19,15 +18,7 @@ async function showUpdate(page: Page) {
 }
 
 test.beforeEach(async ({ page, request, baseURL }) => {
-  const response = await request.post('/api/actions/login', {
-    headers: { Origin: baseURL! },
-    data: {
-      key: await readFile(process.env.TEST_KEY_FILE!, 'utf8'),
-      token: 'XXXX.DUMMY.TOKEN.XXXX',
-    },
-  });
-  expect(response.status()).toBe(200);
-  await page.context().addCookies((await request.storageState()).cookies);
+  await signIn(page, request, baseURL!);
 });
 
 test('reload protects unsaved settings and pending mutations, and performs a full reload when accepted', async ({
@@ -48,11 +39,7 @@ test('reload protects unsaved settings and pending mutations, and performs a ful
   await reload.click();
   await cancelled;
   await expect(name).toHaveValue('Unsaved update draft');
-  let release!: () => void;
-  // eslint-disable-next-line unicorn/prefer-promise-with-resolvers -- The project targets ES2022.
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
+  const { promise: gate, resolve: release } = Promise.withResolvers<void>();
   await page.route('**/api/actions/preferences', async (route) => {
     await gate;
     await route.continue();
@@ -83,11 +70,7 @@ test('reload waits for active uploads without interrupting their completion', as
   const reload = page
     .getByRole('region', { name: 'Application update' })
     .getByRole('button', { name: 'Reload', exact: true });
-  let release!: () => void;
-  // eslint-disable-next-line unicorn/prefer-promise-with-resolvers -- The project targets ES2022.
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
+  const { promise: gate, resolve: release } = Promise.withResolvers<void>();
   await page.route('**/api/upload', async (route) => {
     await gate;
     await route.fulfill({
@@ -140,11 +123,7 @@ test('reload stays blocked while ZIP bytes are downloading after the manifest re
   await page
     .getByRole('checkbox', { name: 'Select zip-second.jpg', exact: true })
     .check();
-  let release!: () => void;
-  // eslint-disable-next-line unicorn/prefer-promise-with-resolvers -- The project targets ES2022.
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
+  const { promise: gate, resolve: release } = Promise.withResolvers<void>();
   await page.route('**/api/media/*?download', async (route) => {
     await gate;
     await route.continue();

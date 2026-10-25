@@ -100,7 +100,6 @@ beforeEach(async () => {
   );
 });
 afterEach(async () => {
-  vi.unstubAllGlobals();
   await mf?.dispose();
 });
 

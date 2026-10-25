@@ -1,8 +1,8 @@
-import { fork } from 'node:child_process';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
-import { describe, expect, it } from 'vitest';
+import { execaNode } from 'execa';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { portAvailable } from '../../cli/development/ports';
 
@@ -18,7 +18,7 @@ async function launch(scenario: string, mode = 'development') {
       return port;
     }),
   );
-  const child = fork(
+  const child = execaNode(
     fileURLToPath(new URL('../../scripts/cli.mjs', import.meta.url)),
     [
       mode === 'preview' ? 'preview' : 'dev',
@@ -30,8 +30,10 @@ async function launch(scenario: string, mode = 'development') {
       String(ports[2]),
     ],
     {
-      silent: true,
-      execArgv: [
+      ipc: true,
+      reject: false,
+      killDescendants: true,
+      nodeOptions: [
         '--import',
         'tsx',
         '--import',
@@ -44,10 +46,14 @@ async function launch(scenario: string, mode = 'development') {
       },
     },
   );
+  onTestFinished(async () => {
+    child.kill();
+    await child;
+  });
   let stdout = '';
   let stderr = '';
   let stopped = false;
-  child.stdout!.on('data', (chunk: Buffer) => {
+  child.stdout.on('data', (chunk: Buffer) => {
     stdout += chunk.toString();
     if (!(
       !stopped &&
@@ -60,21 +66,13 @@ async function launch(scenario: string, mode = 'development') {
     }
 
     stopped = true;
-    child.send('stop');
+    void child.sendMessage('stop');
   });
-  child.stderr!.on('data', (chunk: Buffer) => {
+  child.stderr.on('data', (chunk: Buffer) => {
     stderr += chunk.toString();
   });
-  const timeout = setTimeout(
-    () => child.kill(),
-    scenario === 'hang' ? 25_000 : 10_000,
-  );
-  const code = await new Promise<number | null>((resolve, reject) => {
-    child.once('error', reject);
-    child.once('close', resolve);
-  });
-  clearTimeout(timeout);
-  return { stdout, stderr, code };
+  const result = await child;
+  return { stdout, stderr, code: result.exitCode };
 }
 
 describe('launcher lifecycle', () => {
@@ -82,14 +80,10 @@ describe('launcher lifecycle', () => {
     'starts maintenance before web in %s, reports readiness, and drains final stderr on shutdown',
     async (mode) => {
       const { stdout, stderr, code } = await launch('success', mode);
-      expect(code).toBe(0);
-      expect(stdout).toContain(
-        mode === 'preview' ? 'Production Preview' : 'Development Server',
-      );
-      expect(stdout).toContain(`[${mode === 'preview' ? 'preview' : 'dev'}]`);
-      const delivery = stdout.indexOf('[delivery]    READY');
-      const maintenance = stdout.indexOf('[maintenance] READY');
-      const web = stdout.indexOf('[web]         READY');
+      expect(code, stderr).toBe(0);
+      const delivery = stdout.search(/\[delivery\]\s+READY/);
+      const maintenance = stdout.search(/\[maintenance\]\s+READY/);
+      const web = stdout.search(/\[web\]\s+READY/);
       expect(delivery).toBeGreaterThan(stdout.indexOf('booting web'));
       expect(stdout.indexOf('booting web')).toBeGreaterThan(maintenance);
       expect(stdout.indexOf('booting delivery')).toBeGreaterThan(maintenance);

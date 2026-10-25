@@ -95,8 +95,6 @@ beforeEach(async () => {
     .where(eq(users.id, created.userId));
   [user] = await db.select().from(users).where(eq(users.id, created.userId));
 }, 30_000);
-
-afterEach(() => vi.restoreAllMocks());
 afterEach(async () => {
   await mf?.dispose();
 });
@@ -111,16 +109,6 @@ function imageBytes(size: number) {
   bytes.writeUInt32BE(crc32(bytes.subarray(offset + 4, size - 16)), size - 16);
   png.subarray(-12).copy(bytes, size - 12);
   return bytes;
-}
-
-function deferred() {
-  let resolve!: () => void;
-  // The repository targets ES2022, which has no Promise.withResolvers type.
-  // eslint-disable-next-line unicorn/prefer-promise-with-resolvers
-  const promise = new Promise<void>((done) => {
-    resolve = done;
-  });
-  return { promise, resolve };
 }
 
 function requestFor(
@@ -187,6 +175,12 @@ async function rowFor(id: string) {
     .from(images)
     .where(eq(images.id, id));
   return row;
+}
+
+function rejectImageWrites() {
+  return env.DB.prepare(
+    "CREATE TRIGGER reject_test_image BEFORE INSERT ON images BEGIN SELECT RAISE(ABORT,'injected_image_failure'); END",
+  ).run();
 }
 
 describe('first image milestone', () => {
@@ -355,9 +349,9 @@ function wrapMultipart(
 
 describe('streaming upload', () => {
   it('waits for an in-flight part before aborting after a client disconnect', async () => {
-    const entered = deferred();
-    const failed = deferred();
-    const release = deferred();
+    const entered = Promise.withResolvers<void>();
+    const failed = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
     let settled = false,
       aborted = false,
       abortRaced = false;
@@ -463,15 +457,10 @@ describe('streaming upload', () => {
 
   it('retains the object for reconciliation when the D1 reference check fails', async () => {
     const before = await env.BUCKET.list();
+    await rejectImageWrites();
     const prepare = env.DB.prepare.bind(env.DB);
-    const originalBatch = env.DB.batch.bind(env.DB);
-    vi.spyOn(env.DB, 'batch').mockImplementation((statements) =>
-      statements.length > 3
-        ? Promise.reject(new Error('D1 unavailable'))
-        : originalBatch(statements),
-    );
     vi.spyOn(env.DB, 'prepare').mockImplementation((query) => {
-      if (query === 'SELECT id FROM images WHERE objectKey=? OR previewKey=?')
+      if (/\bFROM\s+"?images\b/i.test(query))
         throw new Error('Lookup unavailable');
       return prepare(query);
     });
@@ -507,8 +496,8 @@ describe('streaming upload', () => {
   });
 
   it('bounds read-ahead and does not reuse the part buffer while R2 is stalled', async () => {
-    const entered = deferred();
-    const release = deferred();
+    const entered = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
     let unchanged = false;
     wrapMultipart((multipart) => ({
       key: multipart.key,
@@ -579,12 +568,17 @@ describe('streaming upload', () => {
     'protects D1 writes when failure occurs after commit=%s',
     async (committed) => {
       const before = await env.BUCKET.list();
-      const batch = env.DB.batch.bind(env.DB);
-      vi.spyOn(env.DB, 'batch').mockImplementation(async (statements) => {
-        if (statements.length <= 3) return batch(statements);
-        if (committed) await batch(statements);
-        throw new Error('D1 response lost');
-      });
+      if (committed) {
+        const batch = env.DB.batch.bind(env.DB);
+        vi.spyOn(env.DB, 'batch').mockImplementation(async (statements) => {
+          const result = await batch(statements);
+          const image = await env.DB.prepare(
+            'SELECT id FROM images LIMIT 1',
+          ).first();
+          if (image) throw new Error('D1 response lost');
+          return result;
+        });
+      } else await rejectImageWrites();
       await expect(
         upload(requestFor().request, user, env),
       ).rejects.toMatchObject({ code: 'SHARE_LINK_UNAVAILABLE' });
@@ -592,6 +586,13 @@ describe('streaming upload', () => {
       expect(after.objects.length - before.objects.length).toBe(
         committed ? 1 : 0,
       );
+      const rows = await env.DB.prepare('SELECT objectKey FROM images').all<{
+        objectKey: string;
+      }>();
+      expect(rows.results).toHaveLength(committed ? 1 : 0);
+      if (!committed) return;
+      const object = await env.BUCKET.get(rows.results[0].objectKey);
+      expect(Buffer.from(await object!.arrayBuffer())).toEqual(png);
     },
   );
 });
@@ -657,8 +658,8 @@ describe('upload idempotency', () => {
     expect(receipt?.response).not.toContain(first.deleteUrl.split('#', 2)[1]);
   });
   it('claims a key atomically while the original R2 upload is still pending', async () => {
-    const entered = deferred(),
-      release = deferred();
+    const entered = Promise.withResolvers<void>(),
+      release = Promise.withResolvers<void>();
     wrapMultipart((multipart) => ({
       key: multipart.key,
       uploadId: multipart.uploadId,
@@ -685,21 +686,14 @@ describe('upload idempotency', () => {
   });
   it('releases a failed operation only after cleanup so the same key can retry', async () => {
     const key = randomSecret();
-    const originalBatch = env.DB.batch.bind(env.DB);
-    const fault = vi
-      .spyOn(env.DB, 'batch')
-      .mockImplementation((statements) =>
-        statements.length > 3
-          ? Promise.reject(new Error('D1 unavailable'))
-          : originalBatch(statements),
-      );
+    await rejectImageWrites();
     const before = await env.BUCKET.list();
     await expect(upload(keyed(key), user, env)).rejects.toMatchObject({
       code: 'SHARE_LINK_UNAVAILABLE',
     });
     const after = await env.BUCKET.list();
     expect(after.objects).toHaveLength(before.objects.length);
-    fault.mockRestore();
+    await env.DB.prepare('DROP TRIGGER reject_test_image').run();
     await expect(upload(keyed(key), user, env)).resolves.toHaveProperty(
       'size',
       png.length,
@@ -707,17 +701,10 @@ describe('upload idempotency', () => {
   });
   it('retains an uncertain claim if cleanup cannot verify the D1 outcome', async () => {
     const key = randomSecret();
-    const originalBatch = env.DB.batch.bind(env.DB);
-    const batch = vi
-      .spyOn(env.DB, 'batch')
-      .mockImplementation((statements) =>
-        statements.length > 3
-          ? Promise.reject(new Error('Lost response'))
-          : originalBatch(statements),
-      );
+    await rejectImageWrites();
     const prepare = env.DB.prepare.bind(env.DB);
     const lookup = vi.spyOn(env.DB, 'prepare').mockImplementation((query) => {
-      if (query === 'SELECT id FROM images WHERE objectKey=? OR previewKey=?')
+      if (/\bFROM\s+"?images\b/i.test(query))
         throw new Error('Lookup unavailable');
       return prepare(query);
     });
@@ -725,7 +712,7 @@ describe('upload idempotency', () => {
     await expect(upload(keyed(key), user, env)).rejects.toMatchObject({
       code: 'SHARE_LINK_UNAVAILABLE',
     });
-    batch.mockRestore();
+    await env.DB.prepare('DROP TRIGGER reject_test_image').run();
     lookup.mockRestore();
     await expect(upload(keyed(key), user, env)).rejects.toMatchObject({
       code: 'UPLOAD_IN_PROGRESS',
@@ -735,8 +722,8 @@ describe('upload idempotency', () => {
   it('propagates an explicit request abort and releases the multipart and claim', async () => {
     const controller = new AbortController();
     const key = randomSecret();
-    const entered = deferred(),
-      release = deferred();
+    const entered = Promise.withResolvers<void>(),
+      release = Promise.withResolvers<void>();
     const aborted = vi.fn();
     wrapMultipart((multipart) => ({
       key: multipart.key,

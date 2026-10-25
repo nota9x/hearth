@@ -1,8 +1,9 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import path from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { execa } from 'execa';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { root } from '../../cli/development/config';
 import {
@@ -37,8 +38,8 @@ describe('development port handling', () => {
           ? 'scripts/cli.mjs'
           : path.join(root, 'scripts/cli.mjs');
       const listener =
-        "import { createServer } from 'node:net'; const server = createServer(); server.listen(0, '127.0.0.1', () => console.log(String(server.address().port)));";
-      const parent = `import { spawn } from 'node:child_process'; const child = spawn(process.execPath, ['--input-type=module', '-e', ${JSON.stringify(listener)}, ${JSON.stringify(servicePath)}], { stdio: ['ignore', 'pipe', 'inherit'], windowsHide: true }); child.stdout.pipe(process.stdout); setInterval(() => {}, 1000);`;
+        "import { createServer } from 'node:net'; const server = createServer(); server.listen(0, '127.0.0.1', () => process.send(server.address().port));";
+      const parent = `import { spawn } from 'node:child_process'; const child = spawn(process.execPath, ['--input-type=module', '-e', ${JSON.stringify(listener)}, ${JSON.stringify(servicePath)}], { stdio: ['ignore', 'ignore', 'inherit', 'ipc'], windowsHide: true }); child.on('message', (port) => process.send(port));`;
       const child = spawn(
         process.execPath,
         [
@@ -48,36 +49,38 @@ describe('development port handling', () => {
           launcherPath,
           mode === 'preview' ? 'preview' : 'dev',
         ],
-        { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true },
+        { stdio: ['ignore', 'ignore', 'pipe', 'ipc'], windowsHide: true },
+      );
+      onTestFinished(async () => {
+        if (child.exitCode === null)
+          await execa('taskkill', ['/PID', String(child.pid), '/T', '/F'], {
+            windowsHide: true,
+            reject: false,
+          });
+      });
+      let stderr = '';
+      child.stderr!.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString();
+      });
+      const port = await new Promise<number>((resolve, reject) => {
+        child.once('error', reject);
+        child.once('exit', (code) =>
+          reject(new Error(`Listener exited (${code}): ${stderr}`)),
+        );
+        child.once('message', (message) => resolve(Number(message)));
+      });
+      expect(await portAvailable(port)).toBe(false);
+      expect(await findDevelopmentServer(port)).toBe(child.pid);
+      await stopDevelopmentServer(child.pid!, port);
+      expect(await portAvailable(port)).toBe(true);
+      const unrelated = createServer();
+      await new Promise<void>((resolve) =>
+        unrelated.listen(port, '127.0.0.1', resolve),
       );
       try {
-        const port = await new Promise<number>((resolve, reject) => {
-          child.once('error', reject);
-          child.stdout.once('data', (chunk: Buffer) =>
-            resolve(Number(chunk.toString().trim())),
-          );
-        });
-        expect(await portAvailable(port)).toBe(false);
-        expect(await findDevelopmentServer(port)).toBe(child.pid);
-        await stopDevelopmentServer(child.pid!, port);
-        expect(await portAvailable(port)).toBe(true);
-        const unrelated = createServer();
-        await new Promise<void>((resolve) =>
-          unrelated.listen(port, '127.0.0.1', resolve),
-        );
-        try {
-          expect(await findDevelopmentServer(port)).toBeUndefined();
-        } finally {
-          await new Promise<void>((resolve) =>
-            unrelated.close(() => resolve()),
-          );
-        }
+        expect(await findDevelopmentServer(port)).toBeUndefined();
       } finally {
-        if (child.exitCode === null)
-          spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], {
-            windowsHide: true,
-            stdio: 'ignore',
-          });
+        await new Promise<void>((resolve) => unrelated.close(() => resolve()));
       }
     },
   );

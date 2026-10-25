@@ -25,8 +25,6 @@ function get<T>(store: {
 }
 
 afterEach(() => {
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
   for (const card of get(notify)) notify.dismiss(card.id);
 });
 
