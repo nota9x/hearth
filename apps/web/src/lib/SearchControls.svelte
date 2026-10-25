@@ -281,8 +281,8 @@
         class:active={active.length > 0}
         aria-label={`Filter ${plural}${active.length > 0 ? `: ${active.length} active` : ''}`}
         title={`Filter ${plural}`}
-        ><ListFilter size={18} />{#if active.length}<span class="filter-count"
-            >{active.length}</span
+        ><ListFilter size={18} />{#if active.length > 0}<span
+            class="filter-count">{active.length}</span
           >{/if}</summary
       >
       <div
@@ -369,13 +369,13 @@
         ? ' · Updating…'
         : ''}&nbsp;·&nbsp;{sortOptions[sort]}</small
     >
-    {#if query || active.length}<button
+    {#if query || active.length > 0}<button
         transition:fadeMotion={{ kind: 'content' }}
         class="text-control"
         onclick={() => clear(true)}>Clear all</button
       >{/if}
   </div>
-  {#if active.length || dateRange(query.trim().toLowerCase())}<div
+  {#if active.length > 0 || dateRange(query.trim().toLowerCase())}<div
       class="filter-chips"
     >
       {#each active as key (key)}<button

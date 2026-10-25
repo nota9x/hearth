@@ -11,7 +11,6 @@ import {
 } from './binary';
 
 type Box = { type: string; bytes: Uint8Array; payload: Uint8Array };
-type Extent = { start: number; length: number; id: number; kind: string };
 const countLimit = 4096;
 function boxes(bytes: Uint8Array): Box[] {
   const result: Box[] = [];
@@ -61,6 +60,7 @@ function one(children: Box[], type: string) {
 }
 
 function sanitizeIndex(payload: Uint8Array, originalSize: number) {
+  type Extent = { start: number; length: number; id: number; kind: string };
   full(payload, [0]);
   const children = boxes(payload.subarray(4));
   if (

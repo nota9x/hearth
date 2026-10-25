@@ -14,7 +14,7 @@
   } = $props();
 </script>
 
-{#if items.length}
+{#if items.length > 0}
   <div class="statistics-panel">
     <dl class="statistics" aria-label={label}>
       {#each items as item (item.label)}

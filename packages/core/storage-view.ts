@@ -47,7 +47,7 @@ export function storageBytes(value: number) {
           : value >= 1e3
             ? ['KB', 1e3]
             : ['B', 1];
-  return `${(value / Number(divisor)).toLocaleString('en', { maximumFractionDigits: divisor === 1 ? 0 : 1 })} ${unit}`;
+  return `${(value / divisor).toLocaleString('en', { maximumFractionDigits: divisor === 1 ? 0 : 1 })} ${unit}`;
 }
 export const formatNames: Record<string, string> = {
   'image/png': 'PNG',

@@ -1,5 +1,5 @@
 /* eslint-disable unicorn/no-await-expression-member -- Inspect structured command results immediately at the step that requests them. */
-/* eslint-disable unicorn/no-top-level-side-effects -- Citty constructs the exported command definition. */
+
 import { randomInt } from 'node:crypto';
 import { access, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';

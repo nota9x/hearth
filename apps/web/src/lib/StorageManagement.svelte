@@ -360,7 +360,7 @@
 <section class="panel storage-breakdown" aria-label="Storage breakdown">
   <section aria-labelledby="types-title">
     <h2 id="types-title">By file type</h2>
-    {#if data.types.length}<p class="muted">
+    {#if data.types.length > 0}<p class="muted">
         Active original images, excluding previews.
       </p>{/if}
     {#each data.types as type (type.mime)}<div class="distribution-row">
@@ -385,7 +385,7 @@
   </section>
   <section aria-labelledby="people-title">
     <h2 id="people-title">By person</h2>
-    {#if storage.consumers.length}<p class="muted">
+    {#if storage.consumers.length > 0}<p class="muted">
         Top five accounts, including image previews.
       </p>{/if}
     {#each storage.consumers as person (person.id)}<div
@@ -521,7 +521,7 @@
             : 'Retry maintenance'}</button
         >{/if}
     </div>
-    {#if data.findings.length}<section
+    {#if data.findings.length > 0}<section
         class="attention-section"
         aria-labelledby="attention-title"
       >
@@ -730,7 +730,7 @@
           files · {storageBytes(storage.lastSuccessful.bytes)} observed at check time.
         </p>{/if}
     </section>
-    {#if data.history.length}<section>
+    {#if data.history.length > 0}<section>
         <h3>Daily active image storage</h3>
         <p class="muted">
           Historical active image and preview usage, separate from physical

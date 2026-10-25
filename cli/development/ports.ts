@@ -15,7 +15,6 @@ export async function portAvailable(port: number) {
   });
 }
 
-type ProcessInfo = { pid: number; parent: number; command: string | null };
 function isService(command: string | null) {
   const file = path.join(root, 'cli/development/tool-process.mjs');
   return (
@@ -37,6 +36,7 @@ export async function findDevelopmentServer(
   port: number,
 ): Promise<number | undefined> {
   if (process.platform === 'win32') {
+    type ProcessInfo = { pid: number; parent: number; command: string | null };
     const [{ stdout: sockets }, { stdout: processes }] = await Promise.all([
       execa('netstat', ['-ano', '-p', 'tcp'], { windowsHide: true }),
       execa(

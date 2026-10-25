@@ -109,13 +109,6 @@ export default defineConfig(
     languageOptions: { globals: globals.node },
   },
   {
-    files: ['*config.{js,ts}', 'apps/web/*config.ts', 'cli/commands/*.ts'],
-    rules: {
-      // Tool configuration is constructed by each tool's configuration factory.
-      'unicorn/no-top-level-side-effects': 'off',
-    },
-  },
-  {
     files: [
       'cli/development/**/*.ts',
       'cli/index.ts',
