@@ -255,7 +255,7 @@
           disabled={busy}>Try again</button
         ></CollectionEmpty
       >
-    {:else if activity.length}<div class="rows">
+    {:else if activity.length > 0}<div class="rows">
         {#each activity as log (log.id)}<AuditEntry {log} />{/each}
       </div>
     {:else}<CollectionEmpty
@@ -513,7 +513,7 @@
         ? `Showing ${userStatuses[page.url.searchParams.get('status') as keyof typeof userStatuses] ?? 'current'} accounts.`
         : 'Showing active and disabled accounts.'}
   </p>
-  {#if result.members.length}
+  {#if result.members.length > 0}
     <div class="table-wrap user-table">
       <table>
         <thead

@@ -656,7 +656,7 @@
       onclick={() => open('delete')}><Trash2 size={16} />Delete</button
     >
   </BulkActions>
-  {#if $downloads.individual.length}<div
+  {#if $downloads.individual.length > 0}<div
       transition:fadeMotion={{ kind: 'content' }}
       class="notice"
     >
@@ -744,7 +744,7 @@
       { label: 'Active links', value: data.activeLinks, icon: Link },
     ]}
   />{/snippet}
-{#snippet gallery()}{#if displayedImages.length}<div
+{#snippet gallery()}{#if displayedImages.length > 0}<div
       class="gallery"
       class:preview-gallery={data.section === 'overview' || !!data.member}
     >
@@ -791,7 +791,7 @@
         >{/if}
     </CollectionEmpty>{/if}{/snippet}
 {#snippet linkActions()}
-  {#if displayedLinks.length}
+  {#if displayedLinks.length > 0}
     <BulkActions
       count={selected.length}
       noun="link"

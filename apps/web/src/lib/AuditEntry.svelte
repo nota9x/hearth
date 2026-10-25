@@ -26,7 +26,7 @@
       >
     </div>{/snippet}
   <div class="audit-details">
-    {#if log.details.length}<div class="audit-changes" aria-label="Changes">
+    {#if log.details.length > 0}<div class="audit-changes" aria-label="Changes">
         {#each log.details as detail (detail)}<p>{detail}</p>{/each}
       </div>{/if}
     <dl>

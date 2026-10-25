@@ -273,7 +273,7 @@
                 ? 'Rate limit reached. Continuing in one minute…'
                 : `Checked ${attemptedCount} of ${selectedFindings.length} issues · ${resolvedCount} resolved`}
             </p>{/if}
-          {#if failures.length}<ul class="resolution-failures">
+          {#if failures.length > 0}<ul class="resolution-failures">
               {#each failures as failure (failure.id)}<li>
                   <code>{failure.name}</code><span>{failure.message}</span>
                 </li>{/each}
