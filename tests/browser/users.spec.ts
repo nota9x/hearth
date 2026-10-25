@@ -278,9 +278,16 @@ test('Users restores interrupted searches and recovers from collection load fail
   await page.unroute('**/admin/users/__data.json?*');
   await page.route('**/admin/users/__data.json?*', async (route) => {
     await route.fulfill({
-      status: 503,
-      contentType: 'text/plain',
-      body: 'The user list is unavailable.',
+      json: {
+        type: 'data',
+        nodes: [
+          { type: 'skip' },
+          {
+            type: 'error',
+            error: { status: 500, message: 'The user list is unavailable.' },
+          },
+        ],
+      },
     });
   });
   await search.fill('failure');
