@@ -97,7 +97,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Install Chromium headless shell
-        run: pnpm exec playwright install --with-deps --only-shell chromium
+        run: |
+          # Azure's Ubuntu mirror intermittently serves packages at very low throughput.
+          printf '%s\tpriority:%s\n' \
+            'https://archive.ubuntu.com/ubuntu/' 1 \
+            'http://azure.archive.ubuntu.com/ubuntu/' 2 \
+            'https://security.ubuntu.com/ubuntu/' 3 \
+            | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
+          pnpm exec playwright install --with-deps --only-shell chromium
       - name: Build web
         run: pnpm build
       # Global setup bundles web, delivery, and maintenance with Wrangler.
