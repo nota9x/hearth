@@ -307,7 +307,7 @@ test('handles failed persistence and expired sessions without losing saved progr
 test.describe('bootstrap administrator', () => {
   test.use({ accountMode: 'bootstrap' });
 
-  test('uses the actual bootstrap path and validates a first delivery domain', async ({
+  test('uses the local bootstrap domain and validates an additional delivery domain', async ({
     page,
     hearth,
   }) => {
@@ -315,6 +315,19 @@ test.describe('bootstrap administrator', () => {
     await page
       .getByRole('button', { name: 'Get started', exact: true })
       .click();
+    await expect(
+      page.getByText('Your delivery domain is ready for new share links.'),
+    ).toBeVisible();
+    await expect(page.getByLabel('Configured domains')).toContainText(
+      '127.0.0.1',
+    );
+    const localDomain = await hearth.DB.prepare(
+      'SELECT hostname,isPrimary,health FROM delivery_domains',
+    ).all();
+    expect(localDomain.results).toEqual([
+      { hostname: '127.0.0.1', isPrimary: 1, health: 'active' },
+    ]);
+    await page.getByLabel('Configured domains').selectOption('');
     await expect(page.getByLabel('Delivery hostname')).toBeVisible();
     await page.getByLabel('Delivery hostname').fill('first.localhost');
     await stepButton(page, 'Your name').click();
@@ -349,12 +362,11 @@ test.describe('bootstrap administrator', () => {
     ).all();
     expect(account.results[0]).toEqual({ bootstrapAdministrator: 1 });
     const domain = await hearth.DB.prepare(
-      'SELECT hostname,isPrimary,health FROM delivery_domains',
+      'SELECT hostname,isPrimary,health FROM delivery_domains ORDER BY hostname',
     ).all();
-    expect(domain.results[0]).toEqual({
-      hostname: 'first.localhost',
-      isPrimary: 1,
-      health: 'active',
-    });
+    expect(domain.results).toEqual([
+      { hostname: '127.0.0.1', isPrimary: 0, health: 'active' },
+      { hostname: 'first.localhost', isPrimary: 1, health: 'active' },
+    ]);
   });
 });
