@@ -213,7 +213,8 @@ test('expiry administration, saved-default uploads and atomic selections across 
         const date = new Date(Date.now() + offset * 1000);
         return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
           .toISOString()
-          .slice(0, 19);
+          .slice(0, 19)
+          .replace(/:00$/, '');
       }, seconds);
     await dateInput.fill(await localDate(3600));
     expect(
