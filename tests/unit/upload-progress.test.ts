@@ -24,8 +24,8 @@ class UploadRequest extends EventTarget {
     sharingWarning: null,
   });
   open = vi.fn();
-  setRequestHeader = vi.fn();
-  send = vi.fn();
+  setRequestHeader = vi.fn<(name: string, value: string) => void>();
+  send = vi.fn<(body: FormData) => void>();
   abort = vi.fn(() => this.dispatchEvent(new Event('abort')));
   constructor() {
     super();
@@ -45,10 +45,20 @@ class UploadRequest extends EventTarget {
     this.dispatchEvent(new Event('load'));
   }
 }
-const tick = async () => {
-  for (let index = 0; index < 10; index++) await Promise.resolve();
-};
+const tick = () => vi.advanceTimersByTimeAsync(0);
 const requests = () => UploadRequest.requests;
+const keysFor = (filename: string) =>
+  requests()
+    .filter(
+      (request) =>
+        (request.send.mock.calls[0][0].get('file') as File).name === filename,
+    )
+    .map(
+      (request) =>
+        request.setRequestHeader.mock.calls.find(
+          ([name]) => name === 'Idempotency-Key',
+        )?.[1],
+    );
 function files(count: number) {
   return Array.from(
     { length: count },
@@ -69,8 +79,6 @@ function setup(concurrency = 3) {
   };
 }
 afterEach(() => {
-  vi.useRealTimers();
-  vi.unstubAllGlobals();
   UploadRequest.requests = [];
 });
 
@@ -127,6 +135,10 @@ describe('global upload queue', () => {
   it('continues after failures and retries with the same key without resending successes', async () => {
     const { uploads, notifications, snapshot, refresh } = setup(2);
     const done = uploads.start(files(3), refresh);
+    const originalKey = keysFor('0.png')[0];
+    const secondKey = keysFor('1.png')[0];
+    expect(originalKey).toMatch(/^[a-f0-9]{64}$/);
+    expect(secondKey).not.toBe(originalKey);
     requests()[0].responseText = JSON.stringify({
       error: { message: 'Unsupported file.' },
     });
@@ -142,12 +154,10 @@ describe('global upload queue', () => {
     uploads.retry(id);
     uploads.retry(id);
     expect(requests()).toHaveLength(4);
-    expect(requests()[3].setRequestHeader).toHaveBeenCalledWith(
-      'Idempotency-Key',
-      id,
-    );
+    expect(keysFor('0.png')).toEqual([originalKey, originalKey]);
     requests()[3].finish();
     await tick();
+    expect(keysFor('1.png')).toEqual([secondKey]);
     expect(snapshot()).toMatchObject({ completed: 3, failed: 0 });
     expect(get(notifications)[0].kind).toBe('success');
     expect(refresh).toHaveBeenCalledTimes(2);
@@ -172,15 +182,8 @@ describe('global upload queue', () => {
   });
   it('does not lose uploads added during refresh and performs one trailing refresh', async () => {
     const { uploads, refresh, snapshot } = setup();
-    let release!: () => void;
-    refresh.mockImplementationOnce(
-      () =>
-        // ES2022 does not include Promise.withResolvers.
-        // eslint-disable-next-line unicorn/prefer-promise-with-resolvers
-        new Promise<void>((resolve) => {
-          release = resolve;
-        }),
-    );
+    const { promise, resolve: release } = Promise.withResolvers<void>();
+    refresh.mockReturnValueOnce(promise);
     const first = uploads.start(files(1), refresh);
     requests()[0].finish();
     await tick();
@@ -195,6 +198,7 @@ describe('global upload queue', () => {
   it('backs off the shared queue on 429 and retries the same operation', async () => {
     const { uploads, snapshot, refresh } = setup(1);
     const done = uploads.start(files(2), refresh);
+    const originalKey = keysFor('0.png')[0];
     requests()[0].finish(429);
     await tick();
     expect(snapshot().queued).toBe(2);
@@ -207,10 +211,7 @@ describe('global upload queue', () => {
     requests()[2].finish();
     await done;
     expect(snapshot().completed).toBe(2);
-    expect(requests()[2].setRequestHeader).toHaveBeenCalledWith(
-      'Idempotency-Key',
-      snapshot().items[0].id,
-    );
+    expect(keysFor('0.png')).toEqual([originalKey, originalKey]);
   });
 });
 

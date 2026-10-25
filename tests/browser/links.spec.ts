@@ -1,12 +1,10 @@
 /* eslint-disable unicorn/no-await-expression-member -- Assertions inspect HTTP responses directly. */
-import { spawnSync } from 'node:child_process';
-import { readFile, writeFile } from 'node:fs/promises';
-import nodePath from 'node:path';
+import { readFile } from 'node:fs/promises';
 
 import { z } from 'zod';
 
 import { id, now } from '../../packages/core/common';
-import { expect, test } from '../helpers/browser';
+import { expect, signIn, test } from '../helpers/browser';
 import { configureDeliveryDomain } from '../helpers/delivery';
 
 test('Links shares collection controls and manages primary and unshared images', async ({
@@ -18,17 +16,8 @@ test('Links shares collection controls and manages primary and unshared images',
   browser,
 }) => {
   test.setTimeout(180_000);
-  const key = await readFile(process.env.TEST_KEY_FILE!, 'utf8');
+  const key = await signIn(page, request, baseURL!);
   const headers = { Origin: baseURL! };
-  expect(
-    (
-      await request.post('/api/actions/login', {
-        headers,
-        data: { key, token: 'XXXX.DUMMY.TOKEN.XXXX' },
-      })
-    ).status(),
-  ).toBe(200);
-  await page.context().addCookies((await request.storageState()).cookies);
   const errors: string[] = [];
   page.on('pageerror', (error) => {
     errors.push(error.message);
@@ -89,31 +78,21 @@ test('Links shares collection controls and manages primary and unshared images',
   const timestamp = now();
   const unavailableHost = id('dom');
   const fixture = Array.from(
-    { length: 190 },
+    { length: 102 },
     (_, index) =>
       `('${id('lnk')}','${image.id}',${index === 2 ? `'${unavailableHost}'` : `(SELECT deliveryDomainId FROM aliases WHERE imageId='${image.id}' LIMIT 1)`},'${slug}-${index}',${timestamp + index},${index === 0 ? timestamp + 3600 : index === 1 ? timestamp - 3600 : 'NULL'})`,
   ).join(',');
-  const fixturePath = nodePath.resolve('artifacts/links-browser.sql');
-  await writeFile(
-    fixturePath,
-    `INSERT INTO delivery_domains(id,hostname,health,createdAt,updatedAt) VALUES ('${unavailableHost}','unavailable-${stamp}.localhost','active',${timestamp},${timestamp}); INSERT INTO aliases(id,imageId,deliveryDomainId,slug,createdAt,expiresAt) VALUES ${fixture}; UPDATE delivery_domains SET enabled=0 WHERE id='${unavailableHost}';`,
-  );
-  const result = spawnSync(
-    process.execPath,
-    [
-      nodePath.resolve('node_modules/wrangler/bin/wrangler.js'),
-      'd1',
-      'execute',
-      'DB',
-      '--local',
-      '--config',
-      process.env.TEST_DB_CONFIG!,
-      '--file',
-      fixturePath,
-    ],
-    { encoding: 'utf8' },
-  );
-  expect(result.status, result.stderr).toBe(0);
+  await hearth.DB.batch([
+    hearth.DB.prepare(
+      `INSERT INTO delivery_domains(id,hostname,health,createdAt,updatedAt) VALUES ('${unavailableHost}','unavailable-${stamp}.localhost','active',${timestamp},${timestamp})`,
+    ),
+    hearth.DB.prepare(
+      `INSERT INTO aliases(id,imageId,deliveryDomainId,slug,createdAt,expiresAt) VALUES ${fixture}`,
+    ),
+    hearth.DB.prepare('UPDATE delivery_domains SET enabled=0 WHERE id=?').bind(
+      unavailableHost,
+    ),
+  ]);
   for (const status of ['expired', 'unavailable']) {
     await page.goto(`/links?image=${image.id}&status=${status}`);
     await expect(page.locator('.link-row')).toHaveCount(1);
@@ -140,14 +119,14 @@ test('Links shares collection controls and manages primary and unshared images',
   await expect(
     pagination.getByRole('link', { name: 'Page 1', exact: true }),
   ).toHaveAttribute('aria-current', 'page');
-  await pagination.getByRole('link', { name: 'Page 8', exact: true }).click();
+  await pagination.getByRole('link', { name: 'Page 5', exact: true }).click();
   await expect(pagination.getByLabel('Next page')).toHaveAttribute(
     'aria-disabled',
     'true',
   );
   await page.getByRole('textbox', { name: 'Search links' }).fill(`${slug}-0`);
   await expect(page.locator('.link-row')).toHaveCount(1);
-  await expect(page).not.toHaveURL(/page=8/);
+  await expect(page).not.toHaveURL(/page=5/);
   await page.getByRole('button', { name: 'Clear search', exact: true }).click();
   await expect(page.locator('.link-row')).toHaveCount(24);
   const chosen = page.locator('.link-row').first();
@@ -159,7 +138,7 @@ test('Links shares collection controls and manages primary and unshared images',
   await chosen.getByRole('button', { name: 'Copy slug', exact: true }).click();
   await expect
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))
-    .toBe(`${slug}-189`);
+    .toBe(`${slug}-101`);
   await expect(chosen.locator('details')).not.toHaveAttribute('open', '');
   await chosen.getByLabel(/^Actions for /).click();
   await chosen
@@ -187,9 +166,9 @@ test('Links shares collection controls and manages primary and unshared images',
     .check();
   await expect(page.getByText('1 selected', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Select all', exact: true }).click();
-  await expect(page.getByText('191 selected', { exact: true })).toBeVisible();
+  await expect(page.getByText('103 selected', { exact: true })).toBeVisible();
   await pagination.getByRole('link', { name: 'Page 2', exact: true }).click();
-  await expect(page.getByText('191 selected', { exact: true })).toBeVisible();
+  await expect(page.getByText('103 selected', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Copy links', exact: true }).click();
   await expect
     .poll(
@@ -197,7 +176,7 @@ test('Links shares collection controls and manages primary and unshared images',
         (await page.evaluate(() => navigator.clipboard.readText())).split('\n')
           .length,
     )
-    .toBe(191);
+    .toBe(103);
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(
     copied
@@ -278,8 +257,8 @@ test('Links shares collection controls and manages primary and unshared images',
     page.getByRole('group', { name: 'Selected link actions' }),
   ).toContainText('1 selected');
   await page.getByRole('button', { name: 'Select all', exact: true }).click();
-  await pagination.getByRole('link', { name: 'Page 8', exact: true }).click();
-  await expect(page).toHaveURL(/linkPage=8/);
+  await pagination.getByRole('link', { name: 'Page 5', exact: true }).click();
+  await expect(page).toHaveURL(/linkPage=5/);
   expect(new URL(page.url()).searchParams.get('page')).toBe('3');
   await expect(
     page.getByRole('link', { name: 'Back to images' }),
@@ -294,7 +273,7 @@ test('Links shares collection controls and manages primary and unshared images',
         (await page.evaluate(() => navigator.clipboard.readText())).split('\n')
           .length,
     )
-    .toBe(190);
+    .toBe(102);
   await linkBulk
     .getByRole('button', { name: 'Change expiry', exact: true })
     .click();
@@ -313,7 +292,7 @@ test('Links shares collection controls and manages primary and unshared images',
     .first()
     .check();
   await page.getByRole('button', { name: 'Select all', exact: true }).click();
-  await expect(page.getByText('190 selected', { exact: true })).toBeVisible();
+  await expect(page.getByText('102 selected', { exact: true })).toBeVisible();
   await page.route('**/api/actions/alias-delete', async (route) => {
     const { ids } = z
       .object({ ids: z.array(z.string()) })
@@ -344,7 +323,7 @@ test('Links shares collection controls and manages primary and unshared images',
   const deletionNotice = page.getByRole('region', {
     name: 'Something went wrong notification',
   });
-  await expect(deletionNotice).toContainText('189 of 190 deleted · 1 failed');
+  await expect(deletionNotice).toContainText('101 of 102 deleted · 1 failed');
   await deletionNotice.getByRole('button', { name: 'Show details' }).click();
   const notificationRows = deletionNotice
     .getByLabel('Deletion items')
@@ -358,7 +337,7 @@ test('Links shares collection controls and manages primary and unshared images',
     'data-state',
     'completed',
   );
-  await expect(deletionNotice).toContainText('Page 1 of 10');
+  await expect(deletionNotice).toContainText('Page 1 of 6');
   await deletionNotice.getByRole('button', { name: 'Next items' }).click();
   await expect(
     deletionNotice
@@ -481,11 +460,6 @@ test('Links shares collection controls and manages primary and unshared images',
     ).toBeVisible();
   } finally {
     await memberContext.close();
-    const removed = await request.post('/api/actions/user-delete', {
-      headers,
-      data: { userId: member.userId, token: 'XXXX.DUMMY.TOKEN.XXXX' },
-    });
-    expect(removed.status()).toBe(200);
   }
   expect(errors).toEqual([]);
 });

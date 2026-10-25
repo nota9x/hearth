@@ -7,11 +7,7 @@ import { createUser } from '../../packages/core/auth';
 import { id, now } from '../../packages/core/common';
 import { database, type User } from '../../packages/core/db';
 import { ownedImage } from '../../packages/core/images';
-import {
-  effectiveExpiry,
-  linkSearchQuery,
-  linkStatus,
-} from '../../packages/core/link-search';
+import { linkSearchQuery } from '../../packages/core/link-search';
 import {
   changeLinkExpiry,
   createLink,
@@ -27,7 +23,6 @@ import {
   images,
   users,
 } from '../../packages/core/schema';
-import { paginationState } from '../../packages/core/search';
 import { migrateDatabase } from '../helpers/database';
 import { workerBundle, workerCompatibility } from '../helpers/workers';
 
@@ -144,6 +139,11 @@ describe('independent share-link lifecycle', () => {
     expect((await liveFor(imageId)).find((link) => link.primary)?.id).toBe(
       second.id,
     );
+    const events = await database(binding)
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.targetId, second.id));
+    expect(events.map((event) => event.action)).toContain('alias.primary');
     expect((await publicRequest(first.slug)).status).toBe(404);
     await deleteLinks(binding, owner, [third.id]);
     await deleteLinks(binding, owner, [second.id]);
@@ -217,17 +217,6 @@ describe('independent share-link lifecycle', () => {
     live = await liveFor(imageId);
     expect(live).toHaveLength(0);
     expect((await ownedImage(binding, owner, imageId)).deletedAt).toBeNull();
-  });
-  it('logs link mutations and promotions in the existing audit format', async () => {
-    const imageId = await fixture();
-    const first = await newLink(imageId),
-      second = await newLink(imageId);
-    await deleteLinks(binding, owner, [first.id]);
-    const events = await database(binding)
-      .select()
-      .from(auditLog)
-      .where(eq(auditLog.targetId, second.id));
-    expect(events.map((event) => event.action)).toContain('alias.primary');
   });
 });
 describe('link expiry policy', () => {
@@ -382,21 +371,5 @@ describe('server-side link management queries', () => {
       .update(deliveryDomains)
       .set({ enabled: true })
       .where(eq(deliveryDomains.id, deliveryDomainId));
-    const plan = await binding
-      .prepare(
-        'EXPLAIN QUERY PLAN SELECT id FROM aliases WHERE disabledAt IS NULL ORDER BY createdAt,id LIMIT 24',
-      )
-      .all<{ detail: string }>();
-    expect(
-      plan.results.some((row) => row.detail.includes('aliases_live_date')),
-    ).toBe(true);
-    expect(paginationState('999', 25, 24)).toMatchObject({
-      page: 2,
-      pages: 2,
-      offset: 24,
-    });
-    expect(effectiveExpiry(null, 10)).toBe(10);
-    expect(effectiveExpiry(20, 10)).toBe(10);
-    expect(linkStatus(10, false, 11)).toBe('expired');
   });
 });

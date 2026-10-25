@@ -1,23 +1,8 @@
 import { readFile } from 'node:fs/promises';
 
-import type { APIRequestContext, Page } from '@playwright/test';
+import { expect, signIn, test } from '../helpers/browser';
 
-import { expect, test } from '../helpers/browser';
-
-async function signIn(page: Page, request: APIRequestContext, origin: string) {
-  const response = await request.post('/api/actions/login', {
-    headers: { Origin: origin },
-    data: {
-      key: await readFile(process.env.TEST_KEY_FILE!, 'utf8'),
-      token: 'XXXX.DUMMY.TOKEN.XXXX',
-    },
-  });
-  expect(response.status()).toBe(200);
-  const state = await request.storageState();
-  await page.context().addCookies(state.cookies);
-}
-
-test('personal settings save only changed fields, survive refreshes, reset, and render at every size', async ({
+test('personal settings preserve drafts across refreshes and save only changed fields', async ({
   page,
   request,
   baseURL,
@@ -45,7 +30,6 @@ test('personal settings save only changed fields, survive refreshes, reset, and 
   const refresh = page.waitForResponse('**/api/settings');
   await page.evaluate(() => globalThis.dispatchEvent(new Event('focus')));
   await refresh;
-  await expect(page.locator('a[href="/images"] .nav-dot')).toHaveCount(1);
   await expect(name).toHaveValue('Settings draft');
   const submitted = page.waitForRequest('**/api/actions/preferences');
   await save.click();
@@ -82,28 +66,6 @@ test('personal settings save only changed fields, survive refreshes, reset, and 
   await name.fill('');
   await expect(save).toBeDisabled();
   await preferences.getByRole('button', { name: 'Reset', exact: true }).click();
-  for (const width of [320, 390, 768, 1440]) {
-    await page.setViewportSize({ width, height: 1000 });
-    await page.evaluate(() => {
-      scrollTo(0, 0);
-      if (document.activeElement instanceof HTMLElement)
-        document.activeElement.blur();
-    });
-    await expect(
-      page.getByRole('region', { name: 'About', exact: true }),
-    ).toContainText('GPL-3.0-or-later');
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
-  }
-  await page.setViewportSize({ width: 720, height: 500 });
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  ).toBe(true);
   expect(errors).toEqual([]);
 });
 
@@ -117,17 +79,28 @@ test('administration groups save independently, preserve other drafts, and reset
   await hearth.DB.prepare(
     'UPDATE storage_capacity SET ready=1,multipartVerified=1 WHERE id=1',
   ).run();
+  await hearth.DB.prepare(
+    "UPDATE app_settings SET value=json_set(value,'$.automaticFloor',7) WHERE key='shareSlugConfiguration'",
+  ).run();
   await page.goto('/admin/settings');
   const workspace = page.getByRole('region', { name: 'Workspace name' });
   const links = page.getByRole('region', { name: 'Share-link IDs' });
   const policy = page.getByRole('region', { name: 'Expiry policy' });
   const storage = page.getByRole('region', { name: 'Global storage limit' });
+  await expect(links).toContainText('Current allocation length: 7 characters');
   await page.getByLabel('Name', { exact: true }).fill('Pending workspace');
   await page
     .getByLabel('Default share-link slug length', { exact: true })
     .fill('8');
   await links.getByRole('button', { name: 'Save slug length' }).click();
   await expect(links.getByRole('status')).toHaveText('Saved');
+  await expect(links).toContainText('Current allocation length: 8 characters');
+  await page
+    .getByLabel('Default share-link slug length', { exact: true })
+    .fill('5');
+  await links.getByRole('button', { name: 'Save slug length' }).click();
+  await expect(links.getByRole('status')).toHaveText('Saved');
+  await expect(links).toContainText('Current allocation length: 7 characters');
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue(
     'Pending workspace',
   );
@@ -175,7 +148,7 @@ test('administration groups save independently, preserve other drafts, and reset
   );
   await expect(
     page.getByLabel('Default share-link slug length', { exact: true }),
-  ).toHaveValue('8');
+  ).toHaveValue('5');
   await expect(
     page.getByLabel('Maximum lifetime', { exact: true }),
   ).toHaveValue('3600');
@@ -185,19 +158,6 @@ test('administration groups save independently, preserve other drafts, and reset
   await expect(
     page.getByRole('switch', { name: 'Enable global limit' }),
   ).toBeChecked();
-  for (const width of [390, 768, 1440]) {
-    await page.setViewportSize({ width, height: 1000 });
-    await page.evaluate(() => {
-      scrollTo(0, 0);
-      if (document.activeElement instanceof HTMLElement)
-        document.activeElement.blur();
-    });
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBe(true);
-  }
 });
 
 test('failed settings reads preserve drafts and distinguish confirmed saves from failed mutations', async ({

@@ -5,7 +5,12 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import nodePath from 'node:path';
 
-import { test as base } from '@playwright/test';
+import {
+  type APIRequestContext,
+  expect,
+  type Page,
+  test as base,
+} from '@playwright/test';
 import {
   convertV4MiniflareOptions,
   fetch as localFetch,
@@ -20,6 +25,23 @@ import { createUser } from '../../packages/core/auth';
 import { migrateDatabase } from './database';
 
 type AccountMode = 'established' | 'new' | 'bootstrap';
+
+export async function signIn(
+  page: Page,
+  request: APIRequestContext,
+  origin: string,
+  key?: string,
+) {
+  key ??= await readFile(process.env.TEST_KEY_FILE!, 'utf8');
+  const response = await request.post('/api/actions/login', {
+    headers: { Origin: origin },
+    data: { key, token: 'XXXX.DUMMY.TOKEN.XXXX' },
+  });
+  expect(response.status(), await response.text()).toBe(200);
+  const state = await request.storageState();
+  await page.context().addCookies(state.cookies);
+  return key;
+}
 
 async function start(accountMode: AccountMode) {
   const root = process.cwd();

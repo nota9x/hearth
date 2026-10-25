@@ -388,10 +388,7 @@ afterEach(() => {
   else Reflect.deleteProperty(process.stdin, 'isTTY');
   if (outputTTY) Object.defineProperty(process.stdout, 'isTTY', outputTTY);
   else Reflect.deleteProperty(process.stdout, 'isTTY');
-  vi.restoreAllMocks();
   vi.clearAllMocks();
-  vi.unstubAllGlobals();
-  vi.unstubAllEnvs();
   process.exitCode = 0;
 });
 

@@ -43,9 +43,6 @@ jobs:
       - name: Unit tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: pnpm test:unit
-      - name: Bundle maintenance Worker
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm exec wrangler deploy --dry-run --config workers/maintenance/wrangler.jsonc
 
   integration:
     name: Integration (${{ matrix.shard }}/2)
@@ -103,7 +100,7 @@ jobs:
         run: pnpm exec playwright install --with-deps --only-shell chromium
       - name: Build web
         run: pnpm build
-      # Global setup bundles the built web Worker and delivery with Wrangler.
+      # Global setup bundles web, delivery, and maintenance with Wrangler.
       - name: Browser tests
         run: pnpm test:browser --fully-parallel --shard=${{ matrix.shard }}/2
       - name: Upload browser failure reports

@@ -1,15 +1,13 @@
 /* eslint-disable unicorn/no-await-expression-member -- Assertions read completed HTTP responses directly. */
 import { Buffer } from 'node:buffer';
-import { spawnSync } from 'node:child_process';
-import { readFile, writeFile } from 'node:fs/promises';
-import nodePath from 'node:path';
 
 import { z } from 'zod';
 
-import { expect, test } from '../helpers/browser';
+import { expect, signIn, test } from '../helpers/browser';
 import { configureDeliveryDomain } from '../helpers/delivery';
 
 test('expiry administration, saved-default uploads and atomic selections across pages', async ({
+  hearth,
   proxy,
   page,
   request,
@@ -17,14 +15,8 @@ test('expiry administration, saved-default uploads and atomic selections across 
   baseURL,
 }) => {
   test.setTimeout(180_000);
-  const key = await readFile(process.env.TEST_KEY_FILE!, 'utf8');
+  await signIn(page, request, baseURL!);
   const headers = { Origin: baseURL! };
-  const login = await request.post('/api/actions/login', {
-    headers,
-    data: { key, token: 'XXXX.DUMMY.TOKEN.XXXX' },
-  });
-  expect(login.status(), await login.text()).toBe(200);
-  await page.context().addCookies((await request.storageState()).cookies);
   const errors: string[] = [];
   page.on('pageerror', (error) => {
     errors.push(error.message);
@@ -115,24 +107,12 @@ test('expiry administration, saved-default uploads and atomic selections across 
       WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<120)
       INSERT INTO images(id,userId,objectKey,filename,mime,extension,size,sha256,width,height,createdAt)
       SELECT 'img_'||lower(hex(randomblob(16))), '${member.userId}', '${deliveryDomainId}-'||x, 'Expiry fixture '||x||'.png', 'image/png','png',1,'test',1,1,unixepoch() FROM n;`;
-    const fixturePath = nodePath.resolve('artifacts/expiry-browser.sql');
-    await writeFile(fixturePath, fixture);
-    const seeded = spawnSync(
-      process.execPath,
-      [
-        nodePath.resolve('node_modules/wrangler/bin/wrangler.js'),
-        'd1',
-        'execute',
-        'DB',
-        '--local',
-        '--config',
-        process.env.TEST_DB_CONFIG!,
-        '--file',
-        fixturePath,
-      ],
-      { encoding: 'utf8' },
+    await hearth.DB.batch(
+      fixture
+        .split(';')
+        .filter((sql) => sql.trim())
+        .map((sql) => hearth.DB.prepare(sql)),
     );
-    expect(seeded.status, seeded.stderr).toBe(0);
     const memberLogin = await memberContext.request.post('/api/actions/login', {
       headers,
       data: { key: member.key, token: 'XXXX.DUMMY.TOKEN.XXXX' },
@@ -281,15 +261,5 @@ test('expiry administration, saved-default uploads and atomic selections across 
     expect(errors).toEqual([]);
   } finally {
     await memberContext.close();
-    const reset = await request.post('/api/actions/expiry-policy', {
-      headers,
-      data: { policy: { requireExpiry: false, maxLifetimeSeconds: null } },
-    });
-    expect(reset.status()).toBe(200);
-    const removed = await request.post('/api/actions/user-delete', {
-      headers,
-      data: { userId: member.userId, token: 'XXXX.DUMMY.TOKEN.XXXX' },
-    });
-    expect(removed.status()).toBe(200);
   }
 });

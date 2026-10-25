@@ -1,7 +1,7 @@
 import { PassThrough, Writable } from 'node:stream';
 import { stripVTControlCharacters } from 'node:util';
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { DevelopmentConsole, safeLogText } from '../../cli/development/console';
 
@@ -30,8 +30,6 @@ function harness(env: Record<string, string | undefined> = {}, tty = true) {
   );
   return { dashboard, stdout, stderr };
 }
-
-afterEach(() => vi.useRealTimers());
 
 describe('development dashboard', () => {
   it('shows and handles maintenance controls, preserves Ctrl+C, and restores terminal input', async () => {

@@ -63,8 +63,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  vi.restoreAllMocks();
-  vi.unstubAllEnvs();
   if (inputTTY) Object.defineProperty(process.stdin, 'isTTY', inputTTY);
   else Reflect.deleteProperty(process.stdin, 'isTTY');
   if (outputTTY) Object.defineProperty(process.stdout, 'isTTY', outputTTY);

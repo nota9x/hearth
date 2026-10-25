@@ -62,8 +62,6 @@ beforeEach(async () => {
   bootstrap = await prepareBootstrap("Owner's Hearth");
 });
 afterEach(async () => {
-  vi.unstubAllGlobals();
-  vi.restoreAllMocks();
   await runtime?.dispose();
 });
 async function createAdministrator() {

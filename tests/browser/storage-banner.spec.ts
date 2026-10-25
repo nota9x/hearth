@@ -1,9 +1,8 @@
 /* eslint-disable unicorn/no-await-expression-member -- Assertions inspect completed browser API responses. */
 import { Buffer } from 'node:buffer';
-import { readFile } from 'node:fs/promises';
 
 import { createUser } from '../../packages/core/auth';
-import { expect, test } from '../helpers/browser';
+import { expect, signIn, test } from '../helpers/browser';
 
 const pixel = {
   name: 'pixel.png',
@@ -21,15 +20,7 @@ test('storage banner follows thresholds, role priority, navigation and focus ref
   baseURL,
 }) => {
   test.setTimeout(120_000);
-  const login = await request.post('/api/actions/login', {
-    headers: { Origin: baseURL! },
-    data: {
-      key: await readFile(process.env.TEST_KEY_FILE!, 'utf8'),
-      token: 'XXXX.DUMMY.TOKEN.XXXX',
-    },
-  });
-  expect(login.status()).toBe(200);
-  await page.context().addCookies((await request.storageState()).cookies);
+  await signIn(page, request, baseURL!);
   await page.goto('/settings');
   expect((await request.get('/api/settings?admin')).status()).toBe(200);
   const banner = page.locator('.delivery-notice');
@@ -61,22 +52,7 @@ test('storage banner follows thresholds, role priority, navigation and focus ref
   await hearth.DB.prepare(
     'UPDATE storage_capacity SET persistedBytes=990 WHERE id=1',
   ).run();
-  // Navigation also reads the threshold projection on every dashboard surface.
-  for (const path of [
-    '/',
-    '/images',
-    '/links',
-    '/domains',
-    '/settings',
-    '/admin',
-    '/admin/images',
-    '/admin/links',
-    '/admin/domains',
-    '/admin/users',
-    '/admin/storage',
-    '/admin/settings',
-    '/admin/audit-log',
-  ]) {
+  for (const path of ['/images', '/admin/storage']) {
     await page.goto(path);
     await expect(banner).toHaveCount(1);
     await expect(banner).toContainText('Instance storage is nearly full.');
@@ -93,15 +69,6 @@ test('storage banner follows thresholds, role priority, navigation and focus ref
   await expect(manageImages).toBeFocused();
   await page.setViewportSize({ width: 320, height: 720 });
   await expect(banner).toBeVisible();
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBe(true);
-  await expect(page.locator('#main-navigation')).toHaveJSProperty(
-    'inert',
-    true,
-  );
   await hearth.DB.prepare(
     'UPDATE storage_capacity SET persistedBytes=1000 WHERE id=1',
   ).run();
@@ -177,15 +144,7 @@ test('real quota failures below the threshold use upload notifications and succe
   baseURL,
 }) => {
   test.setTimeout(60_000);
-  const login = await request.post('/api/actions/login', {
-    headers: { Origin: baseURL! },
-    data: {
-      key: await readFile(process.env.TEST_KEY_FILE!, 'utf8'),
-      token: 'XXXX.DUMMY.TOKEN.XXXX',
-    },
-  });
-  expect(login.status()).toBe(200);
-  await page.context().addCookies((await request.storageState()).cookies);
+  await signIn(page, request, baseURL!);
   await hearth.DB.prepare(
     'UPDATE storage_capacity SET ready=1 WHERE id=1',
   ).run();

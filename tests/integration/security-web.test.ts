@@ -181,6 +181,10 @@ describe('server-rendered authorization boundaries', () => {
       new URLSearchParams({ owner: other.id }),
     );
     expect(result.images.map((image) => image.id)).toEqual([ownImage]);
+    expect(JSON.stringify(result.images)).not.toMatch(/objectKey|previewKey/);
+    const detail = await dashboard(`images/${ownImage}`);
+    expect(detail.image?.id).toBe(ownImage);
+    expect(JSON.stringify(detail.image)).not.toMatch(/objectKey|previewKey/);
     await expect(dashboard(`images/${otherImage}`)).rejects.toMatchObject({
       status: 404,
     });

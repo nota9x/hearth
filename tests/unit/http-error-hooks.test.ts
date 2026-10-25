@@ -1,5 +1,5 @@
 import type { Handle, HandleServerError } from '@sveltejs/kit/hooks';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { handle, handleError } from '../../apps/web/src/hooks.server';
 import { failure } from '../../apps/web/src/lib/server/http';
@@ -42,7 +42,6 @@ function input(
   });
   return { event, resolve, first, env: cloudflare.env };
 }
-afterEach(() => vi.restoreAllMocks());
 
 describe('application error integration', () => {
   it('replaces document failures with safe branded HTML and protocol headers', async () => {

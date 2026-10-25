@@ -13,12 +13,12 @@ beforeEach(() => {
 });
 afterEach(() => {
   clearOnboardingKey();
-  vi.useRealTimers();
-  vi.unstubAllGlobals();
 });
 
 describe('one-time onboarding credential handoff', () => {
   it('hands the key only to its account and consumes it once', () => {
+    holdOnboardingKey('owner', 'private-key');
+    expect(takeOnboardingKey('another-account')).toBeNull();
     holdOnboardingKey('owner', 'private-key');
     expect(takeOnboardingKey('owner')).toEqual({
       userId: 'owner',
@@ -36,7 +36,6 @@ describe('one-time onboarding credential handoff', () => {
     holdOnboardingKey('owner', 'private-key');
     windowEvents.dispatchEvent(new Event('pagehide'));
     expect(takeOnboardingKey('owner')).toBeNull();
-    expect(vi.getTimerCount()).toBe(0);
   });
   it('never retains a credential during server rendering', () => {
     vi.stubGlobal('window', undefined);

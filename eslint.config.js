@@ -131,7 +131,8 @@ export default defineConfig(
     files: ['tests/**/*.test.ts'],
     extends: [vitest.configs.recommended],
     rules: {
-      // Vitest fixtures are initialized in beforeAll and shared by tests.
+      'vitest/valid-expect': ['error', { maxArgs: 2 }],
+      // Test setup assigns module-scope fixture handles.
       'unicorn/no-top-level-assignment-in-function': 'off',
     },
   },

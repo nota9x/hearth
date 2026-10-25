@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   type DeliveryEnvironment,
@@ -78,11 +78,6 @@ beforeEach(() => {
   vi.setSystemTime(new Date('2026-10-04T12:00:00Z'));
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(console, 'error').mockImplementation(() => {});
-});
-afterEach(() => {
-  vi.useRealTimers();
-  vi.unstubAllGlobals();
-  vi.restoreAllMocks();
 });
 
 describe('share failure accounting and cooldown', () => {

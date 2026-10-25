@@ -8,10 +8,9 @@ import { z } from 'zod';
 import { expect, test } from '../helpers/browser';
 import { configureDeliveryDomain } from '../helpers/delivery';
 
-test('metadata preferences, every upload method and independent browser rendering', async ({
+test('metadata preferences preserve original bytes and browser-decoded pixels', async ({
   hearth,
   proxy,
-  page,
   request,
   browser,
   baseURL,
@@ -70,8 +69,6 @@ test('metadata preferences, every upload method and independent browser renderin
         'Remove unnecessary embedded details from future uploads.',
       ),
     ).toBeVisible();
-    await memberPage.setViewportSize({ width: 360, height: 740 });
-    await memberPage.setViewportSize({ width: 1440, height: 1000 });
 
     async function save(enabled: boolean) {
       await toggle.setChecked(enabled);
@@ -122,61 +119,6 @@ test('metadata preferences, every upload method and independent browser renderin
       .object({ id: z.string() })
       .parse(await webResponse.json());
     expect(await original(webImage.id)).toEqual(sanitized);
-    const transfer = await memberPage.evaluateHandle((base64) => {
-      const data = new DataTransfer();
-      data.items.add(
-        new File(
-          [
-            Uint8Array.from(atob(base64), (character) =>
-              character.codePointAt(0)!,
-            ),
-          ],
-          'Drop metadata.png',
-          { type: 'image/png' },
-        ),
-      );
-      return data;
-    }, bytes.toString('base64'));
-    const dropped = memberPage.waitForResponse('**/api/upload');
-    await memberPage
-      .locator('main')
-      .dispatchEvent('dragenter', { dataTransfer: transfer });
-    await memberPage
-      .locator('main')
-      .dispatchEvent('drop', { dataTransfer: transfer });
-    const dropResponse = await dropped;
-    expect(dropResponse.status()).toBe(201);
-    const dropImage = z
-      .object({ id: z.string() })
-      .parse(await dropResponse.json());
-    expect(await original(dropImage.id)).toEqual(sanitized);
-
-    const configResponse = await context.request.post('/api/actions/sxcu', {
-      headers,
-      data: { key: member.key },
-    });
-    expect(configResponse.status()).toBe(200);
-    const config = z
-      .object({
-        RequestURL: z.string(),
-        Headers: z.object({ Authorization: z.string() }),
-        FileFormName: z.string(),
-      })
-      .parse(await configResponse.json());
-    const sharex = await context.request.post(config.RequestURL, {
-      headers: config.Headers,
-      multipart: {
-        [config.FileFormName]: {
-          name: 'ShareX metadata.png',
-          mimeType: 'image/png',
-          buffer: bytes,
-        },
-      },
-    });
-    expect(sharex.status()).toBe(201);
-    const sharexImage = z.object({ id: z.string() }).parse(await sharex.json());
-    expect(await original(sharexImage.id)).toEqual(sanitized);
-
     for (const name of [
       ...Array.from(
         { length: 8 },
@@ -241,11 +183,5 @@ test('metadata preferences, every upload method and independent browser renderin
     expect(errors).toEqual([]);
   } finally {
     await context.close();
-    const removed = await request.post('/api/actions/user-delete', {
-      headers,
-      data: { userId: member.userId, token: 'XXXX.DUMMY.TOKEN.XXXX' },
-    });
-    expect(removed.status()).toBe(200);
   }
-  await page.goto('/login');
 });

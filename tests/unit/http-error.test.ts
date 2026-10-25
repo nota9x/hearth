@@ -1,12 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   acceptsErrorHtml,
   httpErrorHeaders,
   renderHttpErrorDocument,
 } from '../../packages/core/http-error';
-
-afterEach(() => vi.unstubAllGlobals());
 
 describe('safe HTTP error presentation', () => {
   it('escapes branding and uses only a safe configured origin', () => {
