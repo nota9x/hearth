@@ -27,6 +27,13 @@ Keep an accessible copy of ignored production configuration when using a fresh c
 
 ## 2. Install, build, and review configuration
 
+Alternatively, use the release's [prebuilt Worker ZIPs](../development/releasing.md#download-verify-and-deploy)
+to skip installing Hearth dependencies and building application code. Verify the
+ZIPs first, then transfer instance settings into their included production
+templates. Use the extracted web ZIP's migrations and each ZIP's `wrangler.jsonc`
+in the migration/deployment steps below. The backup, maintenance-window, and
+post-deployment checks still apply.
+
 ```sh
 pnpm install --frozen-lockfile
 pnpm build

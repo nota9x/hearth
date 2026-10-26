@@ -2,15 +2,22 @@ name: Release Please
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: release-please-${{ github.repository }}-${{ github.ref }}
+  group: release-please-${{ github.repository }}
   cancel-in-progress: false
+env:
+  WRANGLER_SEND_METRICS: 'false'
 jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      tag: ${{ steps.select.outputs.tag }}
+      sha: ${{ steps.select.outputs.sha }}
+      id: ${{ steps.select.outputs.id }}
     steps:
       - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
         id: app-token
@@ -21,8 +28,131 @@ jobs:
           permission-issues: write
           permission-pull-requests: write
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
+        if: github.event_name == 'push'
+        id: release
         with:
           token: ${{ steps.app-token.outputs.token }}
           target-branch: main
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+      - name: Select the release draft
+        id: select
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          CREATED: ${{ steps.release.outputs.release_created }}
+          CREATED_TAG: ${{ steps.release.outputs.tag_name }}
+          CREATED_SHA: ${{ steps.release.outputs.sha }}
+          CREATED_ID: ${{ steps.release.outputs.id }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            [[ "$GITHUB_REF_TYPE" == tag ]] || { echo 'Recovery must run at the existing release tag.' >&2; exit 1; }
+            tag="$GITHUB_REF_NAME"
+          elif [[ "$CREATED" == true ]]; then
+            [[ "$CREATED_SHA" == "$GITHUB_SHA" ]] || { echo 'Release source differs from this run. Recover at its release tag.' >&2; exit 1; }
+            tag="$CREATED_TAG"
+          elif [[ "$GITHUB_RUN_ATTEMPT" -gt 1 ]]; then
+            # Release Please does not emit release_created again on a complete rerun.
+            drafts=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq ".[] | select(.draft and .target_commitish == \"$GITHUB_SHA\") | .tag_name")
+            [[ -n "$drafts" ]] || exit 0
+            [[ "$drafts" != *$'\n'* ]] || { echo 'Multiple drafts match this commit.' >&2; exit 1; }
+            tag="$drafts"
+          else
+            exit 0
+          fi
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]
+          release=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag")
+          jq -e --arg tag "$tag" --arg sha "$GITHUB_SHA" --arg id "$CREATED_ID" \
+            '.draft and (.immutable != true) and .tag_name == $tag and .target_commitish == $sha and ($id == "" or (.id | tostring) == $id)' <<< "$release" > /dev/null
+          [[ "$(gh api "repos/$GITHUB_REPOSITORY/commits/$tag" --jq .sha)" == "$GITHUB_SHA" ]]
+          printf 'tag=%s\nsha=%s\nid=%s\n' "$tag" "$GITHUB_SHA" "$(jq -r .id <<< "$release")" >> "$GITHUB_OUTPUT"
+
+  bundles:
+    needs: release
+    if: needs.release.outputs.tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ needs.release.outputs.tag }}
+      RELEASE_SHA: ${{ needs.release.outputs.sha }}
+      RELEASE_ID: ${{ needs.release.outputs.id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.release.outputs.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            package.json
+            pnpm-workspace.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build and validate release ZIPs
+        run: pnpm exec tsx scripts/release-bundles.ts "$RELEASE_TAG" "$RELEASE_SHA"
+      - name: Attest release ZIPs
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-checksums: artifacts/releases/hearth-${{ needs.release.outputs.tag }}-SHA256SUMS.txt
+      - name: Verify provenance and prepare release assets
+        working-directory: artifacts/releases
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          sha256sum --check "hearth-$RELEASE_TAG-SHA256SUMS.txt"
+          cp "$ATTESTATION_BUNDLE" "hearth-$RELEASE_TAG-provenance.json"
+          for component in web maintenance delivery; do
+            gh attestation verify "hearth-$component-$RELEASE_TAG.zip" \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release-please.yml" \
+              --source-digest "$RELEASE_SHA" \
+              --bundle "hearth-$RELEASE_TAG-provenance.json"
+          done
+      - name: Upload verified assets and publish the draft
+        working-directory: artifacts/releases
+        run: |
+          set -euo pipefail
+          release_path="repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID"
+          check_draft() {
+            gh api "$release_path" | jq -e --arg tag "$RELEASE_TAG" --arg sha "$RELEASE_SHA" \
+              '.draft and (.immutable != true) and .tag_name == $tag and .target_commitish == $sha' > /dev/null
+            [[ "$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq .sha)" == "$RELEASE_SHA" ]]
+          }
+          check_draft
+          assets=(
+            "hearth-web-$RELEASE_TAG.zip"
+            "hearth-maintenance-$RELEASE_TAG.zip"
+            "hearth-delivery-$RELEASE_TAG.zip"
+            "hearth-$RELEASE_TAG-SHA256SUMS.txt"
+            "hearth-$RELEASE_TAG-provenance.json"
+          )
+          expected=$(printf '%s\n' "${assets[@]}" | jq -R . | jq -s 'sort')
+          # Recovery may replace only our expected assets on this unpublished draft.
+          gh api --paginate "$release_path/assets?per_page=100" | jq -s 'add' > "$RUNNER_TEMP/release-assets.json"
+          jq -e --argjson expected "$expected" 'all(.[]; .name as $name | $expected | index($name) != null)' "$RUNNER_TEMP/release-assets.json" > /dev/null
+          gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          check_draft
+          gh api --paginate "$release_path/assets?per_page=100" | jq -s 'add' > "$RUNNER_TEMP/release-assets.json"
+          jq -e --argjson expected "$expected" '([.[].name] | sort) == $expected and all(.[]; .state == "uploaded")' "$RUNNER_TEMP/release-assets.json" > /dev/null
+          for asset in "${assets[@]}"; do
+            digest="sha256:$(sha256sum "$asset" | cut -d ' ' -f 1)"
+            size=$(stat -c %s "$asset")
+            jq -e --arg name "$asset" --arg digest "$digest" --argjson size "$size" \
+              'any(.[]; .name == $name and .digest == $digest and .size == $size)' "$RUNNER_TEMP/release-assets.json" > /dev/null
+          done
+          check_draft
+          gh api --method PATCH "$release_path" -F draft=false \
+            --jq 'if .draft then error("Release remained a draft") else .html_url end'

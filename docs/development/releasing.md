@@ -150,7 +150,9 @@ uploads, permissions, or hosted execution of the new graph.
 Pushes to `main` run Release Please. It reads Conventional Commits and updates a
 release PR. Review it and wait for required checks/reviews, then squash merge without
 changing generated release title, body, or labels. The next workflow run publishes
-the version tag/release at the merged commit. Runs are serialized.
+the version tag and a draft release at the merged commit. A dependent job builds,
+validates, and attests all three Worker ZIPs, attaches the assets, and publishes the
+draft only after every check succeeds. Publication and recovery runs are serialized.
 
 | Change                               | Before 1.0.0     | From 1.0.0       |
 | ------------------------------------ | ---------------- | ---------------- |
@@ -173,7 +175,84 @@ are separate and must not be synchronized with a release number.
 
 Do not edit the generated changelog or leave a permanent version override. For an
 intentional transition to 1.0.0, a reviewed `Release-As: 1.0.0` footer is supported.
-If assets are introduced, attach them before publishing an immutable release.
+Assets are attached before publishing, including when release immutability is enabled.
+
+## Prebuilt Worker ZIPs
+
+Every new release includes these assets, using its exact version tag:
+
+| Asset                           | Contents                                                                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `hearth-web-vX.Y.Z.zip`         | Prebuilt web Worker, static assets, ordered SQL migrations, production configuration template, license, and instructions |
+| `hearth-maintenance-vX.Y.Z.zip` | Prebuilt maintenance Worker, production configuration template, license, and instructions                                |
+| `hearth-delivery-vX.Y.Z.zip`    | Prebuilt delivery Worker, production configuration template, license, and instructions                                   |
+| `hearth-vX.Y.Z-SHA256SUMS.txt`  | SHA-256 checksums of exactly the three ZIPs                                                                              |
+| `hearth-vX.Y.Z-provenance.json` | Signed SLSA build provenance covering all three ZIPs                                                                     |
+
+The release helper runs the existing web build once and Wrangler dry-run bundling
+for each Worker. It reuses the production configuration renderer, changes paths
+to archive-relative locations, and enables `no_bundle`. Each completed ZIP is
+extracted outside the checkout and checked with Wrangler without bundling. All
+package versions, the release manifest, tag, release target, checkout, and workflow
+source must agree. No release packaging runs in normal development or validation CI.
+
+The publishing job uses GitHub's OIDC identity and attestation service with scoped
+`id-token`, `attestations`, and `artifact-metadata` write permissions, plus `contents`
+write permission for release assets/publication. Release Please retains its GitHub
+App token. The workflow verifies each ZIP's provenance, then checks uploaded asset
+names, states, sizes, and SHA-256 digests before publishing. Attestation or
+verification failures block publication. GitHub supports attestations in public
+repositories; private/internal forks require Enterprise Cloud. See
+[GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations).
+
+### Download, verify, and deploy
+
+Use your actual repository and reviewed version in place of `OWNER/REPO` and
+`vX.Y.Z`. Download into an empty directory:
+
+```sh
+gh release download vX.Y.Z --repo OWNER/REPO --pattern 'hearth-*'
+sha256sum --check hearth-vX.Y.Z-SHA256SUMS.txt
+gh api repos/OWNER/REPO/commits/vX.Y.Z --jq .sha
+```
+
+Use that expected commit as `RELEASE_COMMIT` when verifying each ZIP. For example:
+
+```sh
+gh attestation verify hearth-web-vX.Y.Z.zip --repo OWNER/REPO --signer-workflow OWNER/REPO/.github/workflows/release-please.yml --source-digest RELEASE_COMMIT
+```
+
+Repeat for maintenance and delivery. To verify using the downloaded attestation
+bundle, append `--bundle hearth-vX.Y.Z-provenance.json`. Verification must succeed
+before extraction or configuration edits. Checksums detect corruption; the signed
+attestation establishes the producing repository, workflow, and commit. See
+[GitHub CLI verification](https://cli.github.com/manual/gh_attestation_verify).
+
+Extract each ZIP into a separate directory with your operating system's ZIP tool
+(Windows: `Expand-Archive`; Unix: `unzip`). Follow its included `README.md` and use
+the pinned Wrangler version it specifies. No Hearth source checkout or application
+dependency installation/build is required. Users must still provide their own
+Cloudflare account, resource bindings, hostnames, Turnstile settings, and secrets.
+Templates use production mode and example resource values, never real credentials.
+
+For updates, transfer reviewed instance settings into the extracted templates;
+retain their `main`, `no_bundle`, asset, and migration paths. Preserve existing
+rate-limit namespaces, optional bindings, and the web-to-maintenance Worker name.
+Review SQL and follow the [update procedure](../operations/updating.md) for backups,
+maintenance windows, and compatible migrations. From the extracted web directory,
+list/apply migrations with Wrangler using its `wrangler.jsonc`. Then deploy
+delivery, maintenance, and web from their respective directories:
+
+```sh
+wrangler deploy --dry-run --config wrangler.jsonc
+wrangler deploy --config wrangler.jsonc
+```
+
+Use the release's pinned Wrangler version. Fresh installations still require the
+[installation procedure](../getting-started/installation.md) for provisioning,
+storage initialization, and administrator bootstrap; these ZIPs package deployment
+code rather than an installer. Existing source-based installation/deployment stays
+unchanged.
 
 ## Verify and troubleshoot releases
 
@@ -182,7 +261,38 @@ App-created PRs run required CI, and the release/tag SHA matches the merged rele
 commit. The local test suite cannot prove hosted permissions or publication behavior.
 
 If a release PR is missing, inspect qualifying commits, App permissions/credentials,
-and pending/tagged release labels. If publication fails, preserve generated metadata
-and rerun the failed workflow after correcting access; do not manually tag or create
-a duplicate release. Unexpected first-version proposals require checking existing
-release state and `Release-As` footers before merging.
+and pending/tagged release labels. Unexpected first-version proposals require
+checking existing release state and `Release-As` footers before merging.
+
+If publication fails, the release remains a draft and the workflow fails. Preserve
+its tag and metadata. After correcting the cause, rerun the failed bundle job;
+rerunning the entire original workflow also discovers the matching draft. Partial
+uploads can be replaced only on that unpublished draft; unexpected assets block
+publication instead of being deleted. Never manually publish a partial draft or
+move its tag.
+
+To resume explicitly, dispatch the workflow **at the existing release tag**:
+
+```sh
+gh workflow run release-please.yml --repo OWNER/REPO --ref vX.Y.Z
+```
+
+Dispatching at `main` is rejected. Recovery skips Release Please, rebuilds the exact
+tagged commit, and requires a matching unpublished draft. Published releases cannot
+be overwritten. If code changes are needed to fix a packaging failure, merge the
+fix and issue a new release; do not move the failed release's tag. A release whose
+source differs from the original push is also left unpublished and must be resumed
+at its tag so the attestation source matches the build.
+
+For local packaging checks on the matching checkout:
+
+```sh
+pnpm exec tsx scripts/release-bundles.ts vX.Y.Z RELEASE_COMMIT
+```
+
+Output goes to ignored `artifacts/releases`; the helper refuses an existing output
+directory to prevent stale files. Remove only that generated directory before a
+fresh local run. Local dry runs cannot validate GitHub OIDC, permissions, or release
+immutability. Use a disposable GitHub repository for hosted end-to-end checks;
+never use a live Cloudflare account for release tests. Do not manually tag or create
+a duplicate release.
