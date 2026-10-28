@@ -283,7 +283,7 @@ importers:
         version: link:../../packages/core
       '@lucide/svelte':
         specifier: ^1.47.0
-        version: 1.61.0(svelte@5.57.3(@typescript-eslint/types@8.72.0))
+        version: 1.62.0(svelte@5.57.3(@typescript-eslint/types@8.72.0))
       '@zip.js/zip.js':
         specifier: 2.24.0
         version: 2.24.0
@@ -1388,8 +1388,8 @@ packages:
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
 
-  '@lucide/svelte@1.61.0':
-    resolution: {integrity: sha512-Vwj4ADoKgVogLFpEbXv2PS2hh2fj+aAqPuiNydI88Zkyb1l7veL4fXgRrOX3tgpESHhIGneNkSSYhHupvCBshg==}
+  '@lucide/svelte@1.62.0':
+    resolution: {integrity: sha512-GPnNiUlc29piQn+noy/YAwP3Bfgqs9JxbLPIVbb+T4u2vGxUHeCWdZx0dw0EphP9juWbcLLMsellifhGrLw5yg==}
     peerDependencies:
       svelte: ^5
 
@@ -4153,7 +4153,7 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@lucide/svelte@1.61.0(svelte@5.57.3(@typescript-eslint/types@8.72.0))':
+  '@lucide/svelte@1.62.0(svelte@5.57.3(@typescript-eslint/types@8.72.0))':
     dependencies:
       svelte: 5.57.3(@typescript-eslint/types@8.72.0)
 
