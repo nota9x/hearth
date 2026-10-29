@@ -27,16 +27,17 @@ vi.mock('../../cli/bootstrap-data', async (importOriginal) => ({
 
 const inputTTY = Object.getOwnPropertyDescriptor(process.stdin, 'isTTY');
 const outputTTY = Object.getOwnPropertyDescriptor(process.stdout, 'isTTY');
-const environment = { DB: {}, BUCKET: {} };
+const first = vi.fn();
+const environment = {
+  DB: { prepare: vi.fn(() => ({ first })) },
+  BUCKET: {},
+};
 const dispose = vi.fn();
 const config = 'apps/web/wrangler.jsonc';
 const cancelled: Extract<
   Awaited<ReturnType<typeof prompts.confirm>>,
   symbol
 > = Symbol('cancel') as never;
-const duplicate = new Error(
-  'D1_ERROR: administrator_already_exists: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_TRIGGER)',
-);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -55,6 +56,7 @@ beforeEach(() => {
     dispose,
   } as unknown as Awaited<ReturnType<typeof getPlatformProxy>>);
   vi.mocked(bootstrapLocalAdministrator).mockReset().mockResolvedValue();
+  first.mockReset().mockResolvedValue(null);
   vi.mocked(purgeLocalDatabase).mockReset().mockResolvedValue();
   vi.mocked(execa)
     .mockReset()
@@ -72,12 +74,14 @@ afterEach(() => {
 it.each([false, cancelled] as const)(
   'keeps an existing local database when reset is declined or cancelled (%s)',
   async (answer) => {
-    vi.mocked(bootstrapLocalAdministrator).mockRejectedValueOnce(duplicate);
+    first.mockResolvedValue({ '1': 1 });
     vi.mocked(prompts.confirm).mockResolvedValue(answer);
-    await bootstrap('Owner', config, false);
+    await bootstrap(undefined, config, false);
     expect(prompts.confirm).toHaveBeenCalledWith(
       expect.objectContaining({ initialValue: false }),
     );
+    expect(prompts.text).not.toHaveBeenCalled();
+    expect(bootstrapLocalAdministrator).not.toHaveBeenCalled();
     expect(purgeLocalDatabase).not.toHaveBeenCalled();
     expect(execa).not.toHaveBeenCalled();
     expect(dispose).toHaveBeenCalledOnce();
@@ -85,25 +89,39 @@ it.each([false, cancelled] as const)(
   },
 );
 
-it('does not retry bootstrap or print a key if migrations fail after purge', async () => {
-  vi.mocked(bootstrapLocalAdministrator).mockRejectedValueOnce(duplicate);
+it('keeps an existing database when the name prompt is cancelled after confirming reset', async () => {
+  first.mockResolvedValue({ '1': 1 });
+  vi.mocked(prompts.confirm).mockResolvedValue(true);
+  vi.mocked(prompts.text).mockResolvedValue(cancelled);
+  await bootstrap(undefined, config, false);
+  expect(prompts.confirm).toHaveBeenCalledOnce();
+  expect(prompts.text).toHaveBeenCalledOnce();
+  expect(purgeLocalDatabase).not.toHaveBeenCalled();
+  expect(bootstrapLocalAdministrator).not.toHaveBeenCalled();
+  expect(dispose).toHaveBeenCalledOnce();
+  expect(console.log).not.toHaveBeenCalled();
+});
+
+it('does not bootstrap or print a key if migrations fail after purge', async () => {
+  first.mockResolvedValue({ '1': 1 });
   vi.mocked(prompts.confirm).mockResolvedValue(true);
   vi.mocked(execa).mockResolvedValueOnce({ exitCode: 1 } as never);
   await expect(bootstrap('Owner', config, false)).rejects.toThrow(
     'migrations failed',
   );
-  expect(bootstrapLocalAdministrator).toHaveBeenCalledOnce();
+  expect(bootstrapLocalAdministrator).not.toHaveBeenCalled();
   expect(dispose).toHaveBeenCalledOnce();
   expect(console.log).not.toHaveBeenCalled();
 });
 
 it('never prompts to purge an existing database in non-interactive execution', async () => {
   vi.stubEnv('CI', '1');
-  vi.mocked(bootstrapLocalAdministrator).mockRejectedValueOnce(duplicate);
-  await expect(bootstrap('Owner', config, false)).rejects.toThrow(
+  first.mockResolvedValue({ '1': 1 });
+  await expect(bootstrap(undefined, config, false)).rejects.toThrow(
     'An administrator already exists',
   );
   expect(prompts.confirm).not.toHaveBeenCalled();
+  expect(prompts.text).not.toHaveBeenCalled();
   expect(purgeLocalDatabase).not.toHaveBeenCalled();
 });
 

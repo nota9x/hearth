@@ -87,6 +87,9 @@ it('resets local credentials through the command while preserving R2 and requiri
     expect(process.exitCode || 0).toBe(0);
     expect(prompts.text).toHaveBeenCalledOnce();
     expect(prompts.confirm).toHaveBeenCalledOnce();
+    expect(vi.mocked(prompts.confirm).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(prompts.text).mock.invocationCallOrder[0],
+    );
 
     const platform = await getPlatformProxy<{
       DB: D1Database;
