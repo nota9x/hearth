@@ -2,7 +2,7 @@
 import { defineCommand, runMain } from 'citty';
 
 import manifest from '../package.json' with { type: 'json' };
-import { serverCommand } from './development/command';
+import { serverCommand } from './development/command.ts';
 
 const argv = process.argv.slice(2);
 const separator = argv.indexOf('--');
@@ -26,16 +26,18 @@ if (forwarded.length > 0 && !['dev', 'preview'].includes(rawArguments[0])) {
         dev: () => serverCommand('development', forwarded),
         preview: () => serverCommand('preview', forwarded),
         setup: async () => {
-          const module = await import('./setup/index');
+          const module = await import('./setup/index.ts');
           return module.default;
         },
-        configure: async () => (await import('./commands/configure')).default,
-        bootstrap: async () => (await import('./commands/bootstrap')).default,
+        configure: async () =>
+          (await import('./commands/configure.ts')).default,
+        bootstrap: async () =>
+          (await import('./commands/bootstrap.ts')).default,
         storage: defineCommand({
           meta: { name: 'storage', description: 'Manage storage accounting.' },
           subCommands: {
             initialize: async () =>
-              (await import('./commands/storage-initialize')).default,
+              (await import('./commands/storage-initialize.ts')).default,
           },
         }),
       },

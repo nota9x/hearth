@@ -1,23 +1,23 @@
 import { eq, sql } from 'drizzle-orm';
 
-import { auditEvent } from './audit';
-import { authorizeOwner } from './auth';
-import { AppError, expiry, id, now, slugSchema } from './common';
-import { database, type User } from './db';
+import { auditEvent } from './audit.ts';
+import { authorizeOwner } from './auth.ts';
+import { AppError, expiry, id, now, slugSchema } from './common.ts';
+import { database, type User } from './db.ts';
 import {
   availableDeliveryDomains,
   requireDeliveryDomain,
   selectDeliveryDomain,
-} from './delivery-domains';
+} from './delivery-domains.ts';
 import {
   expiryChoices,
   resolveExpiryPolicy,
   validateResourceExpiry,
-} from './expiry-policy';
-import { getInstanceExpiryPolicy } from './expiry-policy-store';
-import { type DeleteResult, ownedImage } from './images';
-import { aliases, deliveryDomains, images, users } from './schema';
-import { allocateShareSlug } from './share-slugs';
+} from './expiry-policy.ts';
+import { getInstanceExpiryPolicy } from './expiry-policy-store.ts';
+import { type DeleteResult, ownedImage } from './images.ts';
+import { aliases, deliveryDomains, images, users } from './schema.ts';
+import { allocateShareSlug } from './share-slugs.ts';
 
 export async function selectedLinks(
   binding: D1Database,

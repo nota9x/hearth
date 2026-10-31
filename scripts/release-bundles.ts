@@ -22,14 +22,12 @@ import {
 } from '@zip.js/zip.js';
 import { execa } from 'execa';
 
-import { renderProduction } from '../cli/production-config';
-import { projects, root } from '../cli/project';
+import { renderProduction } from '../cli/production-config.ts';
+import { projects, root } from '../cli/project.ts';
 
 const [tag, sha] = process.argv.slice(2);
 if (!tag || !sha)
-  throw new Error(
-    'Usage: pnpm exec tsx scripts/release-bundles.ts vX.Y.Z COMMIT_SHA',
-  );
+  throw new Error('Usage: node scripts/release-bundles.ts vX.Y.Z COMMIT_SHA');
 const manifest = JSON.parse(
   await readFile(path.join(root, 'package.json'), 'utf8'),
 ) as {
@@ -153,10 +151,10 @@ try {
       `# Hearth ${component} ${tag}
 
 Source commit: ${sha}
-Built with Wrangler ${manifest.devDependencies.wrangler} on Node 24.
+Built with Wrangler ${manifest.devDependencies.wrangler} on Node.js ${process.version}.
 
 This ZIP contains prebuilt Worker code. No Hearth checkout, dependency installation,
-or application build is needed. Use Node 24 and Wrangler ${manifest.devDependencies.wrangler}:
+or application build is needed. Use Node.js 26 LTS (26.13.0 or newer in 26.x) and Wrangler ${manifest.devDependencies.wrangler}:
 
     npx wrangler@${manifest.devDependencies.wrangler} deploy --dry-run --config wrangler.jsonc
     npx wrangler@${manifest.devDependencies.wrangler} deploy --config wrangler.jsonc

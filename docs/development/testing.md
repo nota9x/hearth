@@ -36,6 +36,11 @@ and domain forms in their own journeys; unrelated tests should not repeat them.
 Fixture disposal removes browser data, so teardown need not delete accounts or
 reset settings through the application.
 
+When a scenario immediately manipulates server-rendered controls after a full
+navigation, wait for `#svelte-announcer` to be attached first. SvelteKit creates
+it on mount, after client handlers are installed. A loaded page alone does not
+establish hydration; keep this synchronization separate from business assertions.
+
 ## Choosing coverage
 
 Keep separate tests for independently enforced trust boundaries: bearer versus

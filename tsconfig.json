@@ -8,7 +8,7 @@
     "esModuleInterop": true,
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
-    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable", "ESNext.TypedArrays"],
     "types": ["node"],
     "noEmit": true,
     "paths": {

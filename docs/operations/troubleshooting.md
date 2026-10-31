@@ -55,14 +55,14 @@ setup choices above; deleting progress loses information needed for recovery.
 
 ### Dependency, build, and manual deployment errors
 
-| Failing step                                                      | Check and fix                                                                                                                                                    |
-| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm install` rejects Node or pnpm                               | Run `node --version` and `pnpm --version`. Use Node 24 and the pnpm version in `package.json` under `packageManager`, then run `pnpm install --frozen-lockfile`. |
-| Installation reports a release-age or build-script policy refusal | Read the named package and policy in the error. Keep the repository's policy settings; do not force installation or approve arbitrary build scripts.             |
-| `pnpm configure` refuses to overwrite files                       | Inspect and back up the existing `production.local.jsonc` files before deciding how to proceed. They may describe an existing installation.                      |
-| Configuration still contains `YOUR_...` placeholders              | Replace them with the actual database UUID, bucket name, and Turnstile site key from installation.                                                               |
-| Deployment cannot find the web build                              | Run `pnpm build` before deploying the web application.                                                                                                           |
-| Deployment reports access denied or a missing resource            | Follow [Cloudflare login and permissions](#wrangler-authentication-or-resources-fail).                                                                           |
+| Failing step                                                      | Check and fix                                                                                                                                                        |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm install` rejects Node or pnpm                               | Run `node --version` and `pnpm --version`. Use Node 26 LTS and the pnpm version in `package.json` under `packageManager`, then run `pnpm install --frozen-lockfile`. |
+| Installation reports a release-age or build-script policy refusal | Read the named package and policy in the error. Keep the repository's policy settings; do not force installation or approve arbitrary build scripts.                 |
+| `pnpm configure` refuses to overwrite files                       | Inspect and back up the existing `production.local.jsonc` files before deciding how to proceed. They may describe an existing installation.                          |
+| Configuration still contains `YOUR_...` placeholders              | Replace them with the actual database UUID, bucket name, and Turnstile site key from installation.                                                                   |
+| Deployment cannot find the web build                              | Run `pnpm build` before deploying the web application.                                                                                                               |
+| Deployment reports access denied or a missing resource            | Follow [Cloudflare login and permissions](#wrangler-authentication-or-resources-fail).                                                                               |
 
 After fixing a manual deployment, repeat the failed build or deployment check,
 then follow [installation verification](../getting-started/installation.md#7-verify-the-instance).

@@ -10,8 +10,8 @@ import {
   bootstrapLocalAdministrator,
   prepareBootstrap,
   purgeLocalDatabase,
-} from '../bootstrap-data';
-import { reportError, validateOptions } from '../options';
+} from '../bootstrap-data.ts';
+import { reportError, validateOptions } from '../options.ts';
 
 const validateName = (value: string | undefined) =>
   !value?.trim() || value.trim().length > 80

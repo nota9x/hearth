@@ -1,9 +1,9 @@
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { id, now } from './common';
-import type { database } from './db';
-import { aliases, deliveryDomains, images, users } from './schema';
+import { id, now } from './common.ts';
+import type { database } from './db.ts';
+import { aliases, deliveryDomains, images, users } from './schema.ts';
 
 // Deliberate allowlist: never serialize request bodies, credentials, or whole DB rows.
 export const auditFields = {

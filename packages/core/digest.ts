@@ -3,7 +3,5 @@ export async function digest(value: string, purpose: string) {
     'SHA-256',
     new TextEncoder().encode(`hearth:v1:${purpose}:${value}`),
   );
-  return Array.from(new Uint8Array(hash), (x) =>
-    x.toString(16).padStart(2, '0'),
-  ).join('');
+  return new Uint8Array(hash).toHex();
 }

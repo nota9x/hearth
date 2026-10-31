@@ -2,8 +2,8 @@ import { writeFile } from 'node:fs/promises';
 
 import { defineCommand } from 'citty';
 
-import { reportError, validateOptions } from '../options';
-import { renderProduction } from '../production-config';
+import { reportError, validateOptions } from '../options.ts';
+import { renderProduction } from '../production-config.ts';
 
 const argumentsDefinition = {
   application: {

@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-import { auditEvent } from './audit';
-import { requireAdmin } from './auth';
-import { AppError } from './common';
-import { database, type User } from './db';
+import { auditEvent } from './audit.ts';
+import { requireAdmin } from './auth.ts';
+import { AppError } from './common.ts';
+import { database, type User } from './db.ts';
 
 export const SHARE_SLUG_ALPHABET =
   'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

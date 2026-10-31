@@ -266,6 +266,7 @@ test('Users restores interrupted searches and recovers from collection load fail
     errors.push(error.message);
   });
   await page.goto('/admin/users');
+  await page.locator('#svelte-announcer').waitFor({ state: 'attached' });
   const search = page.getByRole('textbox', { name: 'Search users' });
   await search.fill('unmatched');
   await expect(

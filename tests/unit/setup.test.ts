@@ -2,8 +2,10 @@
 /* eslint-disable unicorn/prefer-await -- Attach rejection handlers before advancing timers or cancelling child processes. */
 import {
   copyFile,
+  type FileHandle,
   mkdir,
   mkdtemp,
+  open,
   readFile,
   rm,
   writeFile,
@@ -85,7 +87,7 @@ function mockSetupTerminal() {
   });
   vi.stubEnv(
     'npm_config_user_agent',
-    `pnpm/${manifest.packageManager.split('@', 2)[1].split('+', 1)[0]} npm/? node/v24.19.0 win32 x64`,
+    `pnpm/${manifest.packageManager.split('@', 2)[1].split('+', 1)[0]} npm/? node/${process.version} win32 x64`,
   );
   vi.mocked(prompts.spinner).mockReturnValue({
     start: vi.fn(),
@@ -272,6 +274,22 @@ it('prevents simultaneous installers and releases its lock', async () => {
   await (
     await acquireLock(directory)
   )();
+});
+it('closes the installer lock handle when writing its owner fails', async () => {
+  const directory = await temporary();
+  const handle = await open(path.join(directory, 'handle'), 'wx');
+  const prototype = Object.getPrototypeOf(handle) as FileHandle;
+  await handle.close();
+  const write = vi
+    .spyOn(prototype, 'writeFile')
+    .mockRejectedValue(new Error('Lock write failed'));
+  try {
+    await expect(acquireLock(directory)).rejects.toThrow('Lock write failed');
+    expect(write.mock.contexts[0]).toHaveProperty('fd', -1);
+  } finally {
+    const failed = write.mock.contexts[0] as FileHandle | undefined;
+    await failed?.close();
+  }
 });
 it('refuses removed migration history and changes to an applied migration', () => {
   expect(() =>

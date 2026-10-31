@@ -1,4 +1,4 @@
-import { AppError, id, now } from './common';
+import { AppError, id, now } from './common.ts';
 
 export interface StoredObject {
   key: string;
@@ -71,14 +71,18 @@ export async function beginStorage(
 }
 
 export class StorageWriter {
+  private db: D1Database;
+  private bucket: R2Bucket;
   private multipart: R2MultipartUpload | undefined;
   private lastHeartbeat = 0;
-  constructor(
-    private db: D1Database,
-    private bucket: R2Bucket,
-    readonly key: string,
-    readonly token: string,
-  ) {}
+  readonly key: string;
+  readonly token: string;
+  constructor(db: D1Database, bucket: R2Bucket, key: string, token: string) {
+    this.db = db;
+    this.bucket = bucket;
+    this.key = key;
+    this.token = token;
+  }
 
   async heartbeat() {
     if (now() - this.lastHeartbeat < 60) return;

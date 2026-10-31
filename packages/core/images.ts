@@ -1,14 +1,14 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 
-import { auditEvent, auditResource } from './audit';
-import { authorizeOwner } from './auth';
-import { AppError, expiry, now } from './common';
-import { database, type User } from './db';
-import { expiryChoices, validateImageExpiry } from './expiry-policy';
-import { getEffectiveExpiryPolicy } from './expiry-policy-store';
-import { aliases, auditLog, deleteTokens, images } from './schema';
-import { downloadFilename } from './serve';
-import { deleteStoredObjects, type StorageDeletionBucket } from './storage';
+import { auditEvent, auditResource } from './audit.ts';
+import { authorizeOwner } from './auth.ts';
+import { AppError, expiry, now } from './common.ts';
+import { database, type User } from './db.ts';
+import { expiryChoices, validateImageExpiry } from './expiry-policy.ts';
+import { getEffectiveExpiryPolicy } from './expiry-policy-store.ts';
+import { aliases, auditLog, deleteTokens, images } from './schema.ts';
+import { downloadFilename } from './serve.ts';
+import { deleteStoredObjects, type StorageDeletionBucket } from './storage.ts';
 
 async function expirySelection(binding: D1Database, user: User, ids: string[]) {
   const uniqueIds = [...new Set(ids)];

@@ -805,7 +805,7 @@ describe('Hearth uninstall', () => {
       });
       vi.stubEnv(
         'npm_config_user_agent',
-        `pnpm/${manifest.packageManager.split('@', 2)[1].split('+', 1)[0]} node/v24.19.0`,
+        `pnpm/${manifest.packageManager.split('@', 2)[1].split('+', 1)[0]} node/${process.version}`,
       );
       vi.spyOn(stateFiles, 'loadState').mockResolvedValue(
         stateSchema.parse({}),

@@ -1,11 +1,10 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import { AppError, id } from './common';
-import { digest } from './digest';
+import { AppError, id } from './common.ts';
+import { digest } from './digest.ts';
 
 export function randomSecret(size = 32) {
-  const b = crypto.getRandomValues(new Uint8Array(size));
-  return Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+  return crypto.getRandomValues(new Uint8Array(size)).toHex();
 }
 export async function verify(value: string, expected: string, purpose: string) {
   const actual = await digest(value, purpose);

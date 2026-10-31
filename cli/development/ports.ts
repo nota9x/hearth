@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 
 import { execa } from 'execa';
 
-import { root } from '../project';
+import { root } from '../project.ts';
 
 export async function portAvailable(port: number) {
   return new Promise<boolean>((resolve) => {

@@ -5,20 +5,26 @@ import { setTimeout } from 'node:timers/promises';
 import { execa } from 'execa';
 import { z } from 'zod';
 
-import { root } from '../production-config';
-import { dashboard } from './dashboard';
-import { setupDirectory } from './state';
+import { root } from '../production-config.ts';
+import { dashboard } from './dashboard.ts';
+import { setupDirectory } from './state.ts';
 
 export type FailureKind =
   'authentication' | 'permission' | 'transient' | 'configuration' | 'quota';
 export class SetupFailure extends Error {
+  readonly kind: FailureKind;
+  readonly dashboard?: string;
+  readonly retryAfter?: number;
   constructor(
     message: string,
-    readonly kind: FailureKind = 'configuration',
-    readonly dashboard?: string,
-    readonly retryAfter?: number,
+    kind: FailureKind = 'configuration',
+    dashboard?: string,
+    retryAfter?: number,
   ) {
     super(message);
+    this.kind = kind;
+    this.dashboard = dashboard;
+    this.retryAfter = retryAfter;
     this.name = 'SetupFailure';
   }
 }
@@ -96,6 +102,7 @@ export const workerDomainSchema = z.object({
 });
 export class Cloudflare {
   private environmentReady = false;
+  readonly executable: string;
   readonly secrets = new Set<string>();
   readonly controller = new AbortController();
   accountId?: string;
@@ -105,11 +112,9 @@ export class Cloudflare {
   readonly envFile = path.join(setupDirectory, 'empty.env');
   constructor(
     environment: Record<string, string | undefined> = process.env,
-    readonly executable = path.join(
-      root,
-      'node_modules/wrangler/bin/wrangler.js',
-    ),
+    executable = path.join(root, 'node_modules/wrangler/bin/wrangler.js'),
   ) {
+    this.executable = executable;
     this.environment =
       process.platform === 'win32'
         ? Object.fromEntries(

@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-import { auditChanges, auditEvent } from '../packages/core/audit';
-import { id, now } from '../packages/core/common';
-import { newKey } from '../packages/core/crypto';
-import { database } from '../packages/core/db';
+import { auditChanges, auditEvent } from '../packages/core/audit.ts';
+import { id, now } from '../packages/core/common.ts';
+import { newKey } from '../packages/core/crypto.ts';
+import { database } from '../packages/core/db.ts';
 
 const quote = (value: string) => `'${value.replaceAll("'", "''")}'`;
 

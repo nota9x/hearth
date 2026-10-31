@@ -1,4 +1,4 @@
-import { parseHostname } from './domain-format';
+import { parseHostname } from './domain-format.ts';
 
 export interface PublicUrlEnvironment {
   APP_ORIGIN: string;

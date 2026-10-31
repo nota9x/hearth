@@ -6,8 +6,8 @@ import { execa } from 'execa';
 import ts from 'typescript';
 import { z } from 'zod';
 
-import { id, now } from '../../packages/core/common';
-import { reportError, validateOptions } from '../options';
+import { id, now } from '../../packages/core/common.ts';
+import { reportError, validateOptions } from '../options.ts';
 
 const quote = (value: string) => `'${value.replaceAll("'", "''")}'`;
 

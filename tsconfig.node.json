@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true
+  },
+  "files": [
+    "packages/core/bindings.d.ts",
+    "packages/core/delivery-bindings.d.ts"
+  ],
+  "include": ["cli/**/*.ts", "scripts/**/*.ts"]
+}
