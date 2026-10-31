@@ -1,6 +1,6 @@
 {
   "name": "@hearth/web",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Hearth's SvelteKit dashboard, authentication, and upload API.",
   "private": true,
   "license": "GPL-3.0-or-later",
