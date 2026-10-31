@@ -10,10 +10,10 @@ minimumReleaseAgeIgnoreMissingTime: false
 trustPolicy: no-downgrade
 trustPolicyExclude:
   # Manually published without provenance; see paulmillr/chokidar#1440
-  # Remove when svelte-check no requires chokidar@4.0.3
+  # Remove when svelte-check no longer requires chokidar@4.0.3
   - chokidar@4.0.3
-  # 2.2.2 lacks the provenance/trusted-publisher metadata present in 2.2.1.
-  # Remove when upgrading Lefthook to a release that passes the trust policy.
+  # 2.2.2 lacks the provenance/trusted-publisher metadata present in 2.2.1
+  # Remove when upgrading Lefthook to a release that passes the trust policy
   - lefthook@2.2.2
 trustLockfile: false
 allowBuilds:

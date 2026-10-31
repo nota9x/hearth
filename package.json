@@ -39,7 +39,7 @@
     "storage:initialize": "node scripts/cli.mjs storage initialize"
   },
   "dependencies": {
-    "@fastify/busboy": "^3.2.3",
+    "@fastify/busboy": "^3.2.4",
     "drizzle-orm": "^0.45.4",
     "image-size": "^2.0.4",
     "zod": "^4.6.7"
@@ -51,12 +51,12 @@
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.64.1",
     "@types/node": "^26.6.6",
-    "@vitest/eslint-plugin": "^1.6.27",
+    "@vitest/eslint-plugin": "^1.6.28",
     "@zip.js/zip.js": "2.24.0",
     "citty": "0.2.2",
     "croner": "^11.0.0",
     "drizzle-kit": "^0.31.11",
-    "eslint": "^10.12.0",
+    "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-playwright": "^2.12.1",
@@ -67,11 +67,11 @@
     "globals": "^17.13.0",
     "lefthook": "2.2.2",
     "log-update": "^8.0.0",
-    "miniflare": "5.20260918.0-alpha",
+    "miniflare": "5.20261023.3-beta",
     "prettier": "^3.9.10",
     "prettier-plugin-svelte": "^4.1.1",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.71.2",
+    "typescript-eslint": "^8.72.1",
     "vitest": "^5.0.5",
     "wrangler": "4.156.0",
     "wrap-ansi": "^10.0.2"
