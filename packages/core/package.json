@@ -1,6 +1,6 @@
 {
   "name": "@hearth/core",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Shared schema, authorization, storage, and domain logic for Hearth.",
   "private": true,
   "license": "GPL-3.0-or-later",

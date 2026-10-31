@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0](https://github.com/nota9x/hearth/compare/v0.3.0...v0.4.0) (2026-10-31)
+
+
+### Features
+
+* **dev:** configure default local delivery domain ([#58](https://github.com/nota9x/hearth/issues/58)) ([1028541](https://github.com/nota9x/hearth/commit/1028541be4bd50c7e05cdfeef33475a57e7b242c))
+* **release:** publish attested Worker ZIP bundles ([#62](https://github.com/nota9x/hearth/issues/62)) ([41c3d62](https://github.com/nota9x/hearth/commit/41c3d62c1bafd3830f34900189159a7b05618fa8))
+
+
+### Bug Fixes
+
+* **cli:** check existing administrator before prompting for name ([cb7a5b8](https://github.com/nota9x/hearth/commit/cb7a5b88ec459d077957c6616964c8f31919a705))
+
 ## [0.3.0](https://github.com/nota9x/hearth/compare/v0.2.0...v0.3.0) (2026-10-23)
 
 ### ⚠ BREAKING CHANGES
