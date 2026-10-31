@@ -434,6 +434,7 @@ test('image search preserves filters and navigation and discards stale responses
   await page.goto('/images');
   const search = page.getByRole('textbox', { name: 'Search images' });
   const result = page.getByRole('heading', { name: filename, exact: true });
+  await page.locator('#svelte-announcer').waitFor({ state: 'attached' });
   await search.fill(term);
   await expect(page).toHaveURL(/q=search-fixture/);
   await expect(
@@ -569,6 +570,7 @@ test('upload queue stays bounded across picker batches and navigation with parti
   await configureDeliveryDomain(request, baseURL!, 'shots.localhost', true);
   await page.goto('/images');
   const gate = Promise.withResolvers<void>();
+  await page.locator('#svelte-announcer').waitFor({ state: 'attached' });
   let started = 0;
   await page.route('**/api/upload', async (route) => {
     const index = ++started;

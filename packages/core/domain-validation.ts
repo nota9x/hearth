@@ -2,21 +2,21 @@ import { isIP } from 'node:net';
 
 import { z } from 'zod';
 
-import { requireAdmin } from './auth';
-import { AppError, now } from './common';
-import { randomSecret } from './crypto';
-import type { User } from './db';
-import { configuredHostname, domainDetails } from './delivery-domains';
+import { requireAdmin } from './auth.ts';
+import { AppError, now } from './common.ts';
+import { randomSecret } from './crypto.ts';
+import type { User } from './db.ts';
+import { configuredHostname, domainDetails } from './delivery-domains.ts';
 import {
   DELIVERY_PROBE_CONTENT,
   DELIVERY_PROBE_PATH,
   deliveryProbeKey,
   matchesSignature,
   probeSignature,
-} from './delivery-probe';
-import { digest } from './digest';
-import { deliveryOrigin, type PublicUrlEnvironment } from './public-urls';
-import { deleteStoredObjects, writeStoredObject } from './storage';
+} from './delivery-probe.ts';
+import { digest } from './digest.ts';
+import { deliveryOrigin, type PublicUrlEnvironment } from './public-urls.ts';
+import { deleteStoredObjects, writeStoredObject } from './storage.ts';
 
 export interface DomainDiagnostics {
   outcome: 'passed' | 'failed' | 'inconclusive';

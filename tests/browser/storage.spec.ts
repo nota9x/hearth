@@ -374,6 +374,7 @@ test('storage checks respect pause, resume safely, and complete after the page c
     .bind(Math.floor(Date.now() / 1000) + 60)
     .run();
   await page.goto('/admin/storage');
+  await page.locator('#svelte-announcer').waitFor({ state: 'attached' });
   const health = page.getByRole('button', {
     name: /^Storage health & maintenance/,
   });

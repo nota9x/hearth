@@ -4,24 +4,24 @@ import path from 'node:path';
 import type { PlatformProxy } from 'wrangler';
 import { z } from 'zod';
 
-import { authenticateKey, requireAdmin } from '../../packages/core/auth';
-import { AppError, now } from '../../packages/core/common';
+import { authenticateKey, requireAdmin } from '../../packages/core/auth.ts';
+import { AppError, now } from '../../packages/core/common.ts';
 import {
   primaryDeliveryDomain,
   saveDeliveryDomain,
   selectDeliveryDomain,
   setPrimaryDeliveryDomain,
-} from '../../packages/core/delivery-domains';
-import { digest } from '../../packages/core/digest';
-import { validateDeliveryDomain } from '../../packages/core/domain-validation';
-import { deleteImage } from '../../packages/core/images';
-import { createLink } from '../../packages/core/links';
-import { contentUrl } from '../../packages/core/public-urls';
-import { initializeFreshStorageSql } from '../bootstrap-data';
-import { type ProductionConfig } from '../production-config';
-import type { Cloudflare } from './cloudflare';
-import { SetupFailure } from './cloudflare';
-import { setupDirectory, type SetupState } from './state';
+} from '../../packages/core/delivery-domains.ts';
+import { digest } from '../../packages/core/digest.ts';
+import { validateDeliveryDomain } from '../../packages/core/domain-validation.ts';
+import { deleteImage } from '../../packages/core/images.ts';
+import { createLink } from '../../packages/core/links.ts';
+import { contentUrl } from '../../packages/core/public-urls.ts';
+import { initializeFreshStorageSql } from '../bootstrap-data.ts';
+import { type ProductionConfig } from '../production-config.ts';
+import type { Cloudflare } from './cloudflare.ts';
+import { SetupFailure } from './cloudflare.ts';
+import { setupDirectory, type SetupState } from './state.ts';
 
 export interface SetupBindings {
   DB: D1Database;
@@ -233,9 +233,7 @@ export async function verifyUpload(
   const origin = environment.APP_ORIGIN;
   let clientKey = uploadKeys.get(state);
   if (!state.probe) {
-    clientKey = Buffer.from(
-      crypto.getRandomValues(new Uint8Array(32)),
-    ).toString('hex');
+    clientKey = crypto.getRandomValues(new Uint8Array(32)).toHex();
     uploadKeys.set(state, clientKey);
     state.probe = {
       receiptHash: await digest(`${actor.id}:${clientKey}`, 'upload-receipt'),
@@ -395,7 +393,7 @@ export async function verifyUpload(
       );
     const bytes = new Uint8Array(await publicResponse.arrayBuffer());
     const hash = await crypto.subtle.digest('SHA-256', bytes);
-    if (Buffer.from(hash).toString('hex') !== image.sha256)
+    if (new Uint8Array(hash).toHex() !== image.sha256)
       throw new SetupFailure(
         'The delivered image bytes do not match the committed upload.',
       );

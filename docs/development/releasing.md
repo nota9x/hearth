@@ -107,7 +107,11 @@ obsolete validation runs; title edits and new commits cancel obsolete `pr-title`
 runs. Release Please remains independently serialized.
 
 Every work job installs dependencies with `--frozen-lockfile` and the manifest's
-exact pnpm version on Node 24. The pnpm store cache hashes `pnpm-lock.yaml`,
+exact pnpm version on Node 26 LTS. Every setup-node step reads `engines.node`
+from `package.json` and checks for the latest compatible release. The resolved
+version is recorded in the job log and release ZIP README. Official GitHub
+Actions retain their own vendor-managed Node runtimes, independently of the
+version selected for Hearth commands. The pnpm store cache hashes `pnpm-lock.yaml`,
 `package.json`, and `pnpm-workspace.yaml`, in addition to setup-node's OS and
 architecture identity. Restoring the cache never skips installation or dependency
 security policies. Cache misses use a normal install. GitHub scopes PR caches to
@@ -287,7 +291,7 @@ at its tag so the attestation source matches the build.
 For local packaging checks on the matching checkout:
 
 ```sh
-pnpm exec tsx scripts/release-bundles.ts vX.Y.Z RELEASE_COMMIT
+node scripts/release-bundles.ts vX.Y.Z RELEASE_COMMIT
 ```
 
 Output goes to ignored `artifacts/releases`; the helper refuses an existing output

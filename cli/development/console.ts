@@ -4,7 +4,7 @@ import { stripVTControlCharacters, styleText } from 'node:util';
 import { createLogUpdate } from 'log-update';
 import wrapAnsi from 'wrap-ansi';
 
-import type { Component, ServerMode } from './config';
+import type { Component, ServerMode } from './config.ts';
 
 type Service = Component | 'dev' | 'preview';
 type Status = 'START' | 'READY' | 'INFO' | 'WARN' | 'ERROR' | 'STOP' | 'DONE';
@@ -36,6 +36,9 @@ export function safeLogText(input: string, colors: boolean) {
 }
 
 export class DevelopmentConsole {
+  private readonly output: NodeJS.WriteStream;
+  private readonly errors: NodeJS.WriteStream;
+  private readonly mode: ServerMode;
   private readonly update;
   private readonly states = new Map<
     Component,
@@ -61,11 +64,14 @@ export class DevelopmentConsole {
 
   constructor(
     components: Component[],
-    private readonly output: NodeJS.WriteStream = process.stdout,
-    private readonly errors: NodeJS.WriteStream = process.stderr,
+    output: NodeJS.WriteStream = process.stdout,
+    errors: NodeJS.WriteStream = process.stderr,
     env: Record<string, string | undefined> = process.env,
-    private readonly mode: ServerMode = 'development',
+    mode: ServerMode = 'development',
   ) {
+    this.output = output;
+    this.errors = errors;
+    this.mode = mode;
     this.controlsAllowed = output.isTTY && !env.CI;
     this.interactive =
       output.isTTY &&

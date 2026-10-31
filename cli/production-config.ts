@@ -4,11 +4,11 @@ import path from 'node:path';
 import ts from 'typescript';
 import { z } from 'zod';
 
-import { hostnameSchema } from '../packages/core/common';
-import { isPublicHostname } from '../packages/core/domain-format';
-import { type Component, components, projects, root } from './project';
+import { hostnameSchema } from '../packages/core/common.ts';
+import { isPublicHostname } from '../packages/core/domain-format.ts';
+import { type Component, components, projects, root } from './project.ts';
 
-export { type Component, components, projects, root } from './project';
+export { type Component, components, projects, root } from './project.ts';
 export const configPath = (component: Component) =>
   path.join(root, projects[component], 'production.local.jsonc');
 export const publicHostname = hostnameSchema.refine(isPublicHostname, {

@@ -4,7 +4,7 @@ import {
   hostnameMessage,
   isPublicHostname,
   parseHostname,
-} from './domain-format';
+} from './domain-format.ts';
 
 export const hostnameSchema = z.string().transform((value, context) => {
   try {
@@ -16,12 +16,12 @@ export const hostnameSchema = z.string().transform((value, context) => {
 });
 
 export class AppError extends Error {
-  constructor(
-    public status: number,
-    public code: string,
-    message: string,
-  ) {
+  status: number;
+  code: string;
+  constructor(status: number, code: string, message: string) {
     super(message);
+    this.status = status;
+    this.code = code;
   }
 }
 export const id = (prefix: string) =>

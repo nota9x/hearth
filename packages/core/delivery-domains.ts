@@ -1,18 +1,18 @@
 import { z } from 'zod';
 
-import { auditEvent, type AuditValues } from './audit';
-import { requireAdmin, requireUser } from './auth';
-import { AppError, hostnameSchema, id, idSchema, now } from './common';
-import { randomSecret } from './crypto';
-import { database, type User } from './db';
-import { accessModes, isPublicHostname } from './domain-format';
-import type { DomainDiagnostics } from './domain-validation';
+import { auditEvent, type AuditValues } from './audit.ts';
+import { requireAdmin, requireUser } from './auth.ts';
+import { AppError, hostnameSchema, id, idSchema, now } from './common.ts';
+import { randomSecret } from './crypto.ts';
+import { database, type User } from './db.ts';
+import { accessModes, isPublicHostname } from './domain-format.ts';
+import type { DomainDiagnostics } from './domain-validation.ts';
 import {
   appOrigin,
   deliveryOrigin,
   type PublicUrlEnvironment,
-} from './public-urls';
-import { paginationState, parseSearch } from './search';
+} from './public-urls.ts';
+import { paginationState, parseSearch } from './search.ts';
 
 export interface DeliveryDomain {
   id: string;

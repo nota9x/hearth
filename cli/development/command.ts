@@ -1,8 +1,8 @@
 import { defineCommand } from 'citty';
 
-import { reportError, validateOptions } from '../options';
-import { type Component, components } from '../project';
-import type { ServerMode } from './config';
+import { reportError, validateOptions } from '../options.ts';
+import { type Component, components } from '../project.ts';
+import type { ServerMode } from './config.ts';
 
 export const serverArguments = {
   services: {
@@ -115,7 +115,7 @@ export function serverCommand(mode: ServerMode, forwarded: string[]) {
         validateOptions(rawArgs, serverArguments);
         const selected = selectServices(args._);
         const native = toolArguments(selected, forwarded);
-        const { startServer } = await import('./server');
+        const { startServer } = await import('./server.ts');
         await startServer(mode, selected, args, native);
       } catch (error) {
         reportError(error);

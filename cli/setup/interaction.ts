@@ -1,6 +1,6 @@
 import * as prompts from '@clack/prompts';
 
-import { SetupFailure } from './cloudflare';
+import { SetupFailure } from './cloudflare.ts';
 
 export type Account = { id: string; name: string };
 export type Answer = <T>(value: Promise<T>) => Promise<Exclude<T, symbol>>;

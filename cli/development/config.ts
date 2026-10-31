@@ -4,11 +4,11 @@ import path from 'node:path';
 import ts from 'typescript';
 import { z } from 'zod';
 
-import { configSchema } from '../../packages/core/common';
-import { type Component, components, projects, root } from '../project';
-import type { ServerOptions } from './command';
+import { configSchema } from '../../packages/core/common.ts';
+import { type Component, components, projects, root } from '../project.ts';
+import type { ServerOptions } from './command.ts';
 
-export { type Component, projects, root } from '../project';
+export { type Component, projects, root } from '../project.ts';
 export const persistence = path.join(root, 'apps/web/.wrangler/state');
 export type ServerMode = 'development' | 'preview';
 

@@ -9,16 +9,16 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { execa } from 'execa';
 
-import { type Component, components, projects, root } from '../project';
-import type { ServerOptions } from './command';
-import { persistence, prepareSession, type ServerMode } from './config';
-import { DevelopmentConsole } from './console';
+import { type Component, components, projects, root } from '../project.ts';
+import type { ServerOptions } from './command.ts';
+import { persistence, prepareSession, type ServerMode } from './config.ts';
+import { DevelopmentConsole } from './console.ts';
 import {
   findDevelopmentServer,
   portAvailable,
   stopDevelopmentServer,
-} from './ports';
-import { createCron, startScheduler } from './scheduler';
+} from './ports.ts';
+import { createCron, startScheduler } from './scheduler.ts';
 
 export function toolExecutable(component: Component, mode: ServerMode) {
   try {

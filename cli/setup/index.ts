@@ -12,9 +12,9 @@ import { execa } from 'execa';
 import { z } from 'zod';
 
 import manifest from '../../package.json' with { type: 'json' };
-import { id, now } from '../../packages/core/common';
-import { prepareBootstrap } from '../bootstrap-data';
-import { validateOptions } from '../options';
+import { id, now } from '../../packages/core/common.ts';
+import { prepareBootstrap } from '../bootstrap-data.ts';
+import { validateOptions } from '../options.ts';
 import {
   bucketName,
   type Component,
@@ -26,7 +26,7 @@ import {
   renderProduction,
   root,
   validateHostnames,
-} from '../production-config';
+} from '../production-config.ts';
 import {
   Cloudflare,
   databaseSchema,
@@ -37,8 +37,8 @@ import {
   widgetSchema,
   workerDomainSchema,
   type WorkerSettings,
-} from './cloudflare';
-import { dashboard } from './dashboard';
+} from './cloudflare.ts';
+import { dashboard } from './dashboard.ts';
 import {
   administrator,
   initializeDomains,
@@ -46,8 +46,8 @@ import {
   verifyBrowserLogin,
   verifyUpload,
   withBindings,
-} from './initialize';
-import { recoveryOptions, selectAccount } from './interaction';
+} from './initialize.ts';
+import { recoveryOptions, selectAccount } from './interaction.ts';
 import {
   acquireLock,
   assertMigrationHistory,
@@ -60,7 +60,7 @@ import {
   setupDirectory,
   type SetupState,
   sourceFingerprint,
-} from './state';
+} from './state.ts';
 
 class Cancelled extends Error {
   constructor() {
@@ -706,7 +706,7 @@ async function runSetup(advanced: boolean, remove = false) {
     while (true) {
       try {
         if (remove) {
-          const { uninstall } = await import('./uninstall');
+          const { uninstall } = await import('./uninstall.ts');
           removed = await uninstall(
             cloudflare,
             state,

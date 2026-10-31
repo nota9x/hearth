@@ -9,8 +9,8 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core';
 
-import type { DomainDiagnostics } from './domain-validation';
-import type { ExpiryPolicyOverrides } from './expiry-policy';
+import type { DomainDiagnostics } from './domain-validation.ts';
+import type { ExpiryPolicyOverrides } from './expiry-policy.ts';
 
 export const deliveryDomains = sqliteTable(
   'delivery_domains',

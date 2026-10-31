@@ -1,12 +1,12 @@
 import { eq } from 'drizzle-orm';
 
-import { database, type User } from './db';
+import { database, type User } from './db.ts';
 import {
   expiryPolicySchema,
   resolveExpiryPolicy,
   unrestrictedExpiryPolicy,
-} from './expiry-policy';
-import { settings, users } from './schema';
+} from './expiry-policy.ts';
+import { settings, users } from './schema.ts';
 
 export async function getInstanceExpiryPolicy(binding: D1Database) {
   const [row] = await database(binding)

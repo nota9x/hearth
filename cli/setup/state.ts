@@ -14,7 +14,7 @@ import path from 'node:path';
 
 import { z } from 'zod';
 
-import { type Component, projects, root } from '../production-config';
+import { type Component, projects, root } from '../production-config.ts';
 
 const deployment = z.object({ fingerprint: z.string(), versionId: z.string() });
 export const stateSchema = z.object({
@@ -143,11 +143,10 @@ export async function acquireLock(directory = setupDirectory) {
       );
     await rm(file);
   }
-  const handle = await open(file, 'wx', 0o600);
+  await using handle = await open(file, 'wx', 0o600);
   await handle.writeFile(
     JSON.stringify({ pid: process.pid, hostname: hostname() }),
   );
-  await handle.close();
   return async () => {
     await rm(file, { force: true });
   };

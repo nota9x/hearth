@@ -1,7 +1,7 @@
 # Run Hearth locally
 
 Local services use loopback, local D1/R2, and persistent state separate from production.
-Use Node 24 and the pnpm version pinned in `package.json`. Run commands from the repository root.
+Use Node 26 LTS and the pnpm version pinned in `package.json`. Run commands from the repository root.
 
 ## Initialize once
 

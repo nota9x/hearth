@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { AppError, durations, expiry, expiryDuration, now } from './common';
+import { AppError, durations, expiry, expiryDuration, now } from './common.ts';
 
 export const lifetimeSchema = z
   .number()

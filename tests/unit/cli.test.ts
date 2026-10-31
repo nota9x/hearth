@@ -166,16 +166,21 @@ describe('CLI arguments', () => {
     ).rejects.toThrow('distinct');
   });
 
-  it.each(['dev web -- --version', 'preview delivery -- --help'])(
-    'supports the public entry point: %s',
-    async (arguments_) => {
-      const result = await execa(
-        process.execPath,
-        ['scripts/cli.mjs', ...arguments_.split(' ')],
-        { reject: false },
-      );
-      expect(result.exitCode).toBe(0);
-      expect(result.stdout.length).toBeGreaterThan(0);
-    },
-  );
+  it.each([
+    '--help',
+    'setup --help',
+    'configure --help',
+    'bootstrap --help',
+    'storage initialize --help',
+    'dev web -- --version',
+    'preview delivery -- --help',
+  ])('supports the public entry point: %s', async (arguments_) => {
+    const result = await execa(
+      process.execPath,
+      ['scripts/cli.mjs', ...arguments_.split(' ')],
+      { reject: false },
+    );
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.length).toBeGreaterThan(0);
+  });
 });

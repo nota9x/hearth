@@ -35,8 +35,6 @@ async function launch(scenario: string, mode = 'development') {
       killDescendants: true,
       nodeOptions: [
         '--import',
-        'tsx',
-        '--import',
         new URL('../fixtures/development-preload.mjs', import.meta.url).href,
       ],
       env: {

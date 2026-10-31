@@ -1,11 +1,11 @@
 import { and, eq, gt, sql } from 'drizzle-orm';
 
-import { auditEvent } from './audit';
-import { AppError, id, now } from './common';
-import { newKey, parseKey, randomSecret, verify } from './crypto';
-import { database, type User } from './db';
-import { digest } from './digest';
-import { apiKeys, auditLog, sessions, storageStats, users } from './schema';
+import { auditEvent } from './audit.ts';
+import { AppError, id, now } from './common.ts';
+import { newKey, parseKey, randomSecret, verify } from './crypto.ts';
+import { database, type User } from './db.ts';
+import { digest } from './digest.ts';
+import { apiKeys, auditLog, sessions, storageStats, users } from './schema.ts';
 
 export async function authenticateKey(binding: D1Database, key: string) {
   const database_ = database(binding);

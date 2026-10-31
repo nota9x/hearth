@@ -7,7 +7,7 @@ import { getTableName, is } from 'drizzle-orm';
 import { SQLiteTable } from 'drizzle-orm/sqlite-core';
 import { z } from 'zod';
 
-import * as tables from '../../packages/core/schema';
+import * as tables from '../../packages/core/schema.ts';
 import {
   type Component,
   components,
@@ -15,22 +15,22 @@ import {
   type ProductionConfig,
   readConfig,
   root,
-} from '../production-config';
+} from '../production-config.ts';
 import {
   type Cloudflare,
   databaseSchema,
   SetupFailure,
   type WorkerSettings,
-} from './cloudflare';
-import { dashboard } from './dashboard';
-import { withBindings } from './initialize';
-import { type Account, type Answer, selectAccount } from './interaction';
+} from './cloudflare.ts';
+import { dashboard } from './dashboard.ts';
+import { withBindings } from './initialize.ts';
+import { type Account, type Answer, selectAccount } from './interaction.ts';
 import {
   atomicWrite,
   optionalText,
   setupDirectory,
   type SetupState,
-} from './state';
+} from './state.ts';
 
 const workerSchema = z.object({ id: z.string(), created_on: z.string() });
 const bucketSchema = z.object({ name: z.string(), creation_date: z.string() });

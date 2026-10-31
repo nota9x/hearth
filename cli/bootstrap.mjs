@@ -7,10 +7,18 @@ const root = path.resolve(import.meta.dirname, '..');
 const manifest = JSON.parse(
   await readFile(path.join(root, 'package.json'), 'utf8'),
 );
-const major = Number(process.versions.node.split('.', 1)[0]);
-if (major !== 24 && major < 26) {
+const [major, minor, patch] = process.versions.node.split('.').map(Number);
+const [minimumMajor, minimumMinor, minimumPatch] = manifest.engines.node
+  .slice(1)
+  .split('.')
+  .map(Number);
+if (
+  major !== minimumMajor ||
+  minor < minimumMinor ||
+  (minor === minimumMinor && patch < minimumPatch)
+) {
   console.error(
-    `Hearth requires Node 24 or 26+. Install Node 24, then rerun pnpm run cli. Current: ${process.version}`,
+    `Hearth requires Node.js ${manifest.engines.node} (26 LTS). Install a supported Node version, then rerun pnpm run cli. Current: ${process.version}`,
   );
   process.exitCode = 1;
 } else {
@@ -19,7 +27,6 @@ if (major !== 24 && major < 26) {
     'citty',
     '@clack/prompts',
     'execa',
-    'tsx/esm/api',
     'wrangler',
     'typescript',
     'zod',
@@ -92,8 +99,6 @@ if (major !== 24 && major < 26) {
       );
   }
   if (ready) {
-    const { register } = await import('tsx/esm/api');
-    register();
     await import('./index.ts');
   } else {
     console.error(

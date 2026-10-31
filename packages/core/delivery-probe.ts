@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-import { digest } from './digest';
+import { digest } from './digest.ts';
 
 export const DELIVERY_PROBE_PATH = '/.well-known/hearth-delivery';
 export const DELIVERY_PROBE_KEY = 'system/delivery-health';

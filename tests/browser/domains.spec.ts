@@ -25,6 +25,7 @@ test('Domains manages validation, primary selection, diagnostics, search and del
   const stamp = 123_456_789,
     hostname = `gallery-${stamp}.localhost`;
   await page.goto('/admin/domains');
+  await page.locator('#svelte-announcer').waitFor({ state: 'attached' });
   await expect(
     page.getByRole('heading', { name: 'Domains', exact: true }),
   ).toBeVisible();

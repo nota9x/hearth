@@ -7,7 +7,7 @@ To upgrade an existing installation, follow [updating](../operations/updating.md
 
 You need:
 
-- **Node 24**, **Git**, and **pnpm**. Use the pnpm version listed in
+- **Node 26 LTS** (26.13.0 or newer in 26.x), **Git**, and **pnpm**. Use the pnpm version listed in
   `package.json` under `packageManager`.
 - **A Cloudflare account** with an active domain and permission to create and
   manage services. If someone else owns the account, you may need their help.
@@ -19,6 +19,11 @@ If your domain is not active yet, follow Cloudflare's
 [domain setup guide](https://developers.cloudflare.com/dns/zone-setups/full-setup/setup/).
 Review existing website and email records before changing nameservers.
 Cloudflare usage can incur charges; review your account's pricing and billing.
+
+Node 26 does not bundle Corepack. If pnpm is not installed, install the pinned
+version with `npm install --global pnpm@12.16.1`, then check `node --version`
+and `pnpm --version`. Linux installations of the official Node binaries also
+require `libatomic` (usually provided by the distribution's `libatomic1` package).
 
 ## Guided installation (recommended)
 

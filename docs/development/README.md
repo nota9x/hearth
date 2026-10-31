@@ -1,6 +1,6 @@
 # Develop Hearth
 
-Hearth is one pnpm workspace and release stream. Use Node 24 and the pnpm version pinned in `package.json`.
+Hearth is one pnpm workspace and release stream. Use Node 26 LTS and the pnpm version pinned in `package.json`.
 Start with [local setup](local-setup.md), then read
 [architecture and invariants](architecture.md) before changing persistence or security.
 See [releases and Git hooks](releasing.md) for contributor and maintainer workflows.
@@ -8,20 +8,32 @@ See [testing](testing.md) for choosing regression coverage and measuring the sui
 See [installer verification](setup-installer.md) for CLI tests and disposable-account acceptance checks.
 Self-hosting instructions begin at the [documentation index](../README.md).
 
+The supported Node range is `package.json`'s `engines.node` (`^26.13.0`). CI
+resolves the latest compatible Node 26 release from that declaration. Keep the
+pnpm version pinned and install dependencies with the frozen lockfile.
+
+CLI and release scripts execute TypeScript directly with Node. Their local
+imports must include `.ts`, type-only imports must use `type`, and syntax must
+be erasable: use ordinary fields and constructor assignments instead of
+constructor parameter properties. `pnpm check` also checks this import graph
+with `tsconfig.node.json` and NodeNext resolution. Browser and Worker sources
+continue to build through Vite/Wrangler; deploying them does not install Node 26
+into the Workers runtime.
+
 ## Required checks
 
 Run commands from the repository root:
 
-| Command                                    | Coverage                                                       |
-| ------------------------------------------ | -------------------------------------------------------------- |
-| `pnpm exec prettier --write PATH`          | Format touched files.                                          |
-| `pnpm format:check`                        | Check repository formatting.                                   |
-| `pnpm lint`                                | Generate SvelteKit types and lint; warnings fail.              |
-| `pnpm check`                               | Svelte/SvelteKit checks plus root TypeScript.                  |
-| `pnpm test:unit` / `pnpm test:integration` | Unit or isolated D1/R2 integration suites.                     |
-| `pnpm test`                                | Both Vitest projects with bounded workers.                     |
-| `pnpm verify`                              | Formatting, lint, types, tests, and web build.                 |
-| `pnpm test:benchmark`                      | Optional measurements; not a production performance guarantee. |
+| Command                                    | Coverage                                                           |
+| ------------------------------------------ | ------------------------------------------------------------------ |
+| `pnpm exec prettier --write PATH`          | Format touched files.                                              |
+| `pnpm format:check`                        | Check repository formatting.                                       |
+| `pnpm lint`                                | Generate SvelteKit types and lint; warnings fail.                  |
+| `pnpm check`                               | Svelte/SvelteKit, root TypeScript, and native Node imports/syntax. |
+| `pnpm test:unit` / `pnpm test:integration` | Unit or isolated D1/R2 integration suites.                         |
+| `pnpm test`                                | Both Vitest projects with bounded workers.                         |
+| `pnpm verify`                              | Formatting, lint, types, tests, and web build.                     |
+| `pnpm test:benchmark`                      | Optional measurements; not a production performance guarantee.     |
 
 Start with affected tests, then applicable lint/types. Shared behavior, schema,
 toolchain, or cross-Worker changes require `pnpm verify`. Docs-only changes need
