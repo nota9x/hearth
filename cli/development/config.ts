@@ -5,7 +5,13 @@ import ts from 'typescript';
 import { z } from 'zod';
 
 import { configSchema } from '../../packages/core/common.ts';
-import { type Component, components, projects, root } from '../project.ts';
+import {
+  type Component,
+  components,
+  projects,
+  root,
+  webWorkerEntry,
+} from '../project.ts';
 import type { ServerOptions } from './command.ts';
 
 export { type Component, projects, root } from '../project.ts';
@@ -13,7 +19,6 @@ export const persistence = path.join(root, 'apps/web/.wrangler/state');
 export type ServerMode = 'development' | 'preview';
 
 const schema = z.looseObject({
-  main: z.string(),
   vars: z.record(z.string(), z.string()).default({}),
   dev: z.looseObject({
     ip: z.string().default('127.0.0.1'),
@@ -301,6 +306,8 @@ export async function prepareSession(
     const current = configs[component];
     const source = {
       ...original.source,
+      ...(component === 'web' &&
+        mode === 'preview' && { main: webWorkerEntry }),
       dev: current.dev,
       vars: {
         ...original.vars,

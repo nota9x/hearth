@@ -23,7 +23,7 @@ import {
 import { execa } from 'execa';
 
 import { renderProduction } from '../cli/production-config.ts';
-import { projects, root } from '../cli/project.ts';
+import { projects, root, webWorkerEntry } from '../cli/project.ts';
 
 const [tag, sha] = process.argv.slice(2);
 if (!tag || !sha)
@@ -97,6 +97,9 @@ try {
     await mkdir(worker, { recursive: true });
     await runWrangler([
       'deploy',
+      ...(component === 'web'
+        ? [path.join(root, projects.web, webWorkerEntry)]
+        : []),
       '--dry-run',
       '--config',
       path.join(root, projects[component], 'wrangler.jsonc'),
@@ -104,22 +107,17 @@ try {
       worker,
     ]);
     await rm(path.join(worker, 'README.md'));
-    const entry = `${path.parse(config.main).name}.js`;
+    const entry = 'index.js';
     const entryStats = await stat(path.join(worker, entry));
     if (entryStats.size === 0)
       throw new Error(`Empty ${component} Worker bundle.`);
 
     if (component === 'web') {
       const assets = config.assets as { binding: string; directory: string };
-      const originalMain = path.resolve(root, projects.web, config.main);
       await cp(
         path.resolve(root, projects.web, assets.directory),
         path.join(directory, 'assets'),
-        {
-          recursive: true,
-          filter: (source) =>
-            source !== originalMain && source !== `${originalMain}.map`,
-        },
+        { recursive: true },
       );
       assets.directory = './assets';
       const drizzleFiles = await readdir(path.join(root, 'drizzle'));

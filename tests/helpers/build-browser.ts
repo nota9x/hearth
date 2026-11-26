@@ -2,6 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
+import { projects, webWorkerEntry } from '../../cli/project.ts';
+
 export default async function setup() {
   const directory = path.resolve(
     'artifacts/browser-workers',
@@ -18,6 +20,7 @@ export default async function setup() {
       [
         path.resolve('node_modules/wrangler/bin/wrangler.js'),
         'deploy',
+        ...(name === 'web' ? [path.resolve(projects.web, webWorkerEntry)] : []),
         '--dry-run',
         '--config',
         config,
