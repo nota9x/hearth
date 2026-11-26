@@ -73,9 +73,9 @@
 {:else if data.section === 'audit-log'}
   <CollectionHeader title="Audit log" refresh={manualRefresh} {busy} />
   {#if data.scopedUser}<p in:fadeMotion={{ kind: 'content' }}>
-      Actor: <a class="subtle-link" href={`/admin/users/${data.scopedUser.id}`}
-        >{data.scopedUser.displayName}</a
-      >
+      Actor: <a class="subtle-link" href={`/admin/users/${data.scopedUser.id}`}>
+        {data.scopedUser.displayName}
+      </a>
     </p>{/if}
   <SearchControls
     total={data.auditTotal}
@@ -112,10 +112,14 @@
         message={data.auditUnfilteredTotal
           ? 'Try another search or clear your filters.'
           : 'Administrative events will be recorded here.'}
-        >{#snippet icon()}<Clock size={30} />{/snippet}
-        {#if data.auditUnfilteredTotal}<a class="button" href="/admin/audit-log"
-            >Clear search and filters</a
-          >{/if}
+      >
+        {#snippet icon()}<Clock size={30} />{/snippet}
+        {#if data.auditUnfilteredTotal}<a
+            class="button"
+            href="/admin/audit-log"
+          >
+            Clear search and filters
+          </a>{/if}
       </CollectionEmpty>{/each}
   </div>
   {#if data.auditPagination}<Pagination

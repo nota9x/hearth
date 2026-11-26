@@ -65,8 +65,10 @@
       pinned = true;
       show();
     }
-  }}><Info size={15} /></button
+  }}
 >
+  <Info size={15} />
+</button>
 <div
   bind:this={panel}
   {id}

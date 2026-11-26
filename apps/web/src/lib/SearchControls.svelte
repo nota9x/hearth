@@ -237,8 +237,10 @@
             query = '';
             void update();
             input.focus();
-          }}><X size={16} /></button
-        >{/if}
+          }}
+        >
+          <X size={16} />
+        </button>{/if}
     </div>
     <details
       bind:this={sortPanel}
@@ -250,8 +252,10 @@
         class="search-trigger"
         class:active={sort !== 'newest'}
         aria-label={`Sort ${plural}: ${sortOptions[sort]}`}
-        title={`Sort ${plural}`}><ArrowUpDown size={18} /></summary
+        title={`Sort ${plural}`}
       >
+        <ArrowUpDown size={18} />
+      </summary>
       <div
         class="search-popover sort-popover"
         inert={!sortOpen}
@@ -259,14 +263,14 @@
       >
         <strong>Sort {plural}</strong>
         {#each Object.entries(sortOptions).filter(([key]) => key !== 'best' || text) as [key, name] (key)}
-          <label class="sort-choice"
-            ><input
+          <label class="sort-choice">
+            <input
               type="radio"
               name={`${plural}-sort`}
               checked={sort === key}
               onchange={() => change('sort', key)}
-            />{name}</label
-          >
+            />{name}
+          </label>
         {/each}
       </div>
     </details>
@@ -281,54 +285,62 @@
         class:active={active.length > 0}
         aria-label={`Filter ${plural}${active.length > 0 ? `: ${active.length} active` : ''}`}
         title={`Filter ${plural}`}
-        ><ListFilter size={18} />{#if active.length > 0}<span
-            class="filter-count">{active.length}</span
-          >{/if}</summary
       >
+        <ListFilter size={18} />{#if active.length > 0}<span
+            class="filter-count"
+          >
+            {active.length}
+          </span>{/if}
+      </summary>
       <div
         class="search-popover filter-popover"
         inert={!filterOpen}
         aria-hidden={!filterOpen}
       >
         <strong>Filter {plural}</strong>
-        <label
-          >{dateLabel} (local time)<select
+        <label>
+          {dateLabel} (local time)<select
             value={values.date || ''}
             onchange={(event) => change('date', event.currentTarget.value)}
-            ><option value="">Any date</option
-            >{#each Object.entries(dateOptions) as [key, name] (key)}<option
-                value={key}>{name}</option
-              >{/each}</select
-          ></label
-        >
+          >
+            <option value="">
+              Any date
+            </option>{#each Object.entries(dateOptions) as [key, name] (key)}<option
+                value={key}
+              >
+                {name}
+              </option>{/each}
+          </select>
+        </label>
         {#if values.date === 'custom'}
           <div class="date-range" in:fadeMotion={{ kind: 'content' }}>
-            <label
-              >From<input
+            <label>
+              From<input
                 type="date"
                 value={values.from || ''}
                 max={values.to || undefined}
                 onchange={(event) => change('from', event.currentTarget.value)}
-              /></label
-            >
-            <label
-              >Through<input
+              />
+            </label>
+            <label>
+              Through<input
                 type="date"
                 value={values.to || ''}
                 min={values.from || undefined}
                 onchange={(event) => change('to', event.currentTarget.value)}
-              /></label
-            >
+              />
+            </label>
           </div>
           <small>Choose only a start date for a single day.</small>
           {#if !dateRange('custom', values.from, values.to)}<small
               transition:fadeMotion={{ kind: 'content' }}
-              >Choose a valid start date and an end date on or after it.</small
-            >{/if}
+            >
+              Choose a valid start date and an end date on or after it.
+            </small>{/if}
         {/if}
         {#each filters as filter (filter.key)}
-          <label
-            >{filter.label}
+          <label>
+            {filter.label}
             {#if filter.options}
               <select
                 value={values[filter.key] || ''}
@@ -337,8 +349,10 @@
               >
                 <option value="">{filter.placeholder}</option>
                 {#each Object.entries(filter.options) as [key, name] (key)}<option
-                    value={key}>{name}</option
-                  >{/each}
+                    value={key}
+                  >
+                    {name}
+                  </option>{/each}
               </select>
             {:else}
               <input
@@ -356,24 +370,26 @@
             {/if}
           </label>
         {/each}
-        <button disabled={active.length === 0} onclick={() => clear()}
-          >Clear filters</button
-        >
+        <button disabled={active.length === 0} onclick={() => clear()}>
+          Clear filters
+        </button>
       </div>
     </details>
   </div>
   <div class="search-status">
-    <small role="status" aria-live="polite"
-      >{total === unfilteredTotal ? total : `${total} of ${unfilteredTotal}`}
+    <small role="status" aria-live="polite">
+      {total === unfilteredTotal ? total : `${total} of ${unfilteredTotal}`}
       {total === 1 ? noun : plural}{navigating.to
         ? ' · Updating…'
-        : ''}&nbsp;·&nbsp;{sortOptions[sort]}</small
-    >
+        : ''}&nbsp;·&nbsp;{sortOptions[sort]}
+    </small>
     {#if query || active.length > 0}<button
         transition:fadeMotion={{ kind: 'content' }}
         class="text-control"
-        onclick={() => clear(true)}>Clear all</button
-      >{/if}
+        onclick={() => clear(true)}
+      >
+        Clear all
+      </button>{/if}
   </div>
   {#if active.length > 0 || dateRange(query.trim().toLowerCase())}<div
       class="filter-chips"
@@ -382,14 +398,17 @@
           transition:fadeMotion={{ kind: 'content' }}
           onclick={() => change(key, '')}
           aria-label={`Remove ${key} filter: ${label(key)}`}
-          >{label(key)}<X size={12} /></button
-        >{/each}
+        >
+          {label(key)}<X size={12} />
+        </button>{/each}
       {#if dateRange(query.trim().toLowerCase())}<button
           transition:fadeMotion={{ kind: 'content' }}
           onclick={() => {
             query = '';
             void update();
-          }}>{dateLabel}: {query} (local time)<X size={12} /></button
-        >{/if}
+          }}
+        >
+          {dateLabel}: {query} (local time)<X size={12} />
+        </button>{/if}
     </div>{/if}
 </div>

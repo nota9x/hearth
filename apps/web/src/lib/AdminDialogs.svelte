@@ -286,24 +286,24 @@
                 ? 'The original file is missing. This retires its image record and disables its links. Remaining physical files are cleaned up before capacity is released.'
                 : 'Hearth will verify current storage or recalculate the affected counters. Existing original images are preserved.'}
           </p>
-          <code style="overflow-wrap:anywhere"
-            >{finding?.objectKey ?? finding?.details}</code
-          >{/if}
+          <code style="overflow-wrap:anywhere">
+            {finding?.objectKey ?? finding?.details}
+          </code>{/if}
         {#if modal === 'invite'}
-          <label
-            >Display name<input
+          <label>
+            Display name<input
               bind:value={displayName}
               required
               maxlength="80"
-            /></label
-          >
-          <label
-            >Role<select bind:value={role}
-              ><option value="user">Member</option><option value="admin"
-                >Administrator</option
-              ></select
-            ></label
-          >
+            />
+          </label>
+          <label>
+            Role<select bind:value={role}>
+              <option value="user">Member</option><option value="admin">
+                Administrator
+              </option>
+            </select>
+          </label>
         {/if}
         {#if modal !== 'finding' && modal !== 'findings'}<Turnstile
             siteKey={data.siteKey}
@@ -315,10 +315,11 @@
             type="button"
             onclick={busy && modal === 'findings' ? stopBulk : close}
             disabled={busy && (modal !== 'findings' || stopped)}
-            >{busy && modal === 'findings'
-              ? 'Stop after current issue'
-              : 'Cancel'}</button
           >
+            {busy && modal === 'findings'
+              ? 'Stop after current issue'
+              : 'Cancel'}
+          </button>
           <button
             class:danger={modal === 'findings'
               ? deletions + retirements > 0
@@ -329,7 +330,8 @@
               (modal === 'findings' && deletions + retirements === 0)}
             disabled={busy ||
               (modal !== 'finding' && modal !== 'findings' && !token)}
-            >{busy
+          >
+            {busy
               ? 'Working…'
               : modal === 'invite'
                 ? 'Create invitation'
@@ -337,8 +339,8 @@
                   ? 'Resolve all issues'
                   : modal === 'finding'
                     ? findingAction
-                    : 'Confirm'}</button
-          >
+                    : 'Confirm'}
+          </button>
         </div>
       </form>
     {/if}

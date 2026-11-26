@@ -251,17 +251,17 @@
 <section class="panel capacity" aria-labelledby="capacity-title">
   <div class="section-heading">
     <h2 id="capacity-title">Overview</h2>
-    <a class="subtle-link" href="/admin/settings"
-      >Manage limit <ArrowRight size={15} aria-hidden="true" /></a
-    >
+    <a class="subtle-link" href="/admin/settings">
+      Manage limit <ArrowRight size={15} aria-hidden="true" />
+    </a>
   </div>
   <p class="capacity-total">
     {storageBytes(capacity.persistedBytes)}
-    <span
-      >of {capacity.limitBytes === null
+    <span>
+      of {capacity.limitBytes === null
         ? 'Unlimited'
-        : storageBytes(capacity.limitBytes)} used</span
-    >
+        : storageBytes(capacity.limitBytes)} used
+    </span>
   </p>
   {#if !capacity.ready}<p class="notice">
       Known usage only. Storage setup is incomplete; these totals may not
@@ -287,9 +287,9 @@
       ></span>
     </div>
     <div class="capacity-caption">
-      <span>{utilization}</span><strong
-        >{storageBytes(remaining!)} available</strong
-      >
+      <span>{utilization}</span><strong>
+        {storageBytes(remaining!)} available
+      </strong>
     </div>
     {#if capacity.reservedBytes > 0}<div
         class="capacity-legend"
@@ -304,35 +304,38 @@
     <div>
       <dt>Images</dt>
       <dd>
-        <strong>{storage.active.images.toLocaleString()}</strong><small
-          >{storageBytes(storage.active.activeBytes)} in active images and previews</small
-        >
+        <strong>{storage.active.images.toLocaleString()}</strong><small>
+          {storageBytes(storage.active.activeBytes)} in active images and previews
+        </small>
       </dd>
     </div>
     <div>
       <dt>Stored files</dt>
       <dd>
-        <strong>{storage.objects.persistedObjects.toLocaleString()}</strong
-        ><small>Completed originals, previews, and other stored files</small>
+        <strong>
+          {storage.objects.persistedObjects.toLocaleString()}
+        </strong><small>
+          Completed originals, previews, and other stored files
+        </small>
       </dd>
     </div>
     <div>
       <dt>Reserved for uploads</dt>
       <dd>
-        <strong>{storageBytes(capacity.reservedBytes)}</strong><small
-          >Space held for unfinished uploads and recovery; counts toward the
-          limit</small
-        >
+        <strong>{storageBytes(capacity.reservedBytes)}</strong><small>
+          Space held for unfinished uploads and recovery; counts toward the
+          limit
+        </small>
       </dd>
     </div>
     <div>
       <dt>Awaiting deletion</dt>
       <dd>
-        <strong>{storageBytes(storage.pending.bytes)}</strong><small
-          >{storage.pending.count.toLocaleString()}
+        <strong>{storageBytes(storage.pending.bytes)}</strong><small>
+          {storage.pending.count.toLocaleString()}
           {storage.pending.count === 1 ? 'file' : 'files'} queued for cleanup; already
-          counted in used or reserved space</small
-        >
+          counted in used or reserved space
+        </small>
       </dd>
     </div>
   </dl>
@@ -342,8 +345,8 @@
       role="status"
     >
       <TriangleAlert size={18} aria-hidden="true" />
-      <span
-        >{#if percent >= 100}Storage is full. New uploads and other operations
+      <span>
+        {#if percent >= 100}Storage is full. New uploads and other operations
           needing more space are blocked.
           {allocated > capacity.limitBytes
             ? `Free at least ${storageBytes(allocated - capacity.limitBytes)} to reach the limit, then enough space for your next upload.`
@@ -352,8 +355,8 @@
         {:else}Storage is {percent >= 95
             ? 'nearly full'
             : 'approaching its limit'}. Free space or increase the limit before
-          it fills up.{/if}</span
-      >
+          it fills up.{/if}
+      </span>
     </p>{/if}
 </section>
 
@@ -365,12 +368,12 @@
       </p>{/if}
     {#each data.types as type (type.mime)}<div class="distribution-row">
         <div>
-          <strong>{formatNames[type.mime] ?? type.mime}</strong><small
-            >{type.count.toLocaleString()}
+          <strong>{formatNames[type.mime] ?? type.mime}</strong><small>
+            {type.count.toLocaleString()}
             {type.count === 1 ? 'image' : 'images'} · {originalBytes
               ? ((type.bytes / originalBytes) * 100).toFixed(1)
-              : '0'}%</small
-          >
+              : '0'}%
+          </small>
         </div>
         <strong>{storageBytes(type.bytes)}</strong>
         <div class="distribution-track" aria-hidden="true">
@@ -392,15 +395,15 @@
         class="distribution-row"
       >
         <div>
-          <a class="subtle-link" href={`/admin/users/${person.id}`}
-            >{person.displayName}</a
-          ><small
-            >{person.imageCount.toLocaleString()}
+          <a class="subtle-link" href={`/admin/users/${person.id}`}>
+            {person.displayName}
+          </a><small>
+            {person.imageCount.toLocaleString()}
             {person.imageCount === 1 ? 'image' : 'images'} · {storage.active
               .activeBytes
               ? ((person.bytes / storage.active.activeBytes) * 100).toFixed(1)
-              : '0'}%</small
-          >
+              : '0'}%
+          </small>
         </div>
         <strong>{storageBytes(person.bytes)}</strong>
         <div class="distribution-track" aria-hidden="true">
@@ -412,12 +415,12 @@
         No image storage to compare yet. Usage by person will appear after an
         upload.
       </p>{/each}
-    <a class="subtle-link storage-users-link" href="/admin/users?sort=storage"
-      >View all users by storage usage <ArrowRight
+    <a class="subtle-link storage-users-link" href="/admin/users?sort=storage">
+      View all users by storage usage <ArrowRight
         size={16}
         aria-hidden="true"
-      /></a
-    >
+      />
+    </a>
   </section>
 </section>
 
@@ -466,10 +469,11 @@
             scan?.status === 'failed' ? { id: scan.id } : {},
             'Storage check started.',
           )}
-        ><RefreshCw size={16} aria-hidden="true" />{scan?.status === 'failed'
-          ? 'Retry check'
-          : 'Check storage'}</button
       >
+        <RefreshCw size={16} aria-hidden="true" />{scan?.status === 'failed'
+          ? 'Retry check'
+          : 'Check storage'}
+      </button>
     </div>
     <p class="muted check-description">
       A check compares stored files with image records and storage totals.
@@ -478,11 +482,11 @@
       separate action. You can close this page while a check runs.
     </p>
     <div class="last-checked">
-      <span>Last completed storage check</span><strong
-        >{storage.lastSuccessful
+      <span>Last completed storage check</span><strong>
+        {storage.lastSuccessful
           ? dateTime(storage.lastSuccessful.completedAt)
-          : 'Not checked yet'}</strong
-      >
+          : 'Not checked yet'}
+      </strong>
     </div>
     <div class="automatic-maintenance">
       <div>
@@ -516,10 +520,9 @@
           disabled={busy}
           onclick={() =>
             run('maintenance-resume', {}, 'Background maintenance resumed.')}
-          >{maintenance?.paused
-            ? 'Resume maintenance'
-            : 'Retry maintenance'}</button
-        >{/if}
+        >
+          {maintenance?.paused ? 'Resume maintenance' : 'Retry maintenance'}
+        </button>{/if}
     </div>
     {#if data.findings.length > 0}<section
         class="attention-section"
@@ -528,15 +531,15 @@
         <div class="section-heading attention-heading">
           <div>
             <h3 id="attention-title">Needs attention</h3>
-            <span class="muted"
-              >{data.findings.length === 100 ? 'At least ' : ''}{data.findings
+            <span class="muted">
+              {data.findings.length === 100 ? 'At least ' : ''}{data.findings
                 .length}
-              {data.findings.length === 1 ? 'issue' : 'issues'}</span
-            >
+              {data.findings.length === 1 ? 'issue' : 'issues'}
+            </span>
           </div>
-          <button disabled={busy} onclick={resolveAll}
-            ><CheckCheck size={16} aria-hidden="true" />Resolve all</button
-          >
+          <button disabled={busy} onclick={resolveAll}>
+            <CheckCheck size={16} aria-hidden="true" />Resolve all
+          </button>
         </div>
         {#if data.findings.length === 100}<p class="muted">
             Showing the first 100 unresolved issues. Further issues will appear
@@ -554,8 +557,10 @@
                 <button
                   class:danger={['orphan', 'missing'].includes(finding.kind)}
                   disabled={busy}
-                  onclick={() => resolve(finding.id)}>{description[2]}</button
+                  onclick={() => resolve(finding.id)}
                 >
+                  {description[2]}
+                </button>
               </div>
               <Disclosure title="Details" class="finding-details">
                 <dl class="finding-metadata">
@@ -609,11 +614,11 @@
         <dd>{capacity.blocked ? 'Yes' : 'No'}</dd>
       </dl>
       {#if !capacity.ready}<p class="notice">
-          For legacy accounting or recovery, run <code
-            >pnpm storage:initialize</code
-          >, then complete the baseline storage check before enabling a limit.
-          Fresh setup initializes accounting automatically. Completed files are
-          preserved.
+          For legacy accounting or recovery, run <code>
+            pnpm storage:initialize
+          </code>, then complete the baseline storage check before enabling a
+          limit. Fresh setup initializes accounting automatically. Completed
+          files are preserved.
         </p>{/if}
     </section>
     <section>
@@ -692,9 +697,10 @@
               {},
               'Automatic maintenance paused. Uploads continue independently.',
             )}
-          ><CirclePause size={16} aria-hidden="true" />Pause automatic
-          maintenance</button
-        >{/if}
+        >
+          <CirclePause size={16} aria-hidden="true" />Pause automatic
+          maintenance
+        </button>{/if}
     </section>
     <section>
       <h3>Latest storage check</h3>
@@ -739,9 +745,9 @@
         {#each data.history.slice(0, 7) as item (item.day)}<div
             class="history-row"
           >
-            <span>{item.day}</span><small
-              >{item.images.toLocaleString()} images</small
-            ><strong>{storageBytes(item.bytes)}</strong>
+            <span>{item.day}</span><small>
+              {item.images.toLocaleString()} images
+            </small><strong>{storageBytes(item.bytes)}</strong>
           </div>{/each}
       </section>{/if}
     <section>

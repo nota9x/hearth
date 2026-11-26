@@ -130,8 +130,10 @@
         disabled={busy}
         onclick={dismiss}
         aria-label="Close dialog"
-        title="Close"><X size={20} /></button
+        title="Close"
       >
+        <X size={20} />
+      </button>
     </div>
     {@render children()}
   </div>

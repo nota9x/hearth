@@ -343,8 +343,9 @@
         disabled={busy}
         onclick={() => void skipOnboarding()}
         aria-label="Skip onboarding"
-        >Skip onboarding<ArrowRight size={15} /></button
       >
+        Skip onboarding<ArrowRight size={15} />
+      </button>
     </div>
   </header>
   <nav class="journey" aria-label="Setup progress">
@@ -359,12 +360,13 @@
             aria-current={step === stage.index ? 'step' : undefined}
             aria-label={`${stage.label}${completed.includes(stage.index) ? ', completed' : ''}`}
             onclick={() => void show(stage.index)}
-            ><span class="step-dot" aria-hidden="true"
-              >{#if completed.includes(stage.index)}<Check
-                  size={12}
-                />{:else}{stages.indexOf(stage) + 1}{/if}</span
-            ><span class="step-label">{stage.label}</span></button
           >
+            <span class="step-dot" aria-hidden="true">
+              {#if completed.includes(stage.index)}<Check
+                  size={12}
+                />{:else}{stages.indexOf(stage) + 1}{/if}
+            </span><span class="step-label">{stage.label}</span>
+          </button>
         </li>{/each}
     </ol>
     <p class="mobile-progress">
@@ -410,9 +412,11 @@
                           : 'Review your saved settings. You can update them anytime in Settings.'}
           </p>
           {#if step === 0}<div class="welcome-notes">
-              <span
-                ><LockKeyhole size={16} />Use your current API key for ShareX.</span
-              ><span><Clock size={16} />This should take about 5 minutes.</span>
+              <span>
+                <LockKeyhole size={16} />Use your current API key for ShareX.
+              </span><span>
+                <Clock size={16} />This should take about 5 minutes.
+              </span>
             </div>{:else if step === 5}<div class="privacy-note">
               <LockKeyhole size={17} />
               <p>
@@ -421,9 +425,9 @@
                 current key manually.
               </p>
             </div>{:else if step === 7}<div class="finish-note">
-              <CheckCheck size={19} /><span
-                >Reopen setup with Revisit onboarding in Settings.</span
-              >
+              <CheckCheck size={19} /><span>
+                Reopen setup with Revisit onboarding in Settings.
+              </span>
             </div>{/if}
         </div>
 
@@ -437,35 +441,39 @@
                 <div class="scene-sun"></div>
                 <div class="scene-hill hill-back"></div>
                 <div class="scene-hill hill-front"></div>
-                <span class="scene-caption"
-                  ><Image size={14} />Example image</span
-                >
+                <span class="scene-caption">
+                  <Image size={14} />Example image
+                </span>
               </div>
               <div class="workflow-steps">
                 <div>
-                  <span class="workflow-icon"><Upload size={19} /></span><strong
-                    >Upload</strong
-                  ><small>Capture with ShareX</small>
+                  <span class="workflow-icon">
+                    <Upload size={19} />
+                  </span><strong>Upload</strong><small>
+                    Capture with ShareX
+                  </small>
                 </div>
                 <span class="workflow-arrow"><ArrowRight size={16} /></span>
                 <div>
-                  <span class="workflow-icon"><Link size={19} /></span><strong
-                    >Share</strong
-                  ><small>Copy a share link</small>
+                  <span class="workflow-icon"><Link size={19} /></span><strong>
+                    Share
+                  </strong><small>Copy a share link</small>
                 </div>
                 <span class="workflow-arrow"><ArrowRight size={16} /></span>
                 <div>
-                  <span class="workflow-icon"><Layers size={19} /></span><strong
-                    >Manage</strong
-                  ><small>Browse your images</small>
+                  <span class="workflow-icon">
+                    <Layers size={19} />
+                  </span><strong>Manage</strong><small>
+                    Browse your images
+                  </small>
                 </div>
               </div>
             </div>
           {:else if step === 1}
             <div class="setup-surface">
-              <span class="surface-label"
-                ><Globe size={16} />Initial instance setup</span
-              >
+              <span class="surface-label">
+                <Globe size={16} />Initial instance setup
+              </span>
               {#await import('./DomainSetup.svelte')}<p class="loading">
                   <Spinner size={18} />Opening domain setup…
                 </p>{:then module}<module.default
@@ -485,11 +493,11 @@
             </div>
           {:else if step === 2}
             <div class="identity-preview" aria-hidden="true">
-              <span class="identity-avatar"
-                >{displayName.trim().slice(0, 1).toUpperCase() || 'H'}</span
-              ><strong>{displayName.trim() || 'Your name'}</strong><small
-                >{data.user.role === 'admin' ? 'Administrator' : 'Member'} · {data.siteName}</small
-              >
+              <span class="identity-avatar">
+                {displayName.trim().slice(0, 1).toUpperCase() || 'H'}
+              </span><strong>{displayName.trim() || 'Your name'}</strong><small>
+                {data.user.role === 'admin' ? 'Administrator' : 'Member'} · {data.siteName}
+              </small>
             </div>
             <form
               id="step-form"
@@ -498,8 +506,8 @@
                 void continueSetup();
               }}
             >
-              <label
-                >Your display name<input
+              <label>
+                Your display name<input
                   bind:value={displayName}
                   disabled={busy}
                   readonly={data.displayNameRestricted}
@@ -508,8 +516,8 @@
                   required
                   aria-describedby="name-help"
                   aria-invalid={!!nameError}
-                /></label
-              >
+                />
+              </label>
               <p id="name-help" class:error={!!nameError}>
                 {data.displayNameRestricted
                   ? 'Display name changes are disabled by your administrator.'
@@ -521,37 +529,39 @@
               <legend>Your delivery selection</legend><label
                 class="choice"
                 class:selected={domainId === null}
-                ><input
+              >
+                <input
                   type="radio"
                   name="domain"
                   disabled={busy}
                   value="primary"
                   checked={domainId === null}
                   onchange={() => (domainId = null)}
-                /><span
-                  ><strong>Use instance default</strong><small
-                    >{data.primaryDomain?.hostname ??
-                      'No instance default configured'}</small
-                  ></span
-                ><span class="choice-mark"><Check size={15} /></span></label
-              >{#each data.available as domain (domain.id)}<label
+                /><span>
+                  <strong>Use instance default</strong><small>
+                    {data.primaryDomain?.hostname ??
+                      'No instance default configured'}
+                  </small>
+                </span><span class="choice-mark"><Check size={15} /></span>
+              </label>{#each data.available as domain (domain.id)}<label
                   class="choice"
                   class:selected={domainId === domain.id}
-                  ><input
+                >
+                  <input
                     type="radio"
                     name="domain"
                     disabled={busy}
                     value={domain.id}
                     checked={domainId === domain.id}
                     onchange={() => (domainId = domain.id)}
-                  /><span
-                    ><strong>{domain.hostname}</strong><small
-                      >{domain.isPrimary
+                  /><span>
+                    <strong>{domain.hostname}</strong><small>
+                      {domain.isPrimary
                         ? 'Instance default · Use for your new share links'
-                        : 'Use for your new share links'}</small
-                    ></span
-                  ><span class="choice-mark"><Check size={15} /></span></label
-                >{/each}
+                        : 'Use for your new share links'}
+                    </small>
+                  </span><span class="choice-mark"><Check size={15} /></span>
+                </label>{/each}
             </fieldset>
             {#if domainId && data.available.every((domain) => domain.id !== domainId)}<p
                 class="attention"
@@ -565,9 +575,9 @@
                   : 'No instance default is configured. Choose an available domain or keep following the instance default for now.'}
               </p>{/if}
             {#if data.available.length === 0}<div class="empty-guidance">
-                <Globe size={22} /><strong
-                  >No delivery domains available yet</strong
-                >
+                <Globe size={22} /><strong>
+                  No delivery domains available yet
+                </strong>
                 <p>
                   You can continue. Images save privately until a usable
                   delivery domain is configured.{#if data.user.role === 'admin'}
@@ -580,19 +590,21 @@
                   {/if}
                 </p>
               </div>{:else if selectedDomain}<div class="link-preview">
-                <Link size={15} /><span
-                  >{selectedDomain.hostname}<span class="link-tail"
-                    >/your-image</span
-                  ></span
-                ><small>Example link</small>
+                <Link size={15} /><span>
+                  {selectedDomain.hostname}<span class="link-tail">
+                    /your-image
+                  </span>
+                </span><small>Example link</small>
               </div>{/if}
           {:else if step === 4}
             <fieldset class="choices expiry-choices">
-              <legend>Default image expiration</legend
-              >{#each choices as [value, label] (value)}<label
+              <legend>
+                Default image expiration
+              </legend>{#each choices as [value, label] (value)}<label
                   class="choice"
                   class:selected={expiry === value && !customDuration}
-                  ><input
+                >
+                  <input
                     type="radio"
                     name="expiry"
                     disabled={busy}
@@ -602,17 +614,20 @@
                       expiry = value;
                       customDuration = false;
                     }}
-                  /><span
-                    ><strong
-                      >{value === 'never' ? 'Keep indefinitely' : label}</strong
-                    ><small
-                      >{value === 'never'
+                  /><span>
+                    <strong>
+                      {value === 'never' ? 'Keep indefinitely' : label}
+                    </strong><small>
+                      {value === 'never'
                         ? 'Until you decide to delete it'
-                        : `Automatically expires ${label.toLowerCase()} after upload`}</small
-                    ></span
-                  ><span class="choice-mark"><Check size={15} /></span></label
-                >{/each}<label class="choice" class:selected={customDuration}
-                ><input
+                        : `Automatically expires ${label.toLowerCase()} after upload`}
+                    </small>
+                  </span><span class="choice-mark"><Check size={15} /></span>
+                </label>{/each}<label
+                class="choice"
+                class:selected={customDuration}
+              >
+                <input
                   type="radio"
                   name="expiry"
                   disabled={busy}
@@ -622,12 +637,12 @@
                     customDuration = true;
                     expiry = `${seconds ?? 3600}s`;
                   }}
-                /><span
-                  ><strong>A custom duration</strong><small
-                    >Choose the number of seconds</small
-                  ></span
-                ><span class="choice-mark"><Check size={15} /></span></label
-              >
+                /><span>
+                  <strong>A custom duration</strong><small>
+                    Choose the number of seconds
+                  </small>
+                </span><span class="choice-mark"><Check size={15} /></span>
+              </label>
             </fieldset>
             {#if customDuration}<form
                 id="step-form"
@@ -636,8 +651,8 @@
                   void continueSetup();
                 }}
               >
-                <label
-                  >Duration in seconds<input
+                <label>
+                  Duration in seconds<input
                     type="number"
                     disabled={busy}
                     min="1"
@@ -649,8 +664,8 @@
                     aria-describedby={expiryError ? 'expiry-error' : undefined}
                     oninput={(event) =>
                       (expiry = `${event.currentTarget.value}s`)}
-                  /></label
-                >
+                  />
+                </label>
               </form>{/if}
             {#if expiryError}<p
                 id="expiry-error"
@@ -666,9 +681,9 @@
               </p>{/if}
           {:else if step === 5}
             <div class="sharex-download">
-              <span class="surface-label"
-                ><Download size={16} />ShareX configuration</span
-              ><ShareXConfig
+              <span class="surface-label">
+                <Download size={16} />ShareX configuration
+              </span><ShareXConfig
                 bind:key
                 bind:busy
                 onDownload={() => (downloaded = true)}
@@ -754,9 +769,9 @@
                   <dd>
                     {expiryLabel(
                       data.user.defaultExpiry,
-                    )}{#if defaultExpiryError(data.expiryPolicy!, data.user.defaultExpiry)}<small
-                        >Needs attention</small
-                      >{/if}
+                    )}{#if defaultExpiryError(data.expiryPolicy!, data.user.defaultExpiry)}<small>
+                        Needs attention
+                      </small>{/if}
                   </dd>
                 </div>
                 <div>
@@ -796,25 +811,29 @@
             class="back"
             disabled={busy}
             onclick={() => void show(stages[position - 1].index)}
-            ><ArrowLeft size={16} />Back</button
-          >{/if}
+          >
+            <ArrowLeft size={16} />Back
+          </button>{/if}
       </div>
       <div class="forward-actions">
         {#if step === 7}<button
             class="primary continue"
             disabled={busy}
             onclick={() => void enterDashboard()}
-            >{enteringDashboard
+          >
+            {enteringDashboard
               ? 'Opening dashboard…'
               : 'Go to dashboard'}{#if enteringDashboard}<Spinner
                 size={17}
-              />{:else}<ArrowRight size={17} />{/if}</button
-          >
+              />{:else}<ArrowRight size={17} />{/if}
+          </button>
         {:else}<button
             class="step-skip"
             disabled={busy}
-            onclick={() => void continueSetup(true)}>Skip</button
-          ><button
+            onclick={() => void continueSetup(true)}
+          >
+            Skip
+          </button><button
             class="primary continue"
             type={step === 2 || (step === 4 && customDuration)
               ? 'submit'
@@ -832,7 +851,8 @@
             onclick={step === 2 || (step === 4 && customDuration)
               ? undefined
               : () => void continueSetup()}
-            >{busy
+          >
+            {busy
               ? 'Saving…'
               : step === 0
                 ? 'Get started'
@@ -844,8 +864,8 @@
                       ? 'Continue'
                       : 'Save & continue'}{#if busy}<Spinner
                 size={17}
-              />{:else}<ArrowRight size={17} />{/if}</button
-          >{/if}
+              />{:else}<ArrowRight size={17} />{/if}
+          </button>{/if}
       </div>
     </div>
   </footer>

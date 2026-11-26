@@ -30,9 +30,9 @@
       aria-label={`Selected ${noun} actions`}
     >
       <span>{count} selected</span>
-      <button type="button" {disabled} onclick={selectAll}
-        ><ListChecks size={16} />Select all</button
-      >
+      <button type="button" {disabled} onclick={selectAll}>
+        <ListChecks size={16} />Select all
+      </button>
       {@render children()}
       <button {disabled} onclick={clear}><X size={16} />Clear</button>
     </div>

@@ -74,18 +74,18 @@
   class="sharex-config"
   style:container-type={field ? 'inline-size' : undefined}
 >
-  {#if field}{@render field(id, credential)}{:else}<label
-      >Current API key{@render credential()}</label
-    >{/if}
+  {#if field}{@render field(id, credential)}{:else}<label>
+      Current API key{@render credential()}
+    </label>{/if}
   <p id="sxcu-privacy">
     The configuration contains your API key. Keep the file private.
   </p>
   {#if error}<p id="sxcu-error" class="error" role="alert">{error}</p>{/if}
-  <button class="primary" disabled={busy}
-    >{#if busy}<Spinner size={18} />{:else}<Download size={18} />{/if}{busy
+  <button class="primary" disabled={busy}>
+    {#if busy}<Spinner size={18} />{:else}<Download size={18} />{/if}{busy
       ? 'Preparing configuration…'
-      : 'Download ShareX configuration'}</button
-  >
+      : 'Download ShareX configuration'}
+  </button>
 </form>
 
 <style>
