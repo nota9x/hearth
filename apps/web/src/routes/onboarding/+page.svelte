@@ -17,7 +17,7 @@
   import Link from '@lucide/svelte/icons/link';
   import LockKeyhole from '@lucide/svelte/icons/lock-keyhole';
   import Upload from '@lucide/svelte/icons/upload';
-  import { onMount, tick, untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
 
   import Brand from '#lib/Brand.svelte';
   import { action, ActionError } from '#lib/client.ts';
@@ -99,7 +99,7 @@
   let uploadImageId = $state(untrack(() => data.user.onboardingUploadImageId));
   let armRequest: Promise<void> | undefined;
   let savedStep = untrack(() => data.user.onboardingStep);
-  let heading = $state<HTMLHeadingElement>();
+  let focusNextHeading = false;
   let credentialTimer: ReturnType<typeof setTimeout> | undefined;
   const credentialOwner = untrack(() => data.user.id);
   $effect(() => {
@@ -189,6 +189,13 @@
     }
   }
 
+  function focusHeading(heading: HTMLHeadingElement) {
+    if (!focusNextHeading) return;
+    focusNextHeading = false;
+    heading.focus({ preventScroll: true });
+    heading.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+  }
+
   async function show(next: number, fromContinue = false) {
     if (next === step || (busy && !fromContinue)) return;
     const wasBusy = busy;
@@ -209,10 +216,8 @@
               : 'Could not start the upload check.';
         }
       }
+      focusNextHeading = true;
       step = next;
-      await tick();
-      heading?.focus({ preventScroll: true });
-      heading?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
     } finally {
       busy = wasBusy;
     }
@@ -377,7 +382,7 @@
     {#key step}
       <section class="step-layout" transition:stepMotion>
         <div class="intro">
-          <h1 bind:this={heading} tabindex="-1">
+          <h1 {@attach focusHeading} tabindex="-1">
             {step === 0
               ? `Welcome to ${data.siteName}`
               : step === 1
