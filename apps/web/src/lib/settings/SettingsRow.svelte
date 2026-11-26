@@ -25,8 +25,9 @@
 <div class="settings-row" class:settings-switch-row={toggle}>
   <div class="settings-label">
     <div class="settings-label-line">
-      {#if id}<label for={id}>{label}</label>{:else}<strong>{label}</strong
-        >{/if}
+      {#if id}<label for={id}>{label}</label>{:else}<strong>
+          {label}
+        </strong>{/if}
       {#if info}<SettingsInfo {label} text={info} />{/if}
     </div>
     {#if description}<p>{description}</p>{/if}

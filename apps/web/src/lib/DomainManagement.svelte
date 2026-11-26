@@ -327,8 +327,9 @@
       class="primary"
       disabled={busy}
       onclick={() => void open('add')}
-      ><Plus size={18} />Add delivery domain</button
-    >{/if}
+    >
+      <Plus size={18} />Add delivery domain
+    </button>{/if}
 </CollectionHeader>
 {#if !admin}<div class="preference-panel">
     <div>
@@ -345,8 +346,10 @@
     </div>
     {#if preferenceId}<button
         disabled={busy}
-        onclick={() => void preference(null)}>Use instance default</button
-      >{/if}
+        onclick={() => void preference(null)}
+      >
+        Use instance default
+      </button>{/if}
   </div>{/if}
 {#if selection.warning}<div
     transition:fadeMotion={{ kind: 'content' }}
@@ -380,32 +383,34 @@
       <span class="domain-icon"><Globe size={23} /></span>
       <div class="row-content">
         <strong>{domain.hostname}</strong>
-        <small
-          >Delivery domain&nbsp;·&nbsp;{accessModeLabels[
+        <small>
+          Delivery domain&nbsp;·&nbsp;{accessModeLabels[
             domain.accessMode
           ]}{#if admin}
             &nbsp;·&nbsp;{domain.linkCount} share {domain.linkCount === 1
               ? 'link'
-              : 'links'}{/if}</small
-        >
-        <small
-          >{domain.lastCheckedAt
+              : 'links'}{/if}
+        </small>
+        <small>
+          {domain.lastCheckedAt
             ? `Checked ${dateTime(domain.lastCheckedAt)}`
             : 'Not validated yet'}{#if domain.notes}
-            &nbsp;·&nbsp;{domain.notes}{/if}</small
-        >
+            &nbsp;·&nbsp;{domain.notes}{/if}
+        </small>
         {#if domain.diagnostics?.outcome !== 'passed' && domain.diagnostics}<small
-            class="diagnostic-summary">{domain.diagnostics.message}</small
-          >{/if}
+            class="diagnostic-summary"
+          >
+            {domain.diagnostics.message}
+          </small>{/if}
       </div>
       <div class="domain-state">
-        <span class="badge" data-status={status}
-          >{domainStatusLabels[status]}</span
-        >{#if domain.isPrimary}<span class="badge"
-            ><Star size={11} />Instance default</span
-          >{/if}{#if preferenceId === domain.id}<span class="badge"
-            >Your selection</span
-          >{/if}
+        <span class="badge" data-status={status}>
+          {domainStatusLabels[status]}
+        </span>{#if domain.isPrimary}<span class="badge">
+            <Star size={11} />Instance default
+          </span>{/if}{#if preferenceId === domain.id}<span class="badge">
+            Your selection
+          </span>{/if}
       </div>
       <div class="row-actions">
         <Copy text={domain.hostname} label="Copy hostname" disabled={busy} />
@@ -420,57 +425,69 @@
                 onclick={() => {
                   closeMenu();
                   void open('details', domain);
-                }}><Info size={16} />Details & diagnostics</button
+                }}
               >
+                <Info size={16} />Details & diagnostics
+              </button>
               <button
                 disabled={busy}
                 onclick={() => {
                   closeMenu();
                   void open('edit', domain);
-                }}><Pencil size={16} />Configure</button
+                }}
               >
+                <Pencil size={16} />Configure
+              </button>
               <button
                 disabled={busy}
                 onclick={() => {
                   closeMenu();
                   void validate(domain);
                 }}
-                ><RefreshCw size={16} />{domain.lastCheckedAt
-                  ? 'Revalidate'
-                  : 'Validate'}</button
               >
+                <RefreshCw size={16} />{domain.lastCheckedAt
+                  ? 'Revalidate'
+                  : 'Validate'}
+              </button>
               {#if !domain.isPrimary && domain.enabled && domain.health === 'active'}<button
                   disabled={busy}
                   onclick={() => {
                     closeMenu();
                     void open('primary', domain);
-                  }}><Star size={16} />Set as instance default</button
-                >{/if}
+                  }}
+                >
+                  <Star size={16} />Set as instance default
+                </button>{/if}
               <button
                 disabled={busy}
                 onclick={() => {
                   closeMenu();
                   void open('availability', domain);
                 }}
-                ><Power size={16} />{domain.enabled
-                  ? 'Disable delivery'
-                  : 'Enable delivery'}</button
               >
+                <Power size={16} />{domain.enabled
+                  ? 'Disable delivery'
+                  : 'Enable delivery'}
+              </button>
             {/if}
             {#if available.some((item) => item.id === domain.id) && preferenceId !== domain.id}<button
                 disabled={busy}
                 onclick={() => {
                   closeMenu();
                   void preference(domain.id);
-                }}><Check size={16} />Use for my new links</button
-              >{/if}
+                }}
+              >
+                <Check size={16} />Use for my new links
+              </button>{/if}
             {#if preferenceId === domain.id}<button
                 disabled={busy}
                 onclick={() => {
                   closeMenu();
                   void preference(null);
-                }}><Star size={16} />Use instance default</button
-              >{/if}
+                }}
+              >
+                <Star size={16} />Use instance default
+              </button>{/if}
             <Copy
               text={domain.hostname}
               label="Copy hostname"
@@ -485,8 +502,10 @@
                   onclick={() => {
                     closeMenu();
                     void open('remove', domain);
-                  }}><Trash2 size={16} />Remove domain</button
+                  }}
                 >
+                  <Trash2 size={16} />Remove domain
+                </button>
               </div>{/if}
           {/snippet}
         </ActionMenu>
@@ -502,10 +521,13 @@
           : 'Ask an administrator to configure a delivery domain. You can still upload and save images privately.'}
     >
       {#snippet icon()}<Globe size={30} />{/snippet}
-      {#if filtered}<a class="button" href={page.url.pathname}>Clear search</a
-        >{/if}{#if admin && !filtered}<button onclick={() => void open('add')}
-          ><Plus size={16} />Add delivery domain</button
-        >{/if}
+      {#if filtered}<a class="button" href={page.url.pathname}>
+          Clear search
+        </a>{/if}{#if admin && !filtered}<button
+          onclick={() => void open('add')}
+        >
+          <Plus size={16} />Add delivery domain
+        </button>{/if}
     </CollectionEmpty>
   {/each}
 </div>
@@ -568,10 +590,9 @@
             <span
               class="badge"
               data-status={target.enabled ? target.health : 'disabled'}
-              >{domainStatusLabels[
-                target.enabled ? target.health : 'disabled'
-              ]}</span
             >
+              {domainStatusLabels[target.enabled ? target.health : 'disabled']}
+            </span>
           </dd>
           <dt>Access</dt>
           <dd>{accessModeLabels[target.accessMode]}</dd>
@@ -596,14 +617,14 @@
             class="primary"
             disabled={busy}
             onclick={() => target && void validate(target)}
-            ><RefreshCw size={16} />{busy
-              ? 'Checking…'
-              : 'Validate domain'}</button
-          ><button
+          >
+            <RefreshCw size={16} />{busy ? 'Checking…' : 'Validate domain'}
+          </button><button
             disabled={busy}
             onclick={() => target && void open('edit', target)}
-            ><Pencil size={16} />Configure</button
           >
+            <Pencil size={16} />Configure
+          </button>
         </div>
       </div>
     {:else if modal === 'add' || modal === 'edit'}
@@ -614,8 +635,8 @@
           void submit();
         }}
       >
-        <label
-          >Hostname<input
+        <label>
+          Hostname<input
             bind:value={hostname}
             required
             maxlength="253"
@@ -623,47 +644,48 @@
             disabled={!!target}
             autocomplete="off"
             spellcheck="false"
-          /></label
-        >
-        <small
-          >Use a full hostname. Each subdomain is configured and validated
+          />
+        </label>
+        <small>
+          Use a full hostname. Each subdomain is configured and validated
           separately. Local development also accepts <code>127.0.0.1</code> or
           any
           <code>.localhost</code> subdomain, with the configured delivery port.{#if target}
-            To change the hostname, add a new domain and remove this one.{/if}</small
-        >
-        <label
-          >Notes <span class="muted">(optional)</span><textarea
+            To change the hostname, add a new domain and remove this one.{/if}
+        </small>
+        <label>
+          Notes <span class="muted">(optional)</span><textarea
             bind:value={notes}
             maxlength="500"
             rows="2"
-            placeholder="What this delivery domain is used for"
-          ></textarea></label
-        >
-        <label
-          >Who can create new share links?<select bind:value={accessMode}
-            ><option value="everyone">Everyone</option><option
-              value="administrators">Administrators only</option
-            ><option value="selected">Selected members</option></select
-          ></label
-        >
-        <small
-          >Administrators always have access. Changing access affects new
-          sharing; existing public links continue to work.</small
-        >
+            placeholder="What this delivery domain is used for"></textarea>
+        </label>
+        <label>
+          Who can create new share links?<select bind:value={accessMode}>
+            <option value="everyone">Everyone</option><option
+              value="administrators"
+            >
+              Administrators only
+            </option><option value="selected">Selected members</option>
+          </select>
+        </label>
+        <small>
+          Administrators always have access. Changing access affects new
+          sharing; existing public links continue to work.
+        </small>
         {#if accessMode === 'selected'}<fieldset
             in:fadeMotion={{ kind: 'content' }}
             class="member-picker"
           >
             <legend>Selected members</legend>
-            <label class="member-search"
-              ><Search size={16} /><input
+            <label class="member-search">
+              <Search size={16} /><input
                 aria-label="Search members"
                 bind:value={memberQuery}
                 oninput={searchMembers}
                 placeholder="Search members"
-              /></label
-            >
+              />
+            </label>
             {#if members}<SelectAll
                 visible={memberIds}
                 selected={selectedMembers}
@@ -677,21 +699,22 @@
             <div aria-busy={membersLoading}>
               {#each members?.members ?? [] as member (member.id)}<label
                   class="checkbox-label"
-                  ><input
+                >
+                  <input
                     type="checkbox"
                     checked={member.role === 'admin' ||
                       (changes[member.id] ?? member.granted)}
                     disabled={member.role === 'admin' || membersLoading}
                     onchange={(event) =>
                       (changes[member.id] = event.currentTarget.checked)}
-                  />{member.displayName}<small
-                    >{member.role === 'admin'
+                  />{member.displayName}<small>
+                    {member.role === 'admin'
                       ? 'Administrator · always allowed'
                       : member.status === 'disabled'
                         ? 'Disabled account'
-                        : 'Member'}</small
-                  ></label
-                >{:else}<p>
+                        : 'Member'}
+                  </small>
+                </label>{:else}<p>
                   {membersLoading
                     ? 'Loading members…'
                     : 'No members match this search.'}
@@ -712,12 +735,15 @@
             class="primary"
             type="submit"
             disabled={busy || membersLoading}
-            >{busy
+          >
+            {busy
               ? 'Saving…'
               : target
                 ? 'Save configuration'
-                : 'Add delivery domain'}</button
-          ><button type="button" disabled={busy} onclick={close}>Cancel</button>
+                : 'Add delivery domain'}
+          </button><button type="button" disabled={busy} onclick={close}>
+            Cancel
+          </button>
         </div>
       </form>
     {:else if target}
@@ -759,20 +785,23 @@
               ? `Stop serving the ${target.linkCount} share links assigned to this domain. Images and links remain saved; enabling it restores delivery.`
               : 'Resume delivery of existing links on this domain. Validate it before using it for new sharing.'}
           </p>{/if}
-        {#if target.isPrimary && modal !== 'primary' && (modal === 'remove' || target.enabled)}<label
-            >Instance default after this change<select
+        {#if target.isPrimary && modal !== 'primary' && (modal === 'remove' || target.enabled)}<label>
+            Instance default after this change<select
               bind:value={replacement}
               required
-              ><option value="" disabled
-                >Choose a replacement or clear the instance default</option
-              >{#each available.filter((domain) => domain.id !== target?.id) as domain (domain.id)}<option
-                  value={domain.id}>{domain.hostname}</option
-                >{/each}<option value="clear"
-                >Clear instance default — uploads following it will save
-                privately</option
-              ></select
-            ></label
-          >{/if}
+            >
+              <option value="" disabled>
+                Choose a replacement or clear the instance default
+              </option>{#each available.filter((domain) => domain.id !== target?.id) as domain (domain.id)}<option
+                  value={domain.id}
+                >
+                  {domain.hostname}
+                </option>{/each}<option value="clear">
+                Clear instance default — uploads following it will save
+                privately
+              </option>
+            </select>
+          </label>{/if}
         <div class="toolbar">
           <button
             class:danger={modal === 'remove' ||
@@ -781,7 +810,8 @@
               (modal === 'availability' && !target.enabled)}
             type="submit"
             disabled={busy}
-            >{busy
+          >
+            {busy
               ? 'Saving…'
               : modal === 'remove'
                 ? 'Remove domain & revoke links'
@@ -789,8 +819,10 @@
                   ? 'Set as instance default'
                   : target.enabled
                     ? 'Disable delivery'
-                    : 'Enable delivery'}</button
-          ><button type="button" disabled={busy} onclick={close}>Cancel</button>
+                    : 'Enable delivery'}
+          </button><button type="button" disabled={busy} onclick={close}>
+            Cancel
+          </button>
         </div>
       </form>
     {/if}

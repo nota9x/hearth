@@ -50,8 +50,8 @@
   <Brand name={data.siteName} href="/login" />
   <h1>Sign in</h1>
   <form onsubmit={login}>
-    <label
-      ><KeyRound size={15} /> Your API key<input
+    <label>
+      <KeyRound size={15} /> Your API key<input
         type="password"
         bind:value={key}
         placeholder="img_live_…"
@@ -59,19 +59,17 @@
         required
         maxlength="160"
         spellcheck="false"
-      /></label
-    >{#key reset}<Turnstile
+      />
+    </label>{#key reset}<Turnstile
         siteKey={data.siteKey}
         onToken={(v: string) => (token = v)}
-      />{/key}<button class="primary full-width" disabled={busy || !token}
-      >{busy ? 'Signing in…' : 'Sign in'}<span class="feedback-icon"
-        >{#key busy}<span transition:fadeMotion
-            >{#if busy}<Spinner size={17} />{:else}<ArrowRight
-                size={17}
-              />{/if}</span
-          >{/key}</span
-      ></button
-    >
+      />{/key}<button class="primary full-width" disabled={busy || !token}>
+      {busy ? 'Signing in…' : 'Sign in'}<span class="feedback-icon">
+        {#key busy}<span transition:fadeMotion>
+            {#if busy}<Spinner size={17} />{:else}<ArrowRight size={17} />{/if}
+          </span>{/key}
+      </span>
+    </button>
   </form>
   <div class="auth-footer">
     If you’ve lost your key, contact your administrator.

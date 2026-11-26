@@ -151,23 +151,24 @@
         </div>
         <div class="identity" in:fadeMotion|global={{ kind: 'content' }}>
           <div class="identity-badges">
-            <span class="badge" data-status={member.user.status}
-              >{userStatuses[member.user.status]}</span
-            >
-            <span class="badge"
-              ><Shield size={12} aria-hidden="true" />{userRoles[
+            <span class="badge" data-status={member.user.status}>
+              {userStatuses[member.user.status]}
+            </span>
+            <span class="badge">
+              <Shield size={12} aria-hidden="true" />{userRoles[
                 member.user.role
-              ]}</span
-            >
+              ]}
+            </span>
           </div>
           <span class="joined">
             <CalendarDays size={14} aria-hidden="true" />
-            <span
-              >Joined <time
+            <span>
+              Joined <time
                 datetime={new Date(member.user.createdAt * 1000).toISOString()}
-                >{date(member.user.createdAt)}</time
-              ></span
-            >
+              >
+                {date(member.user.createdAt)}
+              </time>
+            </span>
           </span>
         </div>
       {/snippet}
@@ -208,17 +209,19 @@
   <section aria-label="User images">
     <div class="section-heading">
       <h2>Images</h2>
-      <a href={`/admin/images?owner=${member.user.id}`}
-        >View all images<ArrowRight size={16} /></a
-      >
+      <a href={`/admin/images?owner=${member.user.id}`}>
+        View all images<ArrowRight size={16} />
+      </a>
     </div>
     {#if imagesError}
-      <CollectionEmpty title="Images unavailable" message={imagesError}
-        >{#snippet icon()}<Image size={32} />{/snippet}<button
+      <CollectionEmpty title="Images unavailable" message={imagesError}>
+        {#snippet icon()}<Image size={32} />{/snippet}<button
           onclick={refresh}
-          disabled={busy}>Try again</button
-        ></CollectionEmpty
-      >
+          disabled={busy}
+        >
+          Try again
+        </button>
+      </CollectionEmpty>
     {:else if imagePage?.images.length}
       {@render images()}
       <Pagination
@@ -234,35 +237,39 @@
         message={deleted
           ? 'Images belonging to this deleted account have been removed.'
           : 'This user has no saved images.'}
-        >{#snippet icon()}<Image size={32} />{/snippet}</CollectionEmpty
       >
+        {#snippet icon()}<Image size={32} />{/snippet}
+      </CollectionEmpty>
     {/if}
   </section>
   <section aria-label="User audit activity">
     <div class="section-heading activity-heading">
       <h2>Recent activity</h2>
-      <a href={`/admin/audit-log?actorId=${member.user.id}`}
-        >View all audit events<ArrowRight size={16} /></a
-      >
+      <a href={`/admin/audit-log?actorId=${member.user.id}`}>
+        View all audit events<ArrowRight size={16} />
+      </a>
     </div>
     <p class="muted activity-description">
       Latest actions performed by this user within retained audit history.
     </p>
     {#if activityError}
-      <CollectionEmpty title="Activity unavailable" message={activityError}
-        >{#snippet icon()}<Shield size={32} />{/snippet}<button
+      <CollectionEmpty title="Activity unavailable" message={activityError}>
+        {#snippet icon()}<Shield size={32} />{/snippet}<button
           onclick={refresh}
-          disabled={busy}>Try again</button
-        ></CollectionEmpty
-      >
+          disabled={busy}
+        >
+          Try again
+        </button>
+      </CollectionEmpty>
     {:else if activity.length > 0}<div class="rows">
         {#each activity as log (log.id)}<AuditEntry {log} />{/each}
       </div>
     {:else}<CollectionEmpty
         title="No retained activity"
         message="There are no retained audit events performed by this user."
-        >{#snippet icon()}<Shield size={32} />{/snippet}</CollectionEmpty
-      >{/if}
+      >
+        {#snippet icon()}<Shield size={32} />{/snippet}
+      </CollectionEmpty>{/if}
   </section>
   <Disclosure
     title="Account configuration"
@@ -310,10 +317,11 @@
             id="member-status"
             name="status"
             bind:value={draft.memberStatus}
-            ><option value="active">Active</option><option value="disabled"
-              >Disabled — public links suspended</option
-            >{#if deleted}<option value="deleted">Deleted</option>{/if}</select
           >
+            <option value="active">Active</option><option value="disabled">
+              Disabled — public links suspended
+            </option>{#if deleted}<option value="deleted">Deleted</option>{/if}
+          </select>
         </div>
         <div class="configuration-field full-width">
           {@render fieldLabel(
@@ -361,9 +369,9 @@
           </select>
         </div>
         <div class="form-actions">
-          <button class="primary" disabled={busy || deleted}
-            >Save display name policy</button
-          >
+          <button class="primary" disabled={busy || deleted}>
+            Save display name policy
+          </button>
         </div>
       </form>
     </fieldset>
@@ -393,10 +401,13 @@
           <select
             id="member-expiry-policy"
             bind:value={draft.memberPolicyCustom}
-            ><option value={false}>Use instance defaults</option><option
-              value={true}>Custom overrides</option
-            ></select
           >
+            <option value={false}>Use instance defaults</option><option
+              value={true}
+            >
+              Custom overrides
+            </option>
+          </select>
         </div>
         {#if draft.memberPolicyCustom}
           <div class="configuration-field" in:fadeMotion={{ kind: 'content' }}>
@@ -408,10 +419,13 @@
             <select
               id="member-expiry-required"
               bind:value={draft.memberRequired}
-              ><option value="inherit">Use instance default</option><option
-                value="true">Required</option
-              ><option value="false">Optional</option></select
             >
+              <option value="inherit">Use instance default</option><option
+                value="true"
+              >
+                Required
+              </option><option value="false">Optional</option>
+            </select>
           </div>
           <div class="configuration-field" in:fadeMotion={{ kind: 'content' }}>
             {@render fieldLabel(
@@ -422,10 +436,13 @@
             <select
               id="member-expiry-maximum-policy"
               bind:value={draft.memberMaximumCustom}
-              ><option value={false}>Use instance default</option><option
-                value={true}>Override maximum lifetime</option
-              ></select
             >
+              <option value={false}>Use instance default</option><option
+                value={true}
+              >
+                Override maximum lifetime
+              </option>
+            </select>
           </div>
           {#if draft.memberMaximumCustom}<LifetimeSelect
               bind:value={draft.memberMaximum}
@@ -458,16 +475,16 @@
             memberEffective.maxLifetimeSeconds,
           )}
         </p>
-        <small class="full-width"
-          >Existing images, links, and saved defaults remain unchanged. Image
+        <small class="full-width">
+          Existing images, links, and saved defaults remain unchanged. Image
           lifetime begins at upload; link lifetime begins at link creation. If
           the saved default becomes incompatible, uploads fail until the user
-          updates it.</small
-        >
+          updates it.
+        </small>
         <div class="form-actions">
-          <button class="primary" disabled={busy || deleted}
-            >Save user expiry policy</button
-          >
+          <button class="primary" disabled={busy || deleted}>
+            Save user expiry policy
+          </button>
         </div>
       </form>
     </fieldset>
@@ -482,21 +499,23 @@
       <button
         disabled={busy || member.user.status !== 'active'}
         onclick={() => reset(member.user.id)}
-        ><KeyRound size={16} />Reset credential</button
-      ><button
+      >
+        <KeyRound size={16} />Reset credential
+      </button><button
         class="danger"
         disabled={busy || deleted}
         onclick={() => remove(member.user.id)}
-        ><Trash2 size={16} />Delete user</button
       >
+        <Trash2 size={16} />Delete user
+      </button>
     </div>
   </section>
 {:else if result}
-  <CollectionHeader title="Users" {refresh} {busy}
-    ><button class="primary" disabled={busy} onclick={invite}
-      ><Plus size={17} />Invite someone</button
-    ></CollectionHeader
-  >
+  <CollectionHeader title="Users" {refresh} {busy}>
+    <button class="primary" disabled={busy} onclick={invite}>
+      <Plus size={17} />Invite someone
+    </button>
+  </CollectionHeader>
   <SearchControls
     total={result.pagination.total}
     unfilteredTotal={result.unfilteredTotal}
@@ -516,45 +535,55 @@
   {#if result.members.length > 0}
     <div class="table-wrap user-table">
       <table>
-        <thead
-          ><tr
-            ><th>Person</th><th>Role</th><th>Images</th><th>Storage</th><th
-              >Joined</th
-            ><th><span class="sr-only">Actions</span></th></tr
-          ></thead
-        ><tbody>
+        <thead>
+          <tr>
+            <th>Person</th><th>Role</th><th>Images</th><th>Storage</th><th>
+              Joined
+            </th><th><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead><tbody>
           {#each result.members as row (row.user.id)}<tr>
-              <td class="person"
-                ><span class="person-identity"
-                  ><a href={usersURL(new URL(page.url.href), row.user.id)}
-                    ><strong>{row.user.displayName}</strong></a
-                  ><span class="badge" data-status={row.user.status}
-                    >{userStatuses[row.user.status]}</span
-                  ></span
-                ></td
-              >
+              <td class="person">
+                <span class="person-identity">
+                  <a href={usersURL(new URL(page.url.href), row.user.id)}>
+                    <strong>{row.user.displayName}</strong>
+                  </a><span class="badge" data-status={row.user.status}>
+                    {userStatuses[row.user.status]}
+                  </span>
+                </span>
+              </td>
               <td data-label="Role">{userRoles[row.user.role]}</td><td
-                data-label="Images">{row.imageCount}</td
-              ><td data-label="Storage">{bytes(row.bytes)}</td><td
-                data-label="Joined">{date(row.user.createdAt)}</td
+                data-label="Images"
               >
-              <td class="user-actions"
-                ><ActionMenu
+                {row.imageCount}
+              </td><td data-label="Storage">{bytes(row.bytes)}</td><td
+                data-label="Joined"
+              >
+                {date(row.user.createdAt)}
+              </td>
+              <td class="user-actions">
+                <ActionMenu
                   label={`Actions for ${row.user.displayName}`}
                   title="User actions"
-                  >{#snippet children(closeMenu: () => void)}<a
+                >
+                  {#snippet children(closeMenu: () => void)}<a
                       href={usersURL(new URL(page.url.href), row.user.id)}
-                      onclick={closeMenu}><Users size={16} />View user</a
-                    ><a
+                      onclick={closeMenu}
+                    >
+                      <Users size={16} />View user
+                    </a><a
                       href={`/admin/images?owner=${row.user.id}`}
-                      onclick={closeMenu}><Image size={16} />View images</a
-                    ><a
+                      onclick={closeMenu}
+                    >
+                      <Image size={16} />View images
+                    </a><a
                       href={`/admin/audit-log?actorId=${row.user.id}`}
                       onclick={closeMenu}
-                      ><Shield size={16} />View audit activity</a
-                    >{/snippet}</ActionMenu
-                ></td
-              >
+                    >
+                      <Shield size={16} />View audit activity
+                    </a>{/snippet}
+                </ActionMenu>
+              </td>
             </tr>{/each}
         </tbody>
       </table>
@@ -579,14 +608,18 @@
           ? 'Try another search or clear your filters.'
           : 'Use the status filter to inspect deleted accounts.'
         : 'Invite someone to create an account.'}
-      >{#snippet icon()}<Users size={32} />{/snippet}
-      {#if filtered}<a class="button" href={clearURL}
-          >Clear search and filters</a
-        >{:else if result.unfilteredTotal}<a
+    >
+      {#snippet icon()}<Users size={32} />{/snippet}
+      {#if filtered}<a class="button" href={clearURL}>
+          Clear search and filters
+        </a>{:else if result.unfilteredTotal}<a
           class="button"
-          href="/admin/users?status=all">View all accounts</a
-        >{:else}<button class="primary" onclick={invite}>Invite someone</button
-        >{/if}
+          href="/admin/users?status=all"
+        >
+          View all accounts
+        </a>{:else}<button class="primary" onclick={invite}>
+          Invite someone
+        </button>{/if}
     </CollectionEmpty>
   {/if}
 {/if}

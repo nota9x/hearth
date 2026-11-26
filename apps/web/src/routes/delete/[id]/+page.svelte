@@ -100,13 +100,12 @@
           class="danger"
           onclick={remove}
           disabled={busy || !verification}
-          ><span class="feedback-icon"
-            >{#key busy}<span transition:fadeMotion
-                >{#if busy}<Spinner size={17} />{:else}<Trash2
-                    size={17}
-                  />{/if}</span
-              >{/key}</span
-          >{busy ? 'Deleting…' : 'Delete image'}</button
         >
+          <span class="feedback-icon">
+            {#key busy}<span transition:fadeMotion>
+                {#if busy}<Spinner size={17} />{:else}<Trash2 size={17} />{/if}
+              </span>{/key}
+          </span>{busy ? 'Deleting…' : 'Delete image'}
+        </button>
       </div>{/if}{/if}
 </div>

@@ -139,8 +139,9 @@
         aria-controls="main-navigation"
         aria-label={menu ? 'Close navigation' : 'Open navigation'}
         onclick={() => (menu = !menu)}
-        >{#if menu}<X />{:else}<Menu />{/if}</button
       >
+        {#if menu}<X />{:else}<Menu />{/if}
+      </button>
     </div>
     <aside
       id="main-navigation"
@@ -153,7 +154,8 @@
             href={item.href}
             onclick={() => (menu = false)}
             class:active={activeNavigation === item.href}
-            >{#if activeNavigation === item.href}<span
+          >
+            {#if activeNavigation === item.href}<span
                 class="navigation-indicator"
                 data-motion
                 in:receiveIndicator={{ key: 'main' }}
@@ -163,13 +165,14 @@
               size={19}
             />{item.label}{#if item.href === '/images' && hasUnseenImages}<span
                 class="nav-dot"
-              ></span>{/if}</a
-          >{/each}
+              ></span>{/if}
+          </a>{/each}
         {#if data.user.role === 'admin'}<a
             href="/admin"
             onclick={() => (menu = false)}
             class:active={activeNavigation === '/admin'}
-            >{#if activeNavigation === '/admin'}<span
+          >
+            {#if activeNavigation === '/admin'}<span
                 class="navigation-indicator"
                 data-motion
                 in:receiveIndicator={{ key: 'main' }}
@@ -177,25 +180,27 @@
                 aria-hidden="true"
               ></span>{/if}<Shield size={19} />Administration<ArrowUpRight
               size={15}
-            /></a
-          >{/if}
+            />
+          </a>{/if}
       </nav>
       <div class="sidebar-bottom">
         <div class="account">
-          <span class="avatar"
-            >{data.user.displayName.slice(0, 1).toUpperCase()}</span
-          >
+          <span class="avatar">
+            {data.user.displayName.slice(0, 1).toUpperCase()}
+          </span>
           <div>
-            <strong>{data.user.displayName}</strong><small
-              >{data.user.role === 'admin' ? 'Administrator' : 'Member'}</small
-            >
+            <strong>{data.user.displayName}</strong><small>
+              {data.user.role === 'admin' ? 'Administrator' : 'Member'}
+            </small>
           </div>
           <button
             class="icon-button"
             aria-label="Sign out"
             title="Sign out"
-            onclick={logout}><LogOut size={17} /></button
+            onclick={logout}
           >
+            <LogOut size={17} />
+          </button>
         </div>
       </div>
     </aside>

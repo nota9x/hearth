@@ -26,13 +26,14 @@
 <details class={`disclosure ${className}`} bind:open>
   <!-- svelte-ignore a11y_no_redundant_roles (Explicit role keeps nested summary content exposed as a button in Chromium.) -->
   <summary role="button" aria-label={title} aria-expanded={open}>
-    {#if SectionIcon}<span class="section-icon"
-        ><SectionIcon size={19} aria-hidden="true" /></span
-      >{/if}
-    {#if header}{@render header()}{:else}<span class="heading"
-        ><strong>{title}</strong>{#if description}<small>{description}</small
-          >{/if}</span
-      >{/if}
+    {#if SectionIcon}<span class="section-icon">
+        <SectionIcon size={19} aria-hidden="true" />
+      </span>{/if}
+    {#if header}{@render header()}{:else}<span class="heading">
+        <strong>{title}</strong>{#if description}<small>
+            {description}
+          </small>{/if}
+      </span>{/if}
     <ChevronDown class="chevron" size={18} aria-hidden="true" />
   </summary>
   <div

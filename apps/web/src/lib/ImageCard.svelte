@@ -44,55 +44,60 @@
 
 <article class="image-card">
   <div class="image-preview">
-    <a {href}
-      ><img
+    <a {href}>
+      <img
         loading="lazy"
         src={`/api/media/${image.id}?preview`}
         alt={image.filename}
         width={image.width}
         height={image.height}
-      /></a
-    >{#if select}<label class="image-select"
-        ><input
+      />
+    </a>{#if select}<label class="image-select">
+        <input
           type="checkbox"
           value={image.id}
           checked={selected}
           onchange={(event) => select?.(event.currentTarget.checked)}
           disabled={busy || !!navigating.to}
           aria-label={`Select ${image.filename}`}
-        /></label
-      >{/if}
+        />
+      </label>{/if}
   </div>
   <div class="image-meta">
-    <a {href}
-      ><h3>
-        {#each highlightParts(image.filename, query) as part, index (index)}{#if part.match}<mark
-              >{part.text}</mark
-            >{:else}{part.text}{/if}{/each}
-      </h3></a
-    >
+    <a {href}>
+      <h3>
+        {#each highlightParts(image.filename, query) as part, index (index)}{#if part.match}<mark>
+              {part.text}
+            </mark>{:else}{part.text}{/if}{/each}
+      </h3>
+    </a>
     <div class="image-details">
-      <span>{bytes(image.size)}&nbsp;·&nbsp;{image.width} × {image.height}</span
-      >
+      <span>
+        {bytes(image.size)}&nbsp;·&nbsp;{image.width} × {image.height}
+      </span>
       <time
         datetime={new Date(image.createdAt * 1000).toISOString()}
         title={`Uploaded ${dateTime(image.createdAt)}`}
-        >{dateTime(image.createdAt)}</time
       >
+        {dateTime(image.createdAt)}
+      </time>
       {#if admin}<a
           class="image-owner"
           href={`/admin/users/${image.ownerId}`}
-          title={image.owner}>{image.owner}</a
-        >{/if}
+          title={image.owner}
+        >
+          {image.owner}
+        </a>{/if}
     </div>
     <div class="image-footer">
       {#if image.expiresAt !== null}<span
           class="image-expiry"
           title={dateTime(image.expiresAt)}
-          ><Clock size={12} />{image.expiresAt <= expiryNow
+        >
+          <Clock size={12} />{image.expiresAt <= expiryNow
             ? 'Pending deletion'
-            : relativeExpiry(image.expiresAt, expiryNow)}</span
-        >{/if}
+            : relativeExpiry(image.expiresAt, expiryNow)}
+        </span>{/if}
       <div class="image-actions">
         <ActionMenu
           label={`Actions for ${image.filename}`}
@@ -105,8 +110,10 @@
               onclick={() => {
                 closeMenu();
                 edit();
-              }}><Clock size={16} />Change expiry</button
+              }}
             >
+              <Clock size={16} />Change expiry
+            </button>
             <button
               disabled={busy ||
                 !!navigating.to ||
@@ -115,8 +122,10 @@
               onclick={() => {
                 closeMenu();
                 createLink();
-              }}><Plus size={16} />Create share link</button
+              }}
             >
+              <Plus size={16} />Create share link
+            </button>
             <Copy
               text={image.id}
               label="Copy image ID"
@@ -130,8 +139,10 @@
                 onclick={() => {
                   closeMenu();
                   remove();
-                }}><Trash2 size={16} />Delete image</button
+                }}
               >
+                <Trash2 size={16} />Delete image
+              </button>
             </div>
           {/snippet}
         </ActionMenu>
@@ -140,8 +151,10 @@
             aria-label="Create share link"
             title="Create share link"
             disabled={busy || pending || image.ownerStatus !== 'active'}
-            onclick={() => createLink()}><Plus size={17} /></button
-          >{/if}
+            onclick={() => createLink()}
+          >
+            <Plus size={17} />
+          </button>{/if}
         <button
           class="icon-button compact"
           type="button"
@@ -149,8 +162,9 @@
           title="Download"
           disabled={$downloads.active}
           onclick={() => downloadImages([image.id])}
-          ><Download size={17} /></button
         >
+          <Download size={17} />
+        </button>
       </div>
     </div>
   </div>

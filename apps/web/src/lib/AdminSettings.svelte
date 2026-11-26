@@ -169,16 +169,16 @@
       />
     </SettingsRow>
     <div class="settings-policy">
-      <span
-        >Configured length: <strong
-          >{data.shareSlugConfiguration!.defaultLength} characters</strong
-        ></span
-      >
-      <span
-        >Current allocation length: <strong
-          >{data.shareSlugConfiguration!.effectiveLength} characters</strong
-        ></span
-      >
+      <span>
+        Configured length: <strong>
+          {data.shareSlugConfiguration!.defaultLength} characters
+        </strong>
+      </span>
+      <span>
+        Current allocation length: <strong>
+          {data.shareSlugConfiguration!.effectiveLength} characters
+        </strong>
+      </span>
     </div>
     {#if data.shareSlugConfiguration!.automaticFloor > 3}<p
         class="settings-message"
@@ -225,13 +225,13 @@
         {/snippet}
       </LifetimeSelect>{/key}
     <div class="settings-policy" role="status">
-      <strong
-        >{policy.maxLifetimeSeconds === null
+      <strong>
+        {policy.maxLifetimeSeconds === null
           ? policy.requireExpiry
             ? 'Expiry required · no maximum lifetime'
             : 'Permanent images and links allowed'
-          : `Expiry required · maximum ${formatLifetime(policy.maxLifetimeSeconds)}`}</strong
-      >
+          : `Expiry required · maximum ${formatLifetime(policy.maxLifetimeSeconds)}`}
+      </strong>
     </div>
     {#if policy.maxLifetimeSeconds !== null && !policy.requireExpiry}<p
         class="settings-message"

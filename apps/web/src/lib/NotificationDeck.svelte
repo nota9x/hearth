@@ -159,11 +159,11 @@
             aria-label={`${titles[card.kind]} notification`}
           >
             <div class="notification-header">
-              <span class="feedback-icon state-icon"
-                >{#key card.kind}<span transition:fadeMotion
-                    ><Icon size={18} aria-hidden="true" /></span
-                  >{/key}</span
-              >
+              <span class="feedback-icon state-icon">
+                {#key card.kind}<span transition:fadeMotion>
+                    <Icon size={18} aria-hidden="true" />
+                  </span>{/key}
+              </span>
               <div class="copy">
                 <strong>{titles[card.kind]}</strong>
                 <p>{card.message}</p>
@@ -197,8 +197,9 @@
                     title={card.cancellation?.confirmLabel ??
                       'Cancel Operation'}
                     onclick={() => notify.requestCancel(card.id)}
-                    ><X size={16} aria-hidden="true" /></button
                   >
+                    <X size={16} aria-hidden="true" />
+                  </button>
                 {:else if card.kind !== 'loading'}
                   <button
                     type="button"
@@ -206,8 +207,9 @@
                     aria-label="Dismiss notification"
                     title="Dismiss notification"
                     onclick={() => dismiss(card.id)}
-                    ><X size={16} aria-hidden="true" /></button
                   >
+                    <X size={16} aria-hidden="true" />
+                  </button>
                 {/if}
               </div>
             </div>
@@ -230,10 +232,10 @@
               >
                 {card.guidance}
               </p>{/if}
-            {#if card.link}<a class="notification-link" href={card.link.href}
-                >{card.link.label}
-                <ArrowRight size={14} aria-hidden="true" /></a
-              >{/if}
+            {#if card.link}<a class="notification-link" href={card.link.href}>
+                {card.link.label}
+                <ArrowRight size={14} aria-hidden="true" />
+              </a>{/if}
             <div
               id={`notification-details-${card.id}`}
               class="notification-details"
@@ -271,9 +273,9 @@
       </div>
     </div>
   {/each}
-  {#if $notify.length > 4}<span class="overflow-count" aria-hidden="true"
-      >+{$notify.length - 4} waiting</span
-    >{/if}
+  {#if $notify.length > 4}<span class="overflow-count" aria-hidden="true">
+      +{$notify.length - 4} waiting
+    </span>{/if}
 </div>
 
 {#if $confirmation}
@@ -287,12 +289,12 @@
     >
       <p>{$confirmation.details.message}</p>
       <div class="dialog-actions">
-        <button type="button" onclick={notify.keepRunning}
-          >{$confirmation.details.keepLabel}</button
-        >
-        <button type="submit" class="danger"
-          >{$confirmation.details.confirmLabel}</button
-        >
+        <button type="button" onclick={notify.keepRunning}>
+          {$confirmation.details.keepLabel}
+        </button>
+        <button type="submit" class="danger">
+          {$confirmation.details.confirmLabel}
+        </button>
       </div>
     </form>
   </Modal>

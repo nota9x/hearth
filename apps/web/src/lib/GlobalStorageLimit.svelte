@@ -71,11 +71,11 @@
   description="One physical capacity budget for the entire workspace."
 >
   <div class="settings-policy">
-    <strong
-      >{capacity.limitBytes === null
+    <strong>
+      {capacity.limitBytes === null
         ? 'No global limit'
-        : `${storageBytes(capacity.limitBytes)} global limit`}</strong
-    >
+        : `${storageBytes(capacity.limitBytes)} global limit`}
+    </strong>
     <span>{storageBytes(allocated)} allocated, including reservations</span>
   </div>
   {#if !capacity.ready}<p class="notice settings-message">

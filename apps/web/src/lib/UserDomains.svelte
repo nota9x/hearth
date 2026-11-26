@@ -129,8 +129,10 @@
   </div>
   {#if preferenceId}<button
       disabled={busy}
-      onclick={() => void preference(null)}>Use instance default</button
-    >{/if}
+      onclick={() => void preference(null)}
+    >
+      Use instance default
+    </button>{/if}
 </div>
 {#if selection.warning}<div
     transition:fadeMotion={{ kind: 'content' }}
@@ -164,29 +166,29 @@
       <span class="domain-icon"><Globe size={23} /></span>
       <div class="row-content">
         <strong>{domain.hostname}</strong>
-        <small
-          >Delivery domain&nbsp;·&nbsp;{accessModeLabels[
-            domain.accessMode
-          ]}</small
-        >
-        <small
-          >{domain.lastCheckedAt
+        <small>
+          Delivery domain&nbsp;·&nbsp;{accessModeLabels[domain.accessMode]}
+        </small>
+        <small>
+          {domain.lastCheckedAt
             ? `Checked ${dateTime(domain.lastCheckedAt)}`
             : 'Not validated yet'}{#if domain.notes}
-            &nbsp;·&nbsp;{domain.notes}{/if}</small
-        >
+            &nbsp;·&nbsp;{domain.notes}{/if}
+        </small>
         {#if domain.diagnostics?.outcome !== 'passed' && domain.diagnostics}<small
-            class="diagnostic-summary">{domain.diagnostics.message}</small
-          >{/if}
+            class="diagnostic-summary"
+          >
+            {domain.diagnostics.message}
+          </small>{/if}
       </div>
       <div class="domain-state">
-        <span class="badge" data-status={status}
-          >{domainStatusLabels[status]}</span
-        >{#if domain.isPrimary}<span class="badge"
-            ><Star size={11} />Instance default</span
-          >{/if}{#if preferenceId === domain.id}<span class="badge"
-            >Your selection</span
-          >{/if}
+        <span class="badge" data-status={status}>
+          {domainStatusLabels[status]}
+        </span>{#if domain.isPrimary}<span class="badge">
+            <Star size={11} />Instance default
+          </span>{/if}{#if preferenceId === domain.id}<span class="badge">
+            Your selection
+          </span>{/if}
       </div>
       <div class="row-actions">
         <Copy text={domain.hostname} label="Copy hostname" disabled={busy} />
@@ -200,15 +202,19 @@
                 onclick={() => {
                   closeMenu();
                   void preference(domain.id);
-                }}><Check size={16} />Use for my new links</button
-              >{/if}
+                }}
+              >
+                <Check size={16} />Use for my new links
+              </button>{/if}
             {#if preferenceId === domain.id}<button
                 disabled={busy}
                 onclick={() => {
                   closeMenu();
                   void preference(null);
-                }}><Star size={16} />Use instance default</button
-              >{/if}
+                }}
+              >
+                <Star size={16} />Use instance default
+              </button>{/if}
             <Copy
               text={domain.hostname}
               label="Copy hostname"
@@ -228,8 +234,9 @@
         : 'Ask an administrator to configure a delivery domain. You can still upload and save images privately.'}
     >
       {#snippet icon()}<Globe size={30} />{/snippet}
-      {#if filtered}<a class="button" href={page.url.pathname}>Clear search</a
-        >{/if}
+      {#if filtered}<a class="button" href={page.url.pathname}>
+          Clear search
+        </a>{/if}
     </CollectionEmpty>
   {/each}
 </div>

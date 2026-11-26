@@ -129,8 +129,9 @@
       <button
         type="button"
         onclick={() => void dashboard.refresh().catch(() => {})}
-        >Retry refresh</button
       >
+        Retry refresh
+      </button>
     </p>{/if}
   {@render children()}
 </div>

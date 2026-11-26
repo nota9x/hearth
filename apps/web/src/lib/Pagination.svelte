@@ -31,11 +31,11 @@
   aria-label="Pagination"
   aria-busy={busy || !!navigating.to}
 >
-  <span class="page-status"
-    >Page {current} of {pages}&nbsp;·&nbsp;{total
+  <span class="page-status">
+    Page {current} of {pages}&nbsp;·&nbsp;{total
       ? (current - 1) * size + 1
-      : 0}–{Math.min(current * size, total)} of {total}</span
-  >
+      : 0}–{Math.min(current * size, total)} of {total}
+  </span>
   <div class="page-links">
     {#if current > 1}<a
         class="button icon-button"
@@ -50,13 +50,16 @@
         }}
         rel="prev"
         aria-label="Previous page"
-        title="Previous page"><ChevronLeft size={18} aria-hidden="true" /></a
-      >{:else}<span
+        title="Previous page"
+      >
+        <ChevronLeft size={18} aria-hidden="true" />
+      </a>{:else}<span
         class="button icon-button"
         aria-disabled="true"
         aria-label="Previous page"
-        ><ChevronLeft size={18} aria-hidden="true" /></span
-      >{/if}
+      >
+        <ChevronLeft size={18} aria-hidden="true" />
+      </span>{/if}
     {#each pageWindow(current, pages) as item (item)}
       {#if typeof item === 'number'}<a
           class="button page-number"
@@ -70,8 +73,10 @@
             if (!busy) onchange(item);
           }}
           aria-label={`Page ${item}`}
-          aria-current={item === current ? 'page' : undefined}>{item}</a
-        >{:else}<Ellipsis size={18} aria-hidden="true" />{/if}
+          aria-current={item === current ? 'page' : undefined}
+        >
+          {item}
+        </a>{:else}<Ellipsis size={18} aria-hidden="true" />{/if}
     {/each}
     {#if current < pages}<a
         class="button icon-button"
@@ -86,13 +91,16 @@
         }}
         rel="next"
         aria-label="Next page"
-        title="Next page"><ChevronRight size={18} aria-hidden="true" /></a
-      >{:else}<span
+        title="Next page"
+      >
+        <ChevronRight size={18} aria-hidden="true" />
+      </a>{:else}<span
         class="button icon-button"
         aria-disabled="true"
         aria-label="Next page"
-        ><ChevronRight size={18} aria-hidden="true" /></span
-      >{/if}
+      >
+        <ChevronRight size={18} aria-hidden="true" />
+      </span>{/if}
   </div>
   {#if pages > 7}<form
       onsubmit={(event) => {
@@ -106,16 +114,16 @@
         else void goto(pageURL(new URL(page.url.href), target, parameter));
       }}
     >
-      <label
-        >Go to page<input
+      <label>
+        Go to page<input
           type="number"
           name="page"
           min="1"
           max={pages}
           value={current}
           required
-        /></label
-      ><button type="submit">Go</button>
+        />
+      </label><button type="submit">Go</button>
     </form>{/if}
 </nav>
 
