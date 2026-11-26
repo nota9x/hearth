@@ -2,14 +2,16 @@
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "hearth-web",
   "dev": { "ip": "127.0.0.1", "port": 5173 },
-  "main": ".svelte-kit/cloudflare/_worker.js",
   "compatibility_date": "2026-09-17",
   "compatibility_flags": [
     "nodejs_compat",
     "enable_request_signal",
     "global_fetch_strictly_public",
   ],
-  "assets": { "binding": "ASSETS", "directory": ".svelte-kit/cloudflare" },
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".svelte-kit/cloudflare/client",
+  },
   "vars": {
     "ENVIRONMENT": "development",
     "APP_ORIGIN": "http://127.0.0.1:5173",

@@ -11,7 +11,7 @@ if (
   fs.access = (file, ...options) =>
     String(file)
       .replaceAll('\\', '/')
-      .endsWith('.svelte-kit/cloudflare/_worker.js')
+      .endsWith('.svelte-kit/cloudflare/worker/index.js')
       ? Promise.resolve()
       : access(file, ...options);
   const spawn = childProcess.spawn;
