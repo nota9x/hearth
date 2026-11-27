@@ -152,7 +152,7 @@ Source commit: ${sha}
 Built with Wrangler ${manifest.devDependencies.wrangler} on Node.js ${process.version}.
 
 This ZIP contains prebuilt Worker code. No Hearth checkout, dependency installation,
-or application build is needed. Use Node.js 26 LTS (26.13.0 or newer in 26.x) and Wrangler ${manifest.devDependencies.wrangler}:
+or application build is needed. Use Node.js 26 LTS (26.13.1 or newer in 26.x) and Wrangler ${manifest.devDependencies.wrangler}:
 
     npx wrangler@${manifest.devDependencies.wrangler} deploy --dry-run --config wrangler.jsonc
     npx wrangler@${manifest.devDependencies.wrangler} deploy --config wrangler.jsonc

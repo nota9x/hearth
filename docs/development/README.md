@@ -8,7 +8,7 @@ See [testing](testing.md) for choosing regression coverage and measuring the sui
 See [installer verification](setup-installer.md) for CLI tests and disposable-account acceptance checks.
 Self-hosting instructions begin at the [documentation index](../README.md).
 
-The supported Node range is `package.json`'s `engines.node` (`^26.13.0`). CI
+The supported Node range is `package.json`'s `engines.node` (`^26.13.1`). CI
 resolves the latest compatible Node 26 release from that declaration. Keep the
 pnpm version pinned and install dependencies with the frozen lockfile.
 

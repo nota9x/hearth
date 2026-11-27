@@ -2,7 +2,7 @@
 
 Private ShareX image host: TypeScript, SvelteKit/Svelte 5 on Cloudflare Workers,
 D1/Drizzle, private R2. One pnpm workspace/release stream; Workers have no package
-manifests. Use Node 26 LTS (`^26.13.0`, CI follows the latest compatible release) and the pnpm version pinned in `package.json`; dependency installs enforce engines,
+manifests. Use Node 26 LTS (`^26.13.1`, CI follows the latest compatible release) and the pnpm version pinned in `package.json`; dependency installs enforce engines,
 24-hour release age, and the build allowlist in `pnpm-workspace.yaml`.
 
 ## Commands (repository root)
