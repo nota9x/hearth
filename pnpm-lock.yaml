@@ -196,7 +196,7 @@ importers:
         version: 0.45.4
       image-size:
         specifier: ^2.0.4
-        version: 2.1.0
+        version: 2.2.0
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -2288,9 +2288,9 @@ packages:
     resolution: {integrity: sha512-wCBiZ77u1tuWde6G/nfOtLaCTYcFDU5yCzARzK10y+rLhzYoL7a7yEemcopcc2Mzow7gZOIjnV2ym1NYmdiJOQ==}
     engines: {node: '>= 4'}
 
-  image-size@2.1.0:
-    resolution: {integrity: sha512-6Dbisa46RsgeAh3TMSFL2i8+uIFG+/LRmz6Q2oscSJJvXo1sOw3EgNO4M8jPl1P+gR1atJLDPrpclX4IHz63sA==}
-    engines: {node: '>=18'}
+  image-size@2.2.0:
+    resolution: {integrity: sha512-93QTtmEv0UD26RTJfmxQvWzhlauWO1TizNPjCumqzlACXYmI7TlwRWWT2+M4at7kZwnj+WkMOW9XKI76eX0dWw==}
+    engines: {node: '>=22'}
     hasBin: true
 
   import-fresh@3.3.1:
@@ -4906,7 +4906,7 @@ snapshots:
 
   ignore@7.0.14: {}
 
-  image-size@2.1.0: {}
+  image-size@2.2.0: {}
 
   import-fresh@3.3.1:
     dependencies:
