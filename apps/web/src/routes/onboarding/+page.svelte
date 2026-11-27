@@ -120,9 +120,9 @@
   );
   const expiryError = $derived(defaultExpiryError(data.expiryPolicy!, expiry));
   const selectedDomain = $derived(
-    domainId === null
-      ? data.available.find((domain) => domain.isPrimary)
-      : data.available.find((domain) => domain.id === domainId),
+    data.available.find((domain) =>
+      domainId === null ? domain.isPrimary : domain.id === domainId,
+    ),
   );
   const nameError = $derived(
     data.displayNameRestricted
@@ -292,7 +292,8 @@
       await action('onboarding-skip');
       clearCredential();
       await goto('/', { refreshAll: true });
-      notify.info('You can revisit onboarding anytime', 8000, {
+      notify.info('You can revisit onboarding anytime', {
+        duration: 8000,
         guidance:
           "You can restart the guided setup whenever you'd like from your user settings.",
         link: { href: '/settings', label: 'Open settings' },

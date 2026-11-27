@@ -42,6 +42,7 @@ export default defineConfig(
       'simple-import-sort/exports': 'error',
       // SQL NULL and explicit JSON null values are part of the application contract.
       'unicorn/no-null': 'off',
+      'unicorn/no-async-promise-finally': 'error',
       // Keep established database modules and Cloudflare's Env naming convention.
       'unicorn/name-replacements': [
         'error',

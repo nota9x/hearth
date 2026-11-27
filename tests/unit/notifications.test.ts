@@ -16,7 +16,9 @@ function get<T>(deck: {
 describe('live notifications', () => {
   it('ignores stale updates after cancellation and bounds progress', () => {
     const deck = createNotifications();
-    const live = deck.live('Working…', () => deck.dismiss(live.id));
+    const live = deck.live('Working…', {
+      onCancel: () => deck.dismiss(live.id),
+    });
     live.progress(40);
     live.progress(20);
     live.progress(NaN);
@@ -36,7 +38,7 @@ describe('cancellation confirmation', () => {
   it('waits for confirmation, keeps work running on dismissal and aborts only once', () => {
     const deck = createNotifications();
     const abort = vi.fn();
-    const live = deck.live('Working…', abort);
+    const live = deck.live('Working…', { onCancel: abort });
     deck.requestCancel(live.id);
     expect(get(deck.confirmation)?.id).toBe(live.id);
     expect(abort).not.toHaveBeenCalled();
@@ -58,7 +60,7 @@ describe('cancellation confirmation', () => {
     const deck = createNotifications();
     const abort = vi.fn();
     const abortItem = vi.fn();
-    const live = deck.live('Uploading…', abort);
+    const live = deck.live('Uploading…', { onCancel: abort });
     const item = {
       id: 'a',
       name: 'a.png',

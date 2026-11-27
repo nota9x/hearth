@@ -189,13 +189,10 @@ export class StorageWriter {
   }
 
   async cleanup() {
-    await cleanupStorage(
-      this.db,
-      this.bucket,
-      this.key,
-      this.token,
-      this.multipart,
-    );
+    await cleanupStorage(this.db, this.bucket, this.key, {
+      token: this.token,
+      multipart: this.multipart,
+    });
   }
 }
 
@@ -204,8 +201,7 @@ export async function cleanupStorage(
   db: D1Database,
   bucket: StorageDeletionBucket,
   key: string,
-  token?: string,
-  multipart?: R2MultipartUpload,
+  { token, multipart }: { token?: string; multipart?: R2MultipartUpload } = {},
 ) {
   const claim = await db
     .prepare(

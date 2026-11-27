@@ -192,7 +192,8 @@ export function createUploads(
   }
 
   function ensureNotification() {
-    notification ??= notifications.live('Preparing uploads…', cancelRemaining, {
+    notification ??= notifications.live('Preparing uploads…', {
+      onCancel: cancelRemaining,
       cancellation: {
         title: 'Cancel upload?',
         message:

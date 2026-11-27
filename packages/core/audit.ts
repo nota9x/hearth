@@ -151,7 +151,7 @@ export async function auditEvent(
   db: AuditDatabase,
   actorId: string | null,
   action: string,
-  targetId: string | null = null,
+  targetId: string | null,
   options: {
     name?: string;
     before?: AuditValues;

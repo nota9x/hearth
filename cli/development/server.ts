@@ -442,14 +442,13 @@ export async function startServer(
         }),
       );
     if (selected.every((component) => !current.tools[component].interactive))
-      dashboard.enableControls(
-        interrupt,
-        scheduler
+      dashboard.enableControls(interrupt, {
+        maintenance: scheduler
           ? () => {
               void scheduler?.run();
             }
           : undefined,
-      );
+      });
     log(
       service,
       'READY',

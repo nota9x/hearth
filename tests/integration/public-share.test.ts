@@ -156,10 +156,10 @@ describe('public share delivery with real native bindings, D1 and R2', () => {
   it.each(['plain', 'html'])(
     'makes unavailable states indistinguishable for %s, including conditional GET and HEAD',
     async (representation) => {
-      const lookup = (
+      const lookup = ({
         path = '/aB3xQ',
-        options: Pick<RequestInit, 'method' | 'headers'> = {},
-      ) =>
+        ...options
+      }: Pick<RequestInit, 'method' | 'headers'> & { path?: string } = {}) =>
         get(
           path,
           {
@@ -186,7 +186,7 @@ describe('public share delivery with real native bindings, D1 and R2', () => {
       ] as const;
       const baselines: { body: string; headers: Record<string, string> }[] = [];
       for (const [method, , headers] of variants) {
-        const response = await lookup('/never', { method, headers });
+        const response = await lookup({ path: '/never', method, headers });
         baselines.push({
           body: await response.text(),
           headers: Object.fromEntries(response.headers),
@@ -222,7 +222,7 @@ describe('public share delivery with real native bindings, D1 and R2', () => {
       for (const [disable, restore] of states) {
         await binding.prepare(disable).run();
         for (const [index, [method, path, headers]] of variants.entries()) {
-          const response = await lookup(path, { method, headers });
+          const response = await lookup({ path, method, headers });
           expect(response.status).toBe(404);
           expect(await response.text()).toBe(baselines[index].body);
           expect(Object.fromEntries(response.headers)).toEqual(
@@ -244,7 +244,7 @@ describe('public share delivery with real native bindings, D1 and R2', () => {
       expect(Object.fromEntries(missingObject.headers)).toEqual(
         expectedHeaders,
       );
-      const missingHead = await lookup('/aB3xQ', { method: 'HEAD' });
+      const missingHead = await lookup({ path: '/aB3xQ', method: 'HEAD' });
       expect(missingHead.status).toBe(404);
       expect(await missingHead.text()).toBe('');
       expect(Object.fromEntries(missingHead.headers)).toEqual(

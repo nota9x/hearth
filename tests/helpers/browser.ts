@@ -298,7 +298,7 @@ async function start(accountMode: AccountMode) {
           env: { ...process.env, WRANGLER_SEND_METRICS: 'false' },
         },
       );
-      const match = result.stdout.match(/img_live_[a-f0-9]{32}_[a-f0-9]{64}/);
+      const match = /img_live_[a-f0-9]{32}_[a-f0-9]{64}/.exec(result.stdout);
       if (!match || result.status !== 0)
         throw new Error('The isolated bootstrap fixture failed.');
       await writeFile(keyFile, match[0], { mode: 0o600 });

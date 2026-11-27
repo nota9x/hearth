@@ -144,8 +144,10 @@ export function createNotifications() {
   function push(
     kind: NotificationKind,
     message: string,
-    duration = 5000,
-    details: Pick<Notification, 'guidance' | 'link'> = {},
+    {
+      duration = 5000,
+      ...details
+    }: { duration?: number } & Pick<Notification, 'guidance' | 'link'> = {},
   ) {
     const lifetime = Number.isFinite(duration) ? Math.max(1, duration) : 5000;
     const id = ++sequence;
@@ -181,8 +183,13 @@ export function createNotifications() {
   }
   function live(
     message: string,
-    onCancel?: () => void,
-    options: Pick<Notification, 'cancellation' | 'onDismiss'> = {},
+    {
+      onCancel,
+      ...options
+    }: { onCancel?: () => void } & Pick<
+      Notification,
+      'cancellation' | 'onDismiss'
+    > = {},
   ) {
     const id = push('loading', message);
     const card = cards.find((entry) => entry.id === id)!;
@@ -274,16 +281,15 @@ export function createNotifications() {
       previous = undefined;
     },
     success: (message: string, duration?: number) =>
-      push('success', message, duration),
+      push('success', message, { duration }),
     info: (
       message: string,
-      duration?: number,
-      details?: Pick<Notification, 'guidance' | 'link'>,
-    ) => push('info', message, duration, details),
+      options?: { duration?: number } & Pick<Notification, 'guidance' | 'link'>,
+    ) => push('info', message, options),
     warning: (message: string, duration?: number) =>
-      push('warning', message, duration),
+      push('warning', message, { duration }),
     error: (message: string, duration?: number) =>
-      push('error', message, duration),
+      push('error', message, { duration }),
   };
 }
 
