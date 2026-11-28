@@ -15,7 +15,7 @@ trustPolicyExclude:
 trustLockfile: false
 overrides:
   # Keep Drizzle Kit's legacy loader on the same patched esbuild as Drizzle Kit.
-  '@esbuild-kit/core-utils>esbuild': 0.25.12
+  '@esbuild-kit/core-utils>esbuild': 0.28.2
 allowBuilds:
   lefthook: true
   esbuild: true
