@@ -325,56 +325,56 @@ export async function verifyUpload(
     throw new SetupFailure(
       'The verification image is not committed yet. Retry after maintenance recovery.',
     );
+  const savedUrl = state.probe.url;
+  const target = savedUrl ? URL.parse(savedUrl) : null;
+  // Cleanup retries use the same alias after deletion disables it.
   const image = await environment.DB.prepare(
-    'SELECT userId,deletedAt,sha256 FROM images WHERE id=?',
+    `SELECT i.userId,i.deletedAt,i.sha256,d.hostname,a.slug
+     FROM images i
+     LEFT JOIN delivery_domains d ON d.hostname=?
+     LEFT JOIN aliases a ON a.deliveryDomainId=d.id AND a.slug=? AND a.imageId=i.id
+     WHERE i.id=?`,
   )
-    .bind(imageId)
-    .first<{ userId: string; deletedAt: number | null; sha256: string }>();
+    .bind(target?.hostname ?? null, target?.pathname.slice(1) ?? null, imageId)
+    .first<{
+      userId: string;
+      deletedAt: number | null;
+      sha256: string;
+      hostname: string | null;
+      slug: string | null;
+    }>();
   if (!image || image.userId !== actor.id)
     throw new SetupFailure(
       'The verification image could not be matched to its owner. No objects were removed.',
     );
-  if (image.deletedAt === null) {
-    if (!state.probe.url) {
-      const selection = await selectDeliveryDomain(environment.DB, actor.id);
-      if (!selection.domain) throw new SetupFailure(selection.warning);
-      const existing = await environment.DB.prepare(
-        'SELECT slug FROM aliases WHERE imageId=? AND deliveryDomainId=? AND disabledAt IS NULL AND (expiresAt IS NULL OR expiresAt>unixepoch()) LIMIT 1',
-      )
-        .bind(imageId, selection.domain.id)
-        .first<{ slug: string }>();
-      const result =
-        existing ??
-        (await createLink(environment.DB, actor, {
-          imageId,
-          deliveryDomainId: selection.domain.id,
-          expiry: 'never',
-        }));
-      state.probe.url = contentUrl(
-        selection.domain.hostname,
-        result.slug,
-        environment,
-      );
-      await checkpoint();
-    }
-    const url = state.probe.url;
-    if (!url)
+  let url: string | undefined;
+  if (savedUrl) {
+    if (target?.protocol === 'https:' && image.hostname && image.slug)
+      url = contentUrl(image.hostname, image.slug, environment);
+    if (url !== savedUrl)
       throw new SetupFailure(
-        'The verification image has no delivery link. Repair the instance/personal delivery selection and retry.',
+        'The verification URL does not match a delivery link for this image.',
       );
-    const target = new URL(url);
-    const domains = await environment.DB.prepare(
-      'SELECT hostname FROM delivery_domains WHERE id IN (SELECT deliveryDomainId FROM aliases WHERE imageId=?)',
+  } else if (image.deletedAt === null) {
+    const selection = await selectDeliveryDomain(environment.DB, actor.id);
+    if (!selection.domain) throw new SetupFailure(selection.warning);
+    const existing = await environment.DB.prepare(
+      'SELECT slug FROM aliases WHERE imageId=? AND deliveryDomainId=? AND disabledAt IS NULL AND (expiresAt IS NULL OR expiresAt>unixepoch()) LIMIT 1',
     )
-      .bind(imageId)
-      .all<{ hostname: string }>();
-    if (
-      target.protocol !== 'https:' ||
-      domains.results.every((domain) => domain.hostname !== target.hostname)
-    )
-      throw new SetupFailure(
-        'The verification URL does not match this image’s delivery domains.',
-      );
+      .bind(imageId, selection.domain.id)
+      .first<{ slug: string }>();
+    const result =
+      existing ??
+      (await createLink(environment.DB, actor, {
+        imageId,
+        deliveryDomainId: selection.domain.id,
+        expiry: 'never',
+      }));
+    url = contentUrl(selection.domain.hostname, result.slug, environment);
+    state.probe.url = url;
+    await checkpoint();
+  }
+  if (url) {
     const get = (headers?: HeadersInit, method = 'GET') =>
       request(url, {
         method,
@@ -382,54 +382,53 @@ export async function verifyUpload(
         redirect: 'error',
         signal: AbortSignal.timeout(30_000),
       });
-    const publicResponse = await get();
-    if (
-      publicResponse.status !== 200 ||
-      publicResponse.headers.get('content-type')?.split(';', 1)[0] !==
-        'image/png'
-    )
-      throw new SetupFailure(
-        'Public image delivery did not return the expected PNG. Repair delivery and retry.',
-      );
-    const bytes = new Uint8Array(await publicResponse.arrayBuffer());
-    const hash = await crypto.subtle.digest('SHA-256', bytes);
-    if (new Uint8Array(hash).toHex() !== image.sha256)
-      throw new SetupFailure(
-        'The delivered image bytes do not match the committed upload.',
-      );
-    const head = await get(undefined, 'HEAD');
-    if (
-      head.status !== 200 ||
-      Number(head.headers.get('content-length')) !== bytes.length
-    )
-      throw new SetupFailure('Delivery HEAD verification failed.');
-    const range = await get({ Range: 'bytes=0-3' });
-    if (
-      range.status !== 206 ||
-      !Buffer.from(await range.arrayBuffer()).equals(
-        Buffer.from(bytes.slice(0, 4)),
+    if (image.deletedAt === null) {
+      const publicResponse = await get();
+      if (
+        publicResponse.status !== 200 ||
+        publicResponse.headers.get('content-type')?.split(';', 1)[0] !==
+          'image/png'
       )
-    )
-      throw new SetupFailure('Delivery range verification failed.');
-    const etag = publicResponse.headers.get('etag');
-    const conditional = etag ? await get({ 'If-None-Match': etag }) : undefined;
-    if (conditional?.status !== 304)
-      throw new SetupFailure(
-        'Delivery conditional-request verification failed.',
+        throw new SetupFailure(
+          'Public image delivery did not return the expected PNG. Repair delivery and retry.',
+        );
+      const bytes = new Uint8Array(await publicResponse.arrayBuffer());
+      const hash = await crypto.subtle.digest('SHA-256', bytes);
+      if (new Uint8Array(hash).toHex() !== image.sha256)
+        throw new SetupFailure(
+          'The delivered image bytes do not match the committed upload.',
+        );
+      const head = await get(undefined, 'HEAD');
+      if (
+        head.status !== 200 ||
+        Number(head.headers.get('content-length')) !== bytes.length
+      )
+        throw new SetupFailure('Delivery HEAD verification failed.');
+      const range = await get({ Range: 'bytes=0-3' });
+      if (
+        range.status !== 206 ||
+        !Buffer.from(await range.arrayBuffer()).equals(
+          Buffer.from(bytes.slice(0, 4)),
+        )
+      )
+        throw new SetupFailure('Delivery range verification failed.');
+      const etag = publicResponse.headers.get('etag');
+      const conditional = etag
+        ? await get({ 'If-None-Match': etag })
+        : undefined;
+      if (conditional?.status !== 304)
+        throw new SetupFailure(
+          'Delivery conditional-request verification failed.',
+        );
+      await deleteImage(
+        environment.DB,
+        environment.BUCKET,
+        imageId,
+        actor.id,
+        'Installer verification',
       );
-    await deleteImage(
-      environment.DB,
-      environment.BUCKET,
-      imageId,
-      actor.id,
-      'Installer verification',
-    );
-  }
-  if (state.probe.url) {
-    const removed = await request(state.probe.url, {
-      redirect: 'error',
-      signal: AbortSignal.timeout(30_000),
-    });
+    }
+    const removed = await get();
     if (removed.status !== 404)
       throw new SetupFailure(
         'The deleted verification image is still publicly accessible. Check caching rules and retry.',
