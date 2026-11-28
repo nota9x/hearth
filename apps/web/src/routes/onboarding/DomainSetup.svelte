@@ -54,8 +54,8 @@
 
 <div class="domain-setup">
   {#if domains.length > 0}
-    <label
-      >Configured domains<select
+    <label>
+      Configured domains<select
         value={domain?.id ?? ''}
         disabled={busy}
         onchange={(event) => {
@@ -63,14 +63,16 @@
           domain = domains.find((item) => item.id === value) ?? null;
           error = '';
         }}
-        ><option value="">Add another domain</option
-        >{#each domains as item (item.id)}<option value={item.id}
-            >{item.hostname} · {domainStatusLabels[
+      >
+        <option value="">
+          Add another domain
+        </option>{#each domains as item (item.id)}<option value={item.id}>
+            {item.hostname} · {domainStatusLabels[
               item.enabled ? item.health : 'disabled'
-            ]}</option
-          >{/each}</select
-      ></label
-    >
+            ]}
+          </option>{/each}
+      </select>
+    </label>
   {/if}
   {#if !domain}
     <form
@@ -79,8 +81,8 @@
         void run('delivery-domain-save', { hostname, accessMode: 'everyone' });
       }}
     >
-      <label
-        >Delivery hostname<input
+      <label>
+        Delivery hostname<input
           bind:value={hostname}
           disabled={busy}
           placeholder="images.example.com"
@@ -91,27 +93,27 @@
             ? 'hostname-help domain-error'
             : 'hostname-help'}
           aria-invalid={!!error}
-        /></label
-      >
+        />
+      </label>
       <p id="hostname-help">
         Use the full hostname where you’ll share images. You’ll connect it to
         your delivery Worker next.
       </p>
-      <button class="primary" disabled={busy}
-        >{#if busy}<Spinner size={18} />{:else}<Globe size={18} />{/if}Add
-        delivery domain</button
-      >
+      <button class="primary" disabled={busy}>
+        {#if busy}<Spinner size={18} />{:else}<Globe size={18} />{/if}Add
+        delivery domain
+      </button>
     </form>
   {:else}
     <div class="domain-heading">
       <Globe size={22} />
       <div>
-        <strong>{domain.hostname}</strong><small
-          >{domainStatusLabels[
+        <strong>{domain.hostname}</strong><small>
+          {domainStatusLabels[
             domain.enabled ? domain.health : 'disabled'
           ]}{#if domain.isPrimary}
-            · Instance default{/if}</small
-        >
+            · Instance default{/if}
+        </small>
       </div>
     </div>
     {#if domain.isPrimary && domain.enabled && domain.health === 'active'}
@@ -125,10 +127,11 @@
           disabled={busy || !domain.enabled}
           onclick={() =>
             void run('delivery-domain-validate', { id: domain!.id })}
-          >{#if busy}<Spinner size={16} />{:else}<RefreshCw
-              size={16}
-            />{/if}Validate domain</button
         >
+          {#if busy}<Spinner size={16} />{:else}<RefreshCw
+              size={16}
+            />{/if}Validate domain
+        </button>
         {#if domain.enabled && domain.health === 'active'}<button
             class="primary"
             disabled={busy}
@@ -136,8 +139,10 @@
               void run('delivery-domain-primary', {
                 id: domain!.id,
                 revision: domain!.revision,
-              })}>Set as instance default</button
-          >{/if}
+              })}
+          >
+            Set as instance default
+          </button>{/if}
       </div>
       {#if !domain.enabled}<p>
           Delivery is disabled for this domain. You can manage it later in

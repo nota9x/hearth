@@ -21,13 +21,13 @@
         size={18}
       />{:else}<CircleAlert size={18} />{/if}
     <div>
-      <strong
-        >{domain.diagnostics.outcome === 'passed'
+      <strong>
+        {domain.diagnostics.outcome === 'passed'
           ? 'Validation passed'
           : domain.diagnostics.outcome === 'inconclusive'
             ? 'Check inconclusive'
-            : 'Setup needs attention'}</strong
-      >
+            : 'Setup needs attention'}
+      </strong>
       <p>
         {domain.diagnostics
           .message}{#if domain.diagnostics.outcome === 'inconclusive'}
@@ -37,8 +37,7 @@
   </div>{/if}
 <div class="setup-guide">
   <h3>Connect this domain</h3>
-  {#if domain.hostname === '127.0.0.1' || domain.hostname.endsWith('.localhost')}<p
-    >
+  {#if domain.hostname === '127.0.0.1' || domain.hostname.endsWith('.localhost')}<p>
       Run the local delivery Worker on the configured delivery port and share
       the web Worker’s local D1 and R2 state. Local checks do not validate
       production DNS or TLS.
@@ -54,11 +53,15 @@
           In the <a
             href="https://dash.cloudflare.com/"
             target="_blank"
-            rel="noreferrer">Cloudflare dashboard</a
-          >, choose the account that owns your delivery Worker. Open
-          <strong
-            >Domains <ArrowRight size={14} aria-hidden="true" /> Onboard a domain</strong
-          >, enter the root domain (for example, <code>example.com</code> for
+            rel="noreferrer"
+          >
+            Cloudflare dashboard
+          </a>, choose the account that owns your delivery Worker. Open
+          <strong>
+            Domains <ArrowRight size={14} aria-hidden="true" /> Onboard a domain
+          </strong>, enter the root domain (for example,
+          <code>example.com</code>
+          for
           <code>images.example.com</code>), and choose a plan.
         </p>
         <p>
@@ -73,19 +76,20 @@
             href="https://developers.cloudflare.com/dns/zone-setups/full-setup/setup/"
             target="_blank"
             rel="noreferrer"
-            >Domain onboarding guide <ArrowUpRight
+          >
+            Domain onboarding guide <ArrowUpRight
               size={14}
               aria-hidden="true"
-            /></a
-          >
+            />
+          </a>
         </p>
       </li>
       <li>
         <h4>Connect it to the delivery Worker</h4>
         <p>
-          Open <strong
-            >Compute <ArrowRight size={14} aria-hidden="true" /> Workers & Pages</strong
-          >, select your Hearth delivery Worker, and open the
+          Open <strong>
+            Compute <ArrowRight size={14} aria-hidden="true" /> Workers & Pages
+          </strong>, select your Hearth delivery Worker, and open the
           <strong>Domains</strong>
           tab. Under <strong>Custom Domains and Routes</strong>, choose
           <strong>Add Domain</strong>.
@@ -105,10 +109,10 @@
       <li>
         <h4>Validate the connection</h4>
         <p>
-          Wait for DNS and the TLS certificate to be ready, then choose <strong
-            >Validate domain</strong
-          > below. If the check fails, follow the diagnostic message and try again
-          after the changes take effect.
+          Wait for DNS and the TLS certificate to be ready, then choose <strong>
+            Validate domain
+          </strong> below. If the check fails, follow the diagnostic message and try
+          again after the changes take effect.
         </p>
       </li>
     </ol>
@@ -123,11 +127,12 @@
         href="https://developers.cloudflare.com/workers/configuration/routing/custom-domains/"
         target="_blank"
         rel="noreferrer"
-        >Cloudflare Custom Domains documentation <ArrowUpRight
+      >
+        Cloudflare Custom Domains documentation <ArrowUpRight
           size={14}
           aria-hidden="true"
-        /></a
-      >
+        />
+      </a>
     </Disclosure>
   {/if}
   <p class="validation-note">

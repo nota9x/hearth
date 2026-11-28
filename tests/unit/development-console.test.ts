@@ -42,7 +42,7 @@ describe('development dashboard', () => {
     }) as unknown as NodeJS.ReadStream;
     const shutdown = vi.fn();
     const maintenance = vi.fn();
-    dashboard.enableControls(shutdown, maintenance, input);
+    dashboard.enableControls(shutdown, { maintenance, input });
     input.write('m');
     input.write('M');
     input.write('x');

@@ -212,7 +212,8 @@ export async function downloadImages(ids: string[], individually = false) {
   const current = new AbortController();
   operation.controller = current;
   const generation = operation.generation;
-  const notice = notify.live('Preparing downloads…', () => current.abort(), {
+  const notice = notify.live('Preparing downloads…', {
+    onCancel: () => current.abort(),
     cancellation: {
       title: 'Cancel download?',
       message:

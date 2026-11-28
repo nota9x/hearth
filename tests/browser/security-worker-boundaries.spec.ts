@@ -52,8 +52,10 @@ test('actual web and delivery Workers respect completed credential, account and 
   const anonymous = await playwright.request.newContext({ proxy });
   const delivery = (
     address: string,
-    method = 'GET',
-    headers: Record<string, string> = {},
+    {
+      method = 'GET',
+      headers = {},
+    }: { method?: string; headers?: Record<string, string> } = {},
   ) => {
     const target = new URL(address);
     const host = target.host;
@@ -149,9 +151,12 @@ test('actual web and delivery Workers respect completed credential, account and 
     });
     expect(disabled.status()).toBe(200);
     for (const method of ['GET', 'HEAD']) {
-      const response = await delivery(image.url!, method, {
-        'If-None-Match': etag,
-        Range: 'bytes=0-1',
+      const response = await delivery(image.url!, {
+        method,
+        headers: {
+          'If-None-Match': etag,
+          Range: 'bytes=0-1',
+        },
       });
       expect(response.status()).toBe(404);
       expect(response.headers().etag).toBeUndefined();
@@ -174,8 +179,11 @@ test('actual web and delivery Workers respect completed credential, account and 
       token: dummyToken,
     });
     expect(deletion.status()).toBe(200);
-    const deletedPublic = await delivery(image.url!, 'GET', {
-      'If-None-Match': etag,
+    const deletedPublic = await delivery(image.url!, {
+      method: 'GET',
+      headers: {
+        'If-None-Match': etag,
+      },
     });
     expect(deletedPublic.status()).toBe(404);
     const attackerStillActive = await action(

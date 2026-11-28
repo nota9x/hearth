@@ -27,6 +27,7 @@ import {
   root,
   validateHostnames,
 } from '../production-config.ts';
+import { projects, webWorkerEntry } from '../project.ts';
 import {
   Cloudflare,
   databaseSchema,
@@ -1421,9 +1422,7 @@ async function runSetup(advanced: boolean, remove = false) {
         const buildFingerprint = await sourceFingerprint('web', web);
         let built = false;
         try {
-          await access(
-            path.join(root, 'apps/web/.svelte-kit/cloudflare/_worker.js'),
-          );
+          await access(path.join(root, projects.web, webWorkerEntry));
           built = state.buildFingerprint === buildFingerprint;
         } catch (error) {
           if (!isMissing(error)) throw error;

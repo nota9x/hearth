@@ -17,11 +17,11 @@
     <Sparkles size={20} aria-hidden="true" />
     <div class="message" role="status">
       <strong>A fresh version of Hearth is ready.</strong>
-      <span
-        >{busy
+      <span>
+        {busy
           ? 'Reload once your current activity finishes.'
-          : 'Reload to get the latest improvements.'}</span
-      >
+          : 'Reload to get the latest improvements.'}
+      </span>
     </div>
     <div class="actions">
       <button class="primary" disabled={busy} onclick={() => location.reload()}>

@@ -119,11 +119,11 @@
 {:else}
   <label>Maximum lifetime{@render maximum()}</label>
   {#if mode === 'custom'}
-    <label in:fadeMotion={{ kind: 'content' }}
-      >Duration{@render duration()}</label
-    >
-    <label in:fadeMotion={{ kind: 'content' }}
-      >Duration unit{@render units()}</label
-    >
+    <label in:fadeMotion={{ kind: 'content' }}>
+      Duration{@render duration()}
+    </label>
+    <label in:fadeMotion={{ kind: 'content' }}>
+      Duration unit{@render units()}
+    </label>
   {/if}
 {/if}

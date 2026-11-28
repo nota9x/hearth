@@ -503,11 +503,11 @@
   }
 </script>
 
-<svelte:head
-  ><title
+<svelte:head>
+  <title
     >{data.admin ? 'Admin · ' : ''}{data.image?.filename || data.section} · {data.siteName}</title
-  ></svelte:head
->
+  >
+</svelte:head>
 {#if adminComponents}<adminComponents.Tabs section={data.section} />{/if}
 <input
   bind:this={uploadInput}
@@ -527,54 +527,57 @@
     <button
       disabled={$downloads.active}
       onclick={() => downloadImages([data.image!.id])}
-      ><Download size={17} />Download</button
     >
+      <Download size={17} />Download
+    </button>
   </div>
   <div class="detail-preview">
     <img src={`/api/media/${data.image.id}`} alt={data.image.filename} />
   </div>
   {#if data.admin}<p>
-      Owner: <a class="subtle-link" href={`/admin/users/${data.image.ownerId}`}
-        >{data.image.owner}</a
-      >
+      Owner: <a class="subtle-link" href={`/admin/users/${data.image.ownerId}`}>
+        {data.image.owner}
+      </a>
     </p>{/if}
   <div class="detail-meta">
     <div><small>File size</small><strong>{bytes(data.image.size)}</strong></div>
     <div>
-      <small>Dimensions</small><strong
-        >{data.image.width} × {data.image.height}</strong
-      >
+      <small>Dimensions</small><strong>
+        {data.image.width} × {data.image.height}
+      </strong>
     </div>
     <div>
       <small>Uploaded</small><strong>{dateTime(data.image.createdAt)}</strong>
     </div>
     <div>
       <small>Expiry</small><strong>{dateTime(data.image.expiresAt)}</strong>
-      {#if data.image.expiresAt !== null}<small
-          >{relativeExpiry(data.image.expiresAt, expiryNow).replace(
+      {#if data.image.expiresAt !== null}<small>
+          {relativeExpiry(data.image.expiresAt, expiryNow).replace(
             /^Expires /,
             '',
-          )}</small
-        >{/if}
+          )}
+        </small>{/if}
     </div>
   </div>
   <div class="toolbar">
     <button
       disabled={$imageDeletion.pending.includes(data.image.id)}
       onclick={() => open('expiry', data.image!.id)}
-      ><Clock size={16} />Change expiry</button
-    ><button
+    >
+      <Clock size={16} />Change expiry
+    </button><button
       class="danger"
       disabled={$imageDeletion.pending.includes(data.image.id)}
       onclick={() => open('delete', data.image!.id)}
-      ><Trash2 size={16} />Delete image</button
     >
+      <Trash2 size={16} />Delete image
+    </button>
   </div>
   <div class="section-heading">
     <h2>Links to this image</h2>
-    <button onclick={() => open('alias', data.image!.id)}
-      ><Plus size={16} />Create link</button
-    >
+    <button onclick={() => open('alias', data.image!.id)}>
+      <Plus size={16} />Create link
+    </button>
   </div>
   {@render linkActions()}
   {@render links()}
@@ -587,16 +590,16 @@
     />{/if}
 {:else if data.section === 'overview'}
   <CollectionHeader title={titles.overview} refresh={manualRefresh} {busy}>
-    <button class="primary" disabled={busy} onclick={() => uploadInput.click()}
-      ><Plus size={18} />Upload image</button
-    >
+    <button class="primary" disabled={busy} onclick={() => uploadInput.click()}>
+      <Plus size={18} />Upload image
+    </button>
   </CollectionHeader>
   {@render stats()}
   <div class="section-heading">
     <h2>Recent images</h2>
-    <a href={data.admin ? '/admin/images' : '/images'}
-      >View all images<ArrowRight size={16} /></a
-    >
+    <a href={data.admin ? '/admin/images' : '/images'}>
+      View all images<ArrowRight size={16} />
+    </a>
   </div>
   {@render gallery()}
   {#if !shareXDismissed}<div class="upload-callout">
@@ -611,23 +614,25 @@
         <button
           class="sharex-dismiss"
           aria-label="Dismiss ShareX banner"
-          onclick={dismissShareX}>Dismiss</button
+          onclick={dismissShareX}
         >
-        <button onclick={() => open('sxcu')}
-          >Set up ShareX<ArrowUpRight size={16} /></button
-        >
+          Dismiss
+        </button>
+        <button onclick={() => open('sxcu')}>
+          Set up ShareX<ArrowUpRight size={16} />
+        </button>
       </div>
     </div>{/if}
 {:else if data.section === 'images'}
   <CollectionHeader title={titles.images} refresh={manualRefresh} {busy}>
-    <button class="primary" disabled={busy} onclick={() => uploadInput.click()}
-      ><Plus size={18} />Upload image</button
-    >
+    <button class="primary" disabled={busy} onclick={() => uploadInput.click()}>
+      <Plus size={18} />Upload image
+    </button>
   </CollectionHeader>
   {#if data.scopedUser}<p>
-      Owner: <a class="subtle-link" href={`/admin/users/${data.scopedUser.id}`}
-        >{data.scopedUser.displayName}</a
-      >
+      Owner: <a class="subtle-link" href={`/admin/users/${data.scopedUser.id}`}>
+        {data.scopedUser.displayName}
+      </a>
     </p>{/if}
   <ImageSearch
     total={data.total}
@@ -642,19 +647,22 @@
     clear={clearSelection}
     disabled={busy || selectingAll || !!navigating.to}
   >
-    <button disabled={deletingSelection || busy} onclick={() => open('expiry')}
-      ><Clock size={16} />Change expiry</button
-    >
+    <button disabled={deletingSelection || busy} onclick={() => open('expiry')}>
+      <Clock size={16} />Change expiry
+    </button>
     <button
       disabled={$downloads.active}
       onclick={() => downloadImages([...selected])}
-      ><Download size={16} />Download</button
     >
+      <Download size={16} />Download
+    </button>
     <button
       class="danger"
       disabled={deletingSelection || busy}
-      onclick={() => open('delete')}><Trash2 size={16} />Delete</button
+      onclick={() => open('delete')}
     >
+      <Trash2 size={16} />Delete
+    </button>
   </BulkActions>
   {#if $downloads.individual.length > 0}<div
       transition:fadeMotion={{ kind: 'content' }}
@@ -667,13 +675,16 @@
           downloadImages(
             $downloads.individual.map((image) => image.id),
             true,
-          )}><Download size={16} />Download individually</button
+          )}
       >
+        <Download size={16} />Download individually
+      </button>
       <button
         onclick={() =>
           downloads.update((state) => ({ ...state, individual: [] }))}
-        >Clear</button
       >
+        Clear
+      </button>
     </div>{/if}
   {@render gallery()}<Pagination
     current={data.page}
@@ -776,19 +787,22 @@
     >
       {#snippet icon()}<Image size={38} />{/snippet}
       {#if isFiltered}<div class="empty-search-actions">
-          {#if data.search}<a class="button" href={searchLink(['q'])}
-              >Clear search</a
-            >{/if}
+          {#if data.search}<a class="button" href={searchLink(['q'])}>
+              Clear search
+            </a>{/if}
           {#if filterKeys.some((key) => page.url.searchParams.has(key))}<a
               class="button"
-              href={searchLink([...filterKeys])}>Clear filters</a
-            >{/if}
+              href={searchLink([...filterKeys])}
+            >
+              Clear filters
+            </a>{/if}
         </div>{:else}<button
           class="primary"
           disabled={busy}
           onclick={() => uploadInput.click()}
-          ><Plus size={17} />Upload your first image</button
-        >{/if}
+        >
+          <Plus size={17} />Upload your first image
+        </button>{/if}
     </CollectionEmpty>{/if}{/snippet}
 {#snippet linkActions()}
   {#if displayedLinks.length > 0}
@@ -802,16 +816,19 @@
       <button
         disabled={deletingSelection || busy}
         onclick={() => open('link-expiry')}
-        ><Clock size={16} />Change expiry</button
       >
-      <button disabled={busy} onclick={copyLinks}
-        ><Link size={16} />Copy links</button
-      >
+        <Clock size={16} />Change expiry
+      </button>
+      <button disabled={busy} onclick={copyLinks}>
+        <Link size={16} />Copy links
+      </button>
       <button
         class="danger"
         disabled={deletingSelection || busy}
-        onclick={() => open('alias-delete')}><Trash2 size={16} />Delete</button
+        onclick={() => open('alias-delete')}
       >
+        <Trash2 size={16} />Delete
+      </button>
     </BulkActions>
   {/if}
 {/snippet}
@@ -851,19 +868,22 @@
             : 'Images can exist without share links. Open an image to create one.'}
       >
         {#snippet icon()}<Link size={34} />{/snippet}
-        {#if data.image}<button onclick={() => open('alias', data.image!.id)}
-            ><Plus size={16} />Create share link</button
-          >
+        {#if data.image}<button onclick={() => open('alias', data.image!.id)}>
+            <Plus size={16} />Create share link
+          </button>
         {:else if isFiltered}
-          {#if data.search}<a class="button" href={searchLink(['q'])}
-              >Clear search</a
-            >{/if}
-          <a class="button" href={searchLink([...linkFilterKeys])}
-            >Clear filters</a
+          {#if data.search}<a class="button" href={searchLink(['q'])}>
+              Clear search
+            </a>{/if}
+          <a class="button" href={searchLink([...linkFilterKeys])}>
+            Clear filters
+          </a>
+        {:else}<a
+            class="button"
+            href={data.admin ? '/admin/images' : '/images'}
           >
-        {:else}<a class="button" href={data.admin ? '/admin/images' : '/images'}
-            >View images</a
-          >{/if}
+            View images
+          </a>{/if}
       </CollectionEmpty>
     {/each}
   </div>
@@ -917,36 +937,40 @@
                 : 'These links will stop working, but the underlying images will remain stored in Hearth.'}
           </p>{/if}
 
-        {#if modal === 'alias'}<label
-            >Delivery domain<select
+        {#if modal === 'alias'}<label>
+            Delivery domain<select
               bind:value={deliveryDomainId}
               required
               disabled={expiryOptionsLoading}
-              ><option value="" disabled>Choose a delivery domain</option
-              >{#each creationOptions?.deliveryDomains ?? [] as domain (domain.id)}<option
-                  value={domain.id}>{domain.hostname}</option
-                >{/each}</select
-            ></label
-          ><label
-            >Slug<input
+            >
+              <option value="" disabled>
+                Choose a delivery domain
+              </option>{#each creationOptions?.deliveryDomains ?? [] as domain (domain.id)}<option
+                  value={domain.id}
+                >
+                  {domain.hostname}
+                </option>{/each}
+            </select>
+          </label><label>
+            Slug<input
               bind:value={slug}
               pattern={'[a-z0-9][a-z0-9_-]{2,63}'}
               placeholder="Leave blank to generate a slug"
-            /></label
-          ><small
-            >Leave the slug blank to generate a unique address. Expiring this
-            link leaves the image stored.</small
-          >
+            />
+          </label><small>
+            Leave the slug blank to generate a unique address. Expiring this
+            link leaves the image stored.
+          </small>
           {#if creationOptions && creationOptions.deliveryDomains.length === 0}<p
               in:fadeMotion={{ kind: 'content' }}
               class="error"
             >
               No delivery domains are available for this image's owner.
             </p>{/if}
-          {#if creationOptions?.imageExpiresAt}<small
-              >The image expires {dateTime(creationOptions.imageExpiresAt)};
-              links cannot keep it available beyond that time.</small
-            >{/if}
+          {#if creationOptions?.imageExpiresAt}<small>
+              The image expires {dateTime(creationOptions.imageExpiresAt)};
+              links cannot keep it available beyond that time.
+            </small>{/if}
         {/if}
         {#if ['alias', 'expiry', 'link-expiry'].includes(modal)}
           <ExpiryFields
@@ -966,8 +990,9 @@
         {/if}
 
         <div class="dialog-actions">
-          <button type="button" onclick={close} disabled={busy}>Cancel</button
-          ><button
+          <button type="button" onclick={close} disabled={busy}>
+            Cancel
+          </button><button
             class:danger={['delete', 'alias-delete'].includes(modal)}
             class:primary={!['delete', 'alias-delete'].includes(modal)}
             disabled={busy ||
@@ -977,14 +1002,15 @@
                   editChoices.length === 0 ||
                   (modal === 'alias' &&
                     !creationOptions?.deliveryDomains.length)))}
-            >{busy
+          >
+            {busy
               ? 'Working…'
               : modal === 'alias'
                 ? 'Create link'
                 : ['expiry', 'link-expiry'].includes(modal)
                   ? 'Save expiry'
-                  : 'Confirm'}</button
-          >
+                  : 'Confirm'}
+          </button>
         </div>
       </form>{/if}
   </Modal>{/if}

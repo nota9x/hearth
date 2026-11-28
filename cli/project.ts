@@ -6,5 +6,6 @@ export const projects = {
   delivery: 'workers/delivery',
   maintenance: 'workers/maintenance',
 } as const;
+export const webWorkerEntry = '.svelte-kit/cloudflare/worker/index.js';
 export type Component = keyof typeof projects;
 export const components = Object.keys(projects) as Component[];

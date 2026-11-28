@@ -21,6 +21,7 @@ import {
 import ts from 'typescript';
 import { unstable_getMiniflareWorkerOptions } from 'wrangler';
 
+import { webWorkerEntry } from '../../cli/project.ts';
 import { createUser } from '../../packages/core/auth';
 import { migrateDatabase } from './database';
 
@@ -145,7 +146,11 @@ async function start(accountMode: AccountMode) {
     );
     if (parsed.error) throw new Error('Invalid local test configuration');
     const config = parsed.config as TestConfig;
-    config.main = nodePath.join(root, directory, config.main);
+    config.main = nodePath.join(
+      root,
+      directory,
+      name === 'web' ? webWorkerEntry : config.main,
+    );
     config.$schema = nodePath.join(
       root,
       'node_modules/wrangler/config-schema.json',
@@ -205,7 +210,6 @@ async function start(accountMode: AccountMode) {
     const { workerOptions } = unstable_getMiniflareWorkerOptions(workerConfig);
     // Wrangler already bundled every source module for this local runtime.
     delete workerOptions.modulesRules;
-    const script = name === 'web' ? '_worker.js' : 'index.js';
     return {
       ...workerOptions,
       rootPath: nodePath.join(process.env.HEARTH_BROWSER_BUNDLES!, name),
@@ -214,7 +218,7 @@ async function start(accountMode: AccountMode) {
       scriptPath: nodePath.join(
         process.env.HEARTH_BROWSER_BUNDLES!,
         name,
-        script,
+        'index.js',
       ),
       unsafeDevRegistryPath: nodePath.join(destination, 'registry'),
       outboundService: outbound,
@@ -294,7 +298,7 @@ async function start(accountMode: AccountMode) {
           env: { ...process.env, WRANGLER_SEND_METRICS: 'false' },
         },
       );
-      const match = result.stdout.match(/img_live_[a-f0-9]{32}_[a-f0-9]{64}/);
+      const match = /img_live_[a-f0-9]{32}_[a-f0-9]{64}/.exec(result.stdout);
       if (!match || result.status !== 0)
         throw new Error('The isolated bootstrap fixture failed.');
       await writeFile(keyFile, match[0], { mode: 0o600 });

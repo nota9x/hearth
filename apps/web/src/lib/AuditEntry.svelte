@@ -11,19 +11,21 @@
   {#snippet header()}<div class="audit-heading">
       <div class="row-content">
         <strong>{log.title}</strong>
-        <small
-          >{#if log.actorHref}<a class="audit-link" href={log.actorHref}
-              >{log.actor}</a
-            >{:else}{log.actor}{/if}&nbsp;·&nbsp;{#if log.targetHref}<a
+        <small>
+          {#if log.actorHref}<a class="audit-link" href={log.actorHref}>
+              {log.actor}
+            </a>{:else}{log.actor}{/if}&nbsp;·&nbsp;{#if log.targetHref}<a
               class="audit-link"
-              href={log.targetHref}>{log.target}</a
-            >{:else}{log.target}{/if}</small
-        >
+              href={log.targetHref}
+            >
+              {log.target}
+            </a>{:else}{log.target}{/if}
+        </small>
         {#if log.summary}<small>{log.summary}</small>{/if}
       </div>
-      <time datetime={new Date(log.createdAt * 1000).toISOString()}
-        >{new Date(log.createdAt * 1000).toLocaleString()}</time
-      >
+      <time datetime={new Date(log.createdAt * 1000).toISOString()}>
+        {new Date(log.createdAt * 1000).toLocaleString()}
+      </time>
     </div>{/snippet}
   <div class="audit-details">
     {#if log.details.length > 0}<div class="audit-changes" aria-label="Changes">
@@ -32,18 +34,19 @@
     <dl>
       <dt>Actor</dt>
       <dd>
-        {#if log.actorHref}<a class="audit-link" href={log.actorHref}
-            >{log.actor}</a
-          >{:else}{log.actor}{/if}{#if log.actorId}
-          <code>{log.actorId}</code
-          >{/if}{#if log.actorIp && log.actorIp !== log.actor}
+        {#if log.actorHref}<a class="audit-link" href={log.actorHref}>
+            {log.actor}
+          </a>{:else}{log.actor}{/if}{#if log.actorId}
+          <code>
+            {log.actorId}
+          </code>{/if}{#if log.actorIp && log.actorIp !== log.actor}
           <code>IP: {log.actorIp}</code>{/if}
       </dd>
       <dt>Affected resource</dt>
       <dd>
-        {#if log.targetHref}<a class="audit-link" href={log.targetHref}
-            >{log.target}</a
-          >{:else}{log.target}{/if}{#if log.targetId}
+        {#if log.targetHref}<a class="audit-link" href={log.targetHref}>
+            {log.target}
+          </a>{:else}{log.target}{/if}{#if log.targetId}
           <code>{log.targetId}</code>{/if}
       </dd>
       <dt>Action</dt>

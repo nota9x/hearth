@@ -126,7 +126,10 @@ function multipart(bytes = png, name = 'image.png', field = 'file') {
     Buffer.from(`\r\n--${boundary}--\r\n`),
   ]);
 }
-function send(body = nativeBody, headers: Record<string, string> = {}) {
+function send({
+  body = nativeBody,
+  headers = {},
+}: { body?: typeof nativeBody; headers?: Record<string, string> } = {}) {
   return POST({
     request: new Request(`${env.APP_ORIGIN}/api/v1/images`, {
       method: 'POST',
@@ -219,10 +222,16 @@ describe('observed ShareX 21 HTTP contract with real D1 and R2', () => {
     );
   });
   it('rejects wrong file field, malformed multipart, non-images, malformed images and oversize input', async () => {
-    await error(await send(multipart(png, 'x.png', 'image')), 400);
-    await error(await send(Buffer.from('broken')), 400);
-    await error(await send(multipart(Buffer.from('<svg/>'), 'spoof.png')), 400);
-    await error(await send(multipart(Buffer.from('GIF89a'), 'bad.gif')), 400);
+    await error(await send({ body: multipart(png, 'x.png', 'image') }), 400);
+    await error(await send({ body: Buffer.from('broken') }), 400);
+    await error(
+      await send({ body: multipart(Buffer.from('<svg/>'), 'spoof.png') }),
+      400,
+    );
+    await error(
+      await send({ body: multipart(Buffer.from('GIF89a'), 'bad.gif') }),
+      400,
+    );
     env.MAX_UPLOAD_BYTES = String(png.length - 1);
     await error(await send(), 413, 'UPLOAD_TOO_LARGE');
   });
@@ -235,7 +244,7 @@ describe('observed ShareX 21 HTTP contract with real D1 and R2', () => {
       await readFile('tests/fixtures/metadata/private.webp'),
       'private.webp',
     );
-    await error(await send(body), 503, 'STORAGE_UNAVAILABLE');
+    await error(await send({ body }), 503, 'STORAGE_UNAVAILABLE');
     expect((await env.BUCKET.list()).objects).toHaveLength(
       before.objects.length,
     );
@@ -251,8 +260,11 @@ describe('saved uploads without delivery', () => {
       .run();
     await env.DB.prepare('UPDATE delivery_domains SET isPrimary=0').run();
     const retryKey = randomSecret();
-    const first = await send(nativeBody, {
-      'Idempotency-Key': retryKey,
+    const first = await send({
+      body: nativeBody,
+      headers: {
+        'Idempotency-Key': retryKey,
+      },
     });
     expect(first.status).toBe(409);
     const original = await first.json();
@@ -287,8 +299,11 @@ describe('saved uploads without delivery', () => {
     await env.DB.prepare(
       "UPDATE delivery_domains SET isPrimary=1 WHERE id='photos'",
     ).run();
-    const replay = await send(nativeBody, {
-      'Idempotency-Key': retryKey,
+    const replay = await send({
+      body: nativeBody,
+      headers: {
+        'Idempotency-Key': retryKey,
+      },
     });
     expect(replay.status).toBe(409);
     expect(await replay.json()).toEqual(original);

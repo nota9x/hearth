@@ -52,9 +52,8 @@ export function createDeletion(actionName: string, noun: string) {
     for (const imageId of snapshot) pending.add(imageId);
     publish();
     let stopping = false;
-    const notice = notify.live(
-      `0 of ${snapshot.length} deleted`,
-      () => {
+    const notice = notify.live(`0 of ${snapshot.length} deleted`, {
+      onCancel: () => {
         stopping = true;
         for (const item of items)
           if (item.state === 'pending') {
@@ -66,15 +65,13 @@ export function createDeletion(actionName: string, noun: string) {
           `Finishing the current deletion batch. Remaining ${noun} will be kept.`,
         );
       },
-      {
-        cancellation: {
-          title: 'Cancel deletion?',
-          message: `Deletion is still in progress. Cancelling will stop the remaining batches. The current batch will finish, and ${noun} already deleted cannot be restored.`,
-          confirmLabel: 'Cancel Deletion',
-          keepLabel: 'Keep Deleting',
-        },
+      cancellation: {
+        title: 'Cancel deletion?',
+        message: `Deletion is still in progress. Cancelling will stop the remaining batches. The current batch will finish, and ${noun} already deleted cannot be restored.`,
+        confirmLabel: 'Cancel Deletion',
+        keepLabel: 'Keep Deleting',
       },
-    );
+    });
     const items: NotificationItem[] = snapshot.map((id) => ({
       id,
       name: filenames[id] ?? id,

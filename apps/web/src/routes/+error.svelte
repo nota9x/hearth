@@ -9,10 +9,9 @@
   const { error }: ErrorProperties = $props();
 </script>
 
-<svelte:head
-  ><title>{error.status} · {instanceName(page.data.siteName)}</title
-  ></svelte:head
->
+<svelte:head>
+  <title>{error.status} · {instanceName(page.data.siteName)}</title>
+</svelte:head>
 <HttpError
   status={error.status}
   name={page.data.siteName}

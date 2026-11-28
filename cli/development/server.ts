@@ -9,7 +9,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { execa } from 'execa';
 
-import { type Component, components, projects, root } from '../project.ts';
+import {
+  type Component,
+  components,
+  projects,
+  root,
+  webWorkerEntry,
+} from '../project.ts';
 import type { ServerOptions } from './command.ts';
 import { persistence, prepareSession, type ServerMode } from './config.ts';
 import { DevelopmentConsole } from './console.ts';
@@ -187,7 +193,7 @@ export async function startServer(
     if (mode === 'preview' && selected.includes('web')) {
       try {
         await access(
-          path.resolve(current.configs.web.directory, current.configs.web.main),
+          path.resolve(current.configs.web.directory, webWorkerEntry),
         );
       } catch {
         throw new Error(
@@ -436,14 +442,13 @@ export async function startServer(
         }),
       );
     if (selected.every((component) => !current.tools[component].interactive))
-      dashboard.enableControls(
-        interrupt,
-        scheduler
+      dashboard.enableControls(interrupt, {
+        maintenance: scheduler
           ? () => {
               void scheduler?.run();
             }
           : undefined,
-      );
+      });
     log(
       service,
       'READY',

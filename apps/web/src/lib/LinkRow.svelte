@@ -60,27 +60,28 @@
       aria-label={`Select link ${link.slug}`}
       onchange={(event) => select?.(event.currentTarget.checked)}
     />{/if}
-  <a class="link-preview" href={imageHref} aria-label={`View ${link.filename}`}
-    ><img
+  <a class="link-preview" href={imageHref} aria-label={`View ${link.filename}`}>
+    <img
       loading="lazy"
       src={`/api/media/${link.imageId}?preview`}
       alt=""
       width={link.width}
       height={link.height}
-    /></a
-  >
+    />
+  </a>
   <div class="row-content">
     <strong><a href={imageHref}>{link.filename}</a></strong>
-    <span class="link-url" title={link.url}
-      >{link.url.replace(/^https?:\/\//, '')}</span
-    >
-    <small
-      ><time datetime={new Date(link.createdAt * 1000).toISOString()}
-        >Created {dateTime(link.createdAt)}</time
-      >{#if admin && link.ownerId}
-        &nbsp;·&nbsp;<a href={`/admin/users/${link.ownerId}`}>{link.owner}</a
-        >{/if}</small
-    >
+    <span class="link-url" title={link.url}>
+      {link.url.replace(/^https?:\/\//, '')}
+    </span>
+    <small>
+      <time datetime={new Date(link.createdAt * 1000).toISOString()}>
+        Created {dateTime(link.createdAt)}
+      </time>{#if admin && link.ownerId}
+        &nbsp;·&nbsp;<a href={`/admin/users/${link.ownerId}`}>
+          {link.owner}
+        </a>{/if}
+    </small>
     <small
       title={`Link expiry: ${dateTime(link.expiresAt)} · Image expiry: ${dateTime(link.imageExpiresAt)}`}
     >
@@ -95,8 +96,10 @@
       data-status={status}
       title={status === 'unavailable'
         ? 'Domain or account disabled'
-        : undefined}>{linkStatuses[status]}</span
-    >{#if link.primary}<span class="badge">Primary</span>{/if}
+        : undefined}
+    >
+      {linkStatuses[status]}
+    </span>{#if link.primary}<span class="badge">Primary</span>{/if}
   </div>
   <div class="row-actions">
     <Copy text={link.url} {disabled} />
@@ -106,12 +109,16 @@
         target="_blank"
         rel="noreferrer"
         aria-label="Open link"
-        title="Open link"><ExternalLink size={17} /></a
-      >{:else}<span
+        title="Open link"
+      >
+        <ExternalLink size={17} />
+      </a>{:else}<span
         class="icon-button"
         aria-disabled="true"
-        title="Link unavailable"><ExternalLink size={17} /></span
-      >{/if}
+        title="Link unavailable"
+      >
+        <ExternalLink size={17} />
+      </span>{/if}
     <ActionMenu label={`Actions for ${link.slug}`} title="Link actions">
       {#snippet children(closeMenu: () => void)}
         <button
@@ -119,8 +126,10 @@
           onclick={() => {
             closeMenu();
             edit();
-          }}><Clock size={16} />Change expiry</button
+          }}
         >
+          <Clock size={16} />Change expiry
+        </button>
         <Copy
           text={link.slug}
           label="Copy slug"
@@ -133,8 +142,10 @@
             onclick={() => {
               closeMenu();
               primary();
-            }}><Check size={16} />Make primary</button
-          >{/if}
+            }}
+          >
+            <Check size={16} />Make primary
+          </button>{/if}
         <div class="menu-delete">
           <button
             class="danger"
@@ -142,8 +153,10 @@
             onclick={() => {
               closeMenu();
               remove();
-            }}><Trash2 size={16} />Delete share link</button
+            }}
           >
+            <Trash2 size={16} />Delete share link
+          </button>
         </div>
       {/snippet}
     </ActionMenu>

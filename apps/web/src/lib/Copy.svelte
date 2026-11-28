@@ -54,11 +54,12 @@
   onclick={copy}
   aria-label={copied ? 'Copied' : label}
   title={copied ? 'Copied' : label}
-  ><span class="feedback-icon"
-    >{#key copied}<span transition:fadeMotion
-        >{#if copied}<Check size={showLabel ? 16 : 17} />{:else}<Copy
-            size={showLabel ? 16 : 17}
-          />{/if}</span
-      >{/key}</span
-  >{#if showLabel}{copied ? 'Copied' : label}{/if}</button
 >
+  <span class="feedback-icon">
+    {#key copied}<span transition:fadeMotion>
+        {#if copied}<Check size={showLabel ? 16 : 17} />{:else}<Copy
+            size={showLabel ? 16 : 17}
+          />{/if}
+      </span>{/key}
+  </span>{#if showLabel}{copied ? 'Copied' : label}{/if}
+</button>

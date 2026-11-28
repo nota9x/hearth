@@ -7,7 +7,7 @@ To upgrade an existing installation, follow [updating](../operations/updating.md
 
 You need:
 
-- **Node 26 LTS** (26.13.0 or newer in 26.x), **Git**, and **pnpm**. Use the pnpm version listed in
+- **Node 26 LTS** (26.13.1 or newer in 26.x), **Git**, and **pnpm**. Use the pnpm version listed in
   `package.json` under `packageManager`.
 - **A Cloudflare account** with an active domain and permission to create and
   manage services. If someone else owns the account, you may need their help.

@@ -185,8 +185,7 @@
           {#if policy.source === 'administrator'}<p>
               Administrators are exempt from expiry restrictions.
             </p>
-          {:else if policy.requireExpiry || policy.maxLifetimeSeconds !== null}<p
-            >
+          {:else if policy.requireExpiry || policy.maxLifetimeSeconds !== null}<p>
               {policy.source === 'custom'
                 ? 'Your account policy'
                 : 'Workspace policy'} requires expiry.{policy.maxLifetimeSeconds ===
@@ -209,11 +208,13 @@
           {#if draft.expiry !== 'duration' && choices.every(([value]) => value !== draft.expiry)}<option
               value={draft.expiry}
               disabled
-              hidden>Choose a valid expiry</option
-            >{/if}
-          {#each choices as [value, label] (value)}<option {value}
-              >{label}</option
-            >{/each}
+              hidden
+            >
+              Choose a valid expiry
+            </option>{/if}
+          {#each choices as [value, label] (value)}<option {value}>
+              {label}
+            </option>{/each}
           <option value="duration">Custom duration</option>
         </select>
       </SettingsRow>
@@ -271,23 +272,25 @@
         Rotating your key immediately signs out all sessions and invalidates
         existing ShareX configurations. This cannot be undone.
       {/snippet}
-      <span class="settings-credential" aria-label="API key stored"
-        >•••• ••••</span
-      >
+      <span class="settings-credential" aria-label="API key stored">
+        •••• ••••
+      </span>
       <button
         class="danger"
         disabled={busy || savingPreferences}
-        onclick={() => open('rotate')}><RefreshCw size={16} />Rotate key</button
+        onclick={() => open('rotate')}
       >
+        <RefreshCw size={16} />Rotate key
+      </button>
     </SettingsRow>
     <SettingsRow
       label="ShareX configuration"
       description="Connect ShareX using your current API key."
       info="Enter your saved API key to download a ShareX configuration. The downloaded file contains that key, so keep it private. After rotating a key, download a replacement configuration."
     >
-      <button disabled={busy || savingPreferences} onclick={() => open('sxcu')}
-        ><Download size={16} />Download ShareX configuration</button
-      >
+      <button disabled={busy || savingPreferences} onclick={() => open('sxcu')}>
+        <Download size={16} />Download ShareX configuration
+      </button>
     </SettingsRow>
   </SettingsSection>
 
@@ -301,8 +304,9 @@
         href="/onboarding?revisit=1"
         data-sveltekit-preload-data="false"
         data-sveltekit-preload-code="false"
-        >Revisit onboarding<ArrowRight size={16} /></a
       >
+        Revisit onboarding<ArrowRight size={16} />
+      </a>
     </SettingsRow>
   </SettingsSection>
   <SettingsSection title="About">
@@ -312,14 +316,17 @@
       <a
         href="https://www.gnu.org/licenses/gpl-3.0.html"
         target="_blank"
-        rel="noopener noreferrer"><Scale size={14} />GPL-3.0-or-later</a
+        rel="noopener noreferrer"
       >
+        <Scale size={14} />GPL-3.0-or-later
+      </a>
       <a
         href="https://github.com/sponsors/nota9x"
         target="_blank"
         rel="noopener noreferrer"
-        ><Heart size={14} />Donate<ArrowUpRight size={14} /></a
       >
+        <Heart size={14} />Donate<ArrowUpRight size={14} />
+      </a>
     </div>
   </SettingsSection>
 </SettingsPage>
@@ -338,9 +345,9 @@
         <div class="secret">{secret}</div>
         <div class="toolbar">
           <Copy text={secret} label="Copy API key" />
-          {#if config}<button onclick={() => downloadConfig(config)}
-              ><Download size={16} />Download ShareX configuration</button
-            >{/if}
+          {#if config}<button onclick={() => downloadConfig(config)}>
+              <Download size={16} />Download ShareX configuration
+            </button>{/if}
         </div>
         <button onclick={close}>I’ve saved it</button>
       {:else if modal === 'sxcu'}
@@ -379,11 +386,12 @@
             onToken={(value: string) => (token = value)}
           />
           <div class="settings-buttons">
-            <button type="button" disabled={busy} onclick={close}>Cancel</button
-            >
-            <button class="danger" disabled={busy || !token}
-              >{busy ? 'Rotating…' : 'Rotate API key'}</button
-            >
+            <button type="button" disabled={busy} onclick={close}>
+              Cancel
+            </button>
+            <button class="danger" disabled={busy || !token}>
+              {busy ? 'Rotating…' : 'Rotate API key'}
+            </button>
           </div>
         </form>
       {/if}

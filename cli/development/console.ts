@@ -202,8 +202,10 @@ export class DevelopmentConsole {
 
   enableControls(
     shutdown: () => void,
-    maintenance?: () => void,
-    input: NodeJS.ReadStream = process.stdin,
+    {
+      maintenance,
+      input = process.stdin,
+    }: { maintenance?: () => void; input?: NodeJS.ReadStream } = {},
   ) {
     if (!input.isTTY || !this.controlsAllowed) return;
     const wasRaw = input.isRaw;

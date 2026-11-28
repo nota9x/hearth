@@ -26,6 +26,6 @@
           in:receiveIndicator={{ key: 'administration' }}
           out:sendIndicator={{ key: 'administration' }}
           aria-hidden="true"
-        ></span>{/if}{label}</a
-    >{/each}
+        ></span>{/if}{label}
+    </a>{/each}
 </nav>

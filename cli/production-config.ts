@@ -6,7 +6,13 @@ import { z } from 'zod';
 
 import { hostnameSchema } from '../packages/core/common.ts';
 import { isPublicHostname } from '../packages/core/domain-format.ts';
-import { type Component, components, projects, root } from './project.ts';
+import {
+  type Component,
+  components,
+  projects,
+  root,
+  webWorkerEntry,
+} from './project.ts';
 
 export { type Component, components, projects, root } from './project.ts';
 export const configPath = (component: Component) =>
@@ -30,7 +36,7 @@ export const siteKey = z
 export const productionConfigSchema = z.looseObject({
   name: z.string().min(1),
   account_id: z.string().optional(),
-  main: z.string(),
+  main: z.string().optional(),
   compatibility_date: z.string(),
   compatibility_flags: z.array(z.string()),
   vars: z.record(z.string(), z.string()).optional(),
@@ -165,6 +171,7 @@ export async function renderProduction(options: ProductionOptions) {
       traces: { enabled: true, head_sampling_rate: 0.1 },
     };
     if (component === 'web') {
+      config.main = webWorkerEntry;
       const maintenance = config.durable_objects?.bindings.find(
         (binding) => binding.name === 'MAINTENANCE',
       );

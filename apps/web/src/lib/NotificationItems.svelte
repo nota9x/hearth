@@ -51,9 +51,9 @@
   {@const Icon = icons[item.state]}
   <div class="item-row" data-state={item.state}>
     <span class="item-icon">
-      {#key Icon}<span transition:fadeMotion={{ enabled: visible }}
-          ><Icon size={14} aria-hidden="true" /></span
-        >{/key}
+      {#key Icon}<span transition:fadeMotion={{ enabled: visible }}>
+          <Icon size={14} aria-hidden="true" />
+        </span>{/key}
     </span>
     <div class="item-copy">
       <strong title={item.name}>{item.name}</strong>
@@ -110,8 +110,9 @@
           aria-label="Previous items"
           disabled={currentPage === 0}
           onclick={() => (page = currentPage - 1)}
-          ><ChevronLeft size={14} aria-hidden="true" /></button
         >
+          <ChevronLeft size={14} aria-hidden="true" />
+        </button>
         <span>Page {currentPage + 1} of {lastPage + 1}</span>
         <button
           type="button"
@@ -119,8 +120,9 @@
           aria-label="Next items"
           disabled={currentPage === lastPage}
           onclick={() => (page = currentPage + 1)}
-          ><ChevronRight size={14} aria-hidden="true" /></button
         >
+          <ChevronRight size={14} aria-hidden="true" />
+        </button>
       </nav>
     {/if}
   {/if}

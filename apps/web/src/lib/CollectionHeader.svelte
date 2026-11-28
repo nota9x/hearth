@@ -34,13 +34,13 @@
       disabled={$dashboard || busy || !!navigating.to}
       aria-busy={$dashboard}
     >
-      <span class="feedback-icon"
-        >{#key $dashboard}<span transition:fadeMotion
-            >{#if $dashboard}<Spinner size={17} />{:else}<RefreshCw
+      <span class="feedback-icon">
+        {#key $dashboard}<span transition:fadeMotion>
+            {#if $dashboard}<Spinner size={17} />{:else}<RefreshCw
                 size={17}
-              />{/if}</span
-          >{/key}</span
-      >
+              />{/if}
+          </span>{/key}
+      </span>
       {$dashboard ? 'Refreshing…' : 'Refresh'}
     </button>
     {@render children?.()}

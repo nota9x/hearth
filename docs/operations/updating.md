@@ -43,7 +43,10 @@ pnpm exec wrangler d1 migrations list DB --remote --config apps/web/production.l
 Use the Node/pnpm versions required by the target manifest. Compare checked-in
 Wrangler changes with your production files: `configure` does not overwrite or
 refresh them. Carry over required bindings, flags, cron changes, and variables
-without replacing resource IDs or losing delivery hostnames.
+without replacing resource IDs or losing delivery hostnames. With Cloudflare
+adapter 9, set the web production config’s `main` to
+`.svelte-kit/cloudflare/worker/index.js` and `assets.directory` to
+`.svelte-kit/cloudflare/client`.
 
 For on-demand maintenance, copy the `MAINTENANCE` Durable Object bindings into web
 and maintenance production files and the SQLite `exports.MaintenanceJob` declaration

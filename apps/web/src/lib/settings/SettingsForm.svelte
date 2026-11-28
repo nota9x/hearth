@@ -86,8 +86,10 @@
             reset();
             error = warning = '';
             saved = false;
-          }}>Reset</button
-        >{/if}
+          }}
+        >
+          Reset
+        </button>{/if}
       <button
         class="primary"
         disabled={pending || !dirty || invalid || nativeInvalid}

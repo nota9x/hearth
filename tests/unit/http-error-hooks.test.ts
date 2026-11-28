@@ -11,15 +11,17 @@ vi.mock('cloudflare:workers', () => ({
 }));
 
 const origin = 'https://app.example.com';
-function input(
+function input({
   path = '/missing',
   response = new Response('private failure', { status: 404 }),
-  options: {
-    method?: string;
-    data?: boolean;
-    production?: boolean;
-  } = {},
-) {
+  ...options
+}: {
+  path?: string;
+  response?: Response;
+  method?: string;
+  data?: boolean;
+  production?: boolean;
+} = {}) {
   const first = vi.fn(() => Promise.resolve({ value: 'Custom Hearth' }));
   const DB = { prepare: vi.fn(() => ({ bind: vi.fn(() => ({ first })) })) };
   const resolve = vi.fn(() => Promise.resolve(response));
@@ -56,7 +58,7 @@ describe('application error integration', () => {
         ETag: 'private-etag',
       },
     });
-    const test = input('/missing', response);
+    const test = input({ path: '/missing', response });
     const result = await handle(test as unknown as Parameters<Handle>[0]);
     expect(result.status).toBe(status);
     expect(await result.text()).toContain('Custom Hearth');
@@ -71,7 +73,7 @@ describe('application error integration', () => {
     expect(cancel).toHaveBeenCalledOnce();
   });
   it('renders invalid-binding errors without layout or branding storage', async () => {
-    const test = input('/missing');
+    const test = input({ path: '/missing' });
     for (const key of Object.keys(cloudflare.env))
       Reflect.deleteProperty(cloudflare.env, key);
     const response = await handle(test as unknown as Parameters<Handle>[0]);
@@ -112,7 +114,10 @@ describe('application error integration', () => {
     const body = {
       error: { code: 'EXAMPLE', message: 'Recoverable failure' },
     };
-    const test = input('/api/v1/images', Response.json(body, { status: 403 }));
+    const test = input({
+      path: '/api/v1/images',
+      response: Response.json(body, { status: 403 }),
+    });
     const response = await handle(test as unknown as Parameters<Handle>[0]);
     expect(await response.json()).toEqual(body);
     expect(response.headers.get('Content-Type')).toContain('application/json');
@@ -122,7 +127,7 @@ describe('application error integration', () => {
     for (const options of [{ data: true }, {}]) {
       const status = options.data ? 404 : 200;
       const original = new Response('original', { status });
-      const test = input('/missing', original, options);
+      const test = input({ path: '/missing', response: original, ...options });
       const response = await handle(test as unknown as Parameters<Handle>[0]);
       expect(await response.text()).toBe('original');
       expect(test.first).not.toHaveBeenCalled();
@@ -131,7 +136,8 @@ describe('application error integration', () => {
   it('keeps HEAD empty with the same error headers', async () => {
     const get = await handle(input() as unknown as Parameters<Handle>[0]);
     const head = await handle(
-      input('/missing', undefined, {
+      input({
+        path: '/missing',
         method: 'HEAD',
       }) as unknown as Parameters<Handle>[0],
     );
@@ -144,10 +150,10 @@ describe('application error integration', () => {
     const headers = new Headers();
     headers.append('Set-Cookie', 'first=; Max-Age=0; Path=/');
     headers.append('Set-Cookie', 'second=; Max-Age=0; Path=/');
-    const test = input(
-      '/missing',
-      new Response('failure', { status: 403, headers }),
-    );
+    const test = input({
+      path: '/missing',
+      response: new Response('failure', { status: 403, headers }),
+    });
     const response = await handle(test as unknown as Parameters<Handle>[0]);
     expect(response.headers.getSetCookie()).toEqual(headers.getSetCookie());
   });

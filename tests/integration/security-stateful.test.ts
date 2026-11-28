@@ -95,8 +95,10 @@ afterEach(async () => {
 
 function dispatch(
   request: Request,
-  jar: CookieJar = new Map(),
-  bindings = env,
+  {
+    jar = new Map(),
+    bindings = env,
+  }: { jar?: CookieJar; bindings?: typeof env } = {},
 ) {
   Object.assign(cloudflare.env, bindings);
   const event = {
@@ -143,8 +145,10 @@ function dispatch(
 function action(
   name: string,
   input: unknown,
-  jar: CookieJar = new Map(),
-  bindings = env,
+  {
+    jar = new Map(),
+    bindings = env,
+  }: { jar?: CookieJar; bindings?: typeof env } = {},
 ) {
   return dispatch(
     new Request(`${origin}/api/actions/${name}`, {
@@ -152,8 +156,7 @@ function action(
       headers: { Origin: origin, 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
     }),
-    jar,
-    bindings,
+    { jar, bindings },
   );
 }
 
@@ -162,7 +165,7 @@ async function login(account: Account) {
   const response = await action(
     'login',
     { key: account.key, token: 'challenge' },
-    jar,
+    { jar },
   );
   expect(response.status).toBe(200);
   expect(jar.get(cookieName)).toMatch(/^[a-f0-9]{64}$/);
@@ -170,7 +173,7 @@ async function login(account: Account) {
 }
 
 function media(imageId: string, jar: CookieJar) {
-  return dispatch(new Request(`${origin}/api/media/${imageId}`), jar);
+  return dispatch(new Request(`${origin}/api/media/${imageId}`), { jar });
 }
 
 async function seedImage(account: Account) {
@@ -216,7 +219,7 @@ async function updateAccount(account: Account, status: 'active' | 'disabled') {
       status,
       quotaBytes: null,
     },
-    adminJar,
+    { jar: adminJar },
   );
 }
 
@@ -278,7 +281,7 @@ describe('stateful authentication through hook and handlers', () => {
         await action(
           'user-delete',
           { userId: owner.userId, token: 'challenge' },
-          adminJar,
+          { jar: adminJar },
         )
       ).status,
     ).toBe(200);
@@ -323,7 +326,7 @@ describe('stateful authentication through hook and handlers', () => {
     const theirs = await seedImage(other);
     expect((await media(theirs, jar)).status).toBe(404);
     expect(
-      (await action('settings', { siteName: 'Denied member' }, jar)).status,
+      (await action('settings', { siteName: 'Denied member' }, { jar })).status,
     ).toBe(403);
     await database(env.DB)
       .update(users)
@@ -331,7 +334,7 @@ describe('stateful authentication through hook and handlers', () => {
       .where(eq(users.id, owner.userId));
     expect((await media(theirs, jar)).status).toBe(200);
     expect(
-      (await action('settings', { siteName: 'Allowed administrator' }, jar))
+      (await action('settings', { siteName: 'Allowed administrator' }, { jar }))
         .status,
     ).toBe(200);
     await database(env.DB)
@@ -339,14 +342,14 @@ describe('stateful authentication through hook and handlers', () => {
       .set({ role: 'user' })
       .where(eq(users.id, owner.userId));
     expect(
-      (await action('settings', { siteName: 'Denied again' }, jar)).status,
+      (await action('settings', { siteName: 'Denied again' }, { jar })).status,
     ).toBe(403);
     expect(
       (
         await action(
           'alias-create',
           { imageId: theirs, deliveryDomainId: domainId, expiry: 'never' },
-          jar,
+          { jar },
         )
       ).status,
     ).toBe(404);
@@ -391,13 +394,12 @@ describe('stateful authentication through hook and handlers', () => {
     const pending = action(
       'login',
       { key: owner.key, token: 'challenge' },
-      lateJar,
-      gate.env,
+      { jar: lateJar, bindings: gate.env },
     );
     await gate.arrived.promise;
     try {
       expect(gate.calls()).toBe(1);
-      const rotated = await action('rotate', { token: 'challenge' }, jar);
+      const rotated = await action('rotate', { token: 'challenge' }, { jar });
       expect(rotated.status).toBe(200);
       const { key } = await rotated.json<{ key: string }>();
       gate.release.resolve();
@@ -405,7 +407,8 @@ describe('stateful authentication through hook and handlers', () => {
       expect(lateJar.has(cookieName)).toBe(true);
       expect((await media(mine, lateJar)).status).toBe(401);
       expect(
-        (await action('image-delete', { ids: [mine] }, lateJar)).status,
+        (await action('image-delete', { ids: [mine] }, { jar: lateJar }))
+          .status,
       ).toBe(401);
       expect((await media(mine, await login({ ...owner, key }))).status).toBe(
         200,
@@ -423,8 +426,7 @@ describe('stateful authentication through hook and handlers', () => {
     const pending = action(
       'login',
       { key: owner.key, token: 'challenge' },
-      lateJar,
-      gate.env,
+      { jar: lateJar, bindings: gate.env },
     );
     await gate.arrived.promise;
     try {
@@ -463,7 +465,7 @@ describe('stateful mechanism and related-resource boundaries', () => {
     for (const value of corpus) {
       const request = uploadRequest(value);
       expect(request.headers.get('Authorization')).toBe(value);
-      const response = await dispatch(request, otherJar);
+      const response = await dispatch(request, { jar: otherJar });
       expect(response.status).toBe(401);
     }
     const request = uploadRequest(`Bearer ${owner.key}`);
@@ -471,14 +473,13 @@ describe('stateful mechanism and related-resource boundaries', () => {
     expect(request.headers.get('Authorization')).toBe(
       `Bearer ${owner.key}, Bearer ${owner.key}`,
     );
-    expect((await dispatch(request, otherJar)).status).toBe(401);
+    expect((await dispatch(request, { jar: otherJar })).status).toBe(401);
     expect(
       await database(env.DB).select({ id: images.id }).from(images),
     ).toEqual(before);
-    const legitimate = await dispatch(
-      uploadRequest(`bEaReR\t${owner.key}`),
-      otherJar,
-    );
+    const legitimate = await dispatch(uploadRequest(`bEaReR\t${owner.key}`), {
+      jar: otherJar,
+    });
     expect(legitimate.status).toBe(201);
     const { id: imageId } = await legitimate.json<{ id: string }>();
     const [stored] = await database(env.DB)

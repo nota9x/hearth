@@ -214,7 +214,7 @@ export const POST: RequestHandler<{ action: string }> = async ({
     await rateLimit(environment.MUTATION_LIMIT, user.id);
     const audit = (
       action: string,
-      targetId: string | null = null,
+      targetId: string | null,
       options: {
         name?: string;
         before?: AuditValues;

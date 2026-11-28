@@ -54,22 +54,23 @@
       transition:fadeMotion={{ kind: 'content' }}
       class="notice delivery-notice"
     >
-      <span class="delivery-notice-message"
-        >{#if storageNotice}<HardDrive
+      <span class="delivery-notice-message">
+        {#if storageNotice}<HardDrive
             size={16}
             aria-hidden="true"
           />{storageNotice.message}{:else}<LockKeyhole
             size={16}
             aria-hidden="true"
-          />Uploads will save privately.{/if}</span
-      >
+          />Uploads will save privately.{/if}
+      </span>
       {#if !storageNotice || storageNotice.href}
         <a
           class="delivery-notice-action"
           href={storageNotice?.href ?? '/domains'}
-          >{storageNotice?.action ?? 'Configure delivery'}
-          <ArrowRight size={14} aria-hidden="true" /></a
         >
+          {storageNotice?.action ?? 'Configure delivery'}
+          <ArrowRight size={14} aria-hidden="true" />
+        </a>
       {/if}
     </div>{/if}
 </div>

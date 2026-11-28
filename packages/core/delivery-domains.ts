@@ -288,8 +288,8 @@ async function eventStatement(
   actor: User,
   action: string,
   domain: Pick<DeliveryDomain, 'id' | 'hostname'>,
-  actorIp?: string | null,
-  token?: string,
+  actorIp: string | null | undefined,
+  token: string,
   options: { before?: AuditValues; after?: AuditValues } = {},
 ) {
   const event = await auditEvent(
